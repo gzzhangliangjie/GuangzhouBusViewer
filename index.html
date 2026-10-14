@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'">
+  <title>广州公交路线预览</title>
+  <link rel="stylesheet" href="node_modules/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <header class="side-header">
+        <h1>广州公交路线预览</h1>
+        <p class="sub">数据来源 OpenStreetMap · 共 <span id="line-count">–</span> 条线路</p>
+      </header>
+
+      <div class="search-row">
+        <input id="search" type="text" placeholder="搜索线路号 / 起终点，如 B7、夜102" autocomplete="off" />
+        <button id="refresh" title="重新拉取线路列表">刷新</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <section id="line-detail" class="line-detail" hidden>
+        <!-- 选中线路后填充：方向标签 + 站点列表 -->
+      </section>
+
+      <ul id="line-list" class="line-list"></ul>
+
+      <footer class="side-footer">
+        <div id="active-lines" class="active-lines"></div>
+      </footer>
+    </aside>
+
+    <main id="map-wrap">
+      <div id="map"></div>
+      <div class="map-toolbar">
+        <button class="tile-btn active" data-tiles="amap">高德底图</button>
+        <button class="tile-btn" data-tiles="osm">OSM 底图</button>
+      </div>
+      <div id="loading" class="loading" hidden><span></span>正在查询 Overpass…</div>
+    </main>
+  </div>
+
+  <script src="node_modules/leaflet/dist/leaflet.js"></script>
+  <script src="js/coords.js"></script>
+  <script src="js/overpass.js"></script>
+  <script src="js/map-layer.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

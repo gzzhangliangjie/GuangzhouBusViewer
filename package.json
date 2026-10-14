@@ -1,0 +1,19 @@
+{
+  "name": "guangzhou-bus-viewer",
+  "productName": "广州公交路线预览",
+  "version": "1.0.0",
+  "description": "在广州市地图上浏览各条公交线路的走向与站点（数据来源：OpenStreetMap）",
+  "main": "main.js",
+  "author": "GuangzhouBusViewer",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev:web": "node server-dev.js"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0"
+  }
+}
