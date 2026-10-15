@@ -158,7 +158,9 @@ const MetroMapView = (() => {
       } else {
         overlay.clearLayers();
       }
-      stationMk.clear(); badgeMk.clear(); numMk.clear();
+      for (const mk of badgeMk.values()) if (mk && mk.remove) mk.remove();
+      badgeMk.clear();
+      stationMk.clear(); numMk.clear();
       for (const pl of scopeArtLines) pl.remove();
       scopeArtLines = [];
       for (const d of scopeDots.values()) d.mk.remove();
@@ -288,6 +290,17 @@ const MetroMapView = (() => {
       }
     }
 
+    const badgePosOrder = new Map();   // ref -> ['R','L','D','U'] 优先序
+    const BADGE_DIST = 48;
+    function cardinalXY(dir, dist) {
+      switch (dir) {
+        case 'R': return [dist, 0];
+        case 'L': return [-dist, 0];
+        case 'U': return [0, -dist];
+        default:  return [0, dist];
+      }
+    }
+
     function drawBadge(l, opts) {
       const anchor = MetroData.badgeAnchorStation(l);
       if (!anchor) return;
@@ -300,19 +313,25 @@ const MetroMapView = (() => {
       let ux = 0.7, uy = -0.7;   // 无参照站时默认右上方向
       if (prev && prev !== anchor) {
         const q = pointOf(prev);
+        // 屏幕系方向 = 终点减邻近站；simple 模式 latLng 为 [-sy, sx]：
+        // 屏幕 x = sx 差 = p[1]-q[1]，屏幕 y = sy 差 = (−p[0])−(−q[0]) = q[0]-p[0]
+        // （旧实现 dy 用了 p[0]-q[0]，垂直翻转导致徽章常落在线路内侧/压线）
         const dx = simple ? (p[1] - q[1]) : (p[1] - q[1]) * Math.cos(anchor.lat * Math.PI / 180);
-        const dy = simple ? (p[0] - q[0]) : -(p[0] - q[0]);   // 纬度向上 = 屏幕向上
+        const dy = simple ? (q[0] - p[0]) : -(p[0] - q[0]);
         const len = Math.hypot(dx, dy) || 1;   // Math.hypot 直接用全局，防局部遮蔽
         ux = dx / len; uy = dy / len;
       }
-      // 碰撞规避：编号牌在站点左下(x-w-7, y+3, ~35x15)，徽章沿出线方向外推；
-      // 若外推后仍与编号牌矩形重叠，则翻转到反侧（向线路内侧收）
-      const DIST = 46;   // 徽章中心离端点站的屏幕距离：越过编号牌区
-      let tx = ux * DIST, ty = uy * DIST;
-      // 编号牌占位矩形（站点屏幕坐标 p 需转 container 坐标才有意义，这里在放置后用 CSS 修正）：
-      // 简化策略：出线方向若含"向下"分量(uy>0.3)，编号牌就在同侧，翻转到反侧
-      if (uy > 0.25) { tx = -tx; ty = -ty; }
-      const off = `--tx:${Math.round(tx)}px;--ty:${Math.round(ty)}px`;
+      // 四方位放置（用户规范）：横向走向的线优先左右、纵向优先上下，出线侧先试；
+      // 与编号牌/站名冲突时按序换方位，全占则隐藏（resolveBadgeOverlaps 兜底）
+      const horizontal = Math.abs(ux) >= Math.abs(uy);
+      const R = ['R', 'L', 'D', 'U'], Dn = ['D', 'U', 'R', 'L'];
+      let order = horizontal ? R.slice() : Dn.slice();
+      // 出线侧优先：横向且向右 → R 在前；纵向且向下 → D 在前
+      if (horizontal ? ux < 0 : uy < 0) { order = order.slice(); order[0] = order[0] === 'R' ? 'L' : (order[0] === 'D' ? 'U' : order[0]); order[1] = order[1] === 'L' ? 'R' : (order[1] === 'U' ? 'D' : order[1]); }
+      const DIST = 48;
+      badgePosOrder.set(l.ref, order);
+      const first = cardinalXY(order[0], DIST);
+      const off = `--tx:${Math.round(first[0])}px;--ty:${Math.round(first[1])}px`;
       // 官方样式：线路色胶囊 + 白字（1号线 / 广佛线 / APM线）
       const html = `<div class="mbadge${placed ? ' placed' : ''}"${placed ? ` style="--c:${l.color};${off}"` : ` style="${off}"`}>` +
         (placed ? l.zh : '？') + '</div>';
@@ -472,40 +491,19 @@ const MetroMapView = (() => {
 
       // ② 站名标签：已放置/换乘优先，缩放分级 + 碰撞（含编号牌占位）
       // 单线模式：未选线站名正常显示（提示背景），所选线站名仅放置后/线号模式显示（谜题）
-      const candidates = [];
+      // 站名永不隐藏（用户要求）：不做碰撞剔除、无数量上限；仍遵守游戏规则
+      // （单线模式：所选线未放置的站名是谜题，保持隐藏）与最低缩放门槛
+      const keep = new Set();
+      const minZoom = simple ? -6 : gates.hi;
       for (const s of MetroData.allStations()) {
         const placed = lastOpts.placedNames.has(s.id);
-        // 单线模式已放置：站名已由编号牌原位显示，不再走 tooltip 标签
-        if (simple && placed) continue;
+        if (simple && placed) continue;          // 已放置：编号牌原位显示站名
         const inScope = !lastOpts.scopeRef || s.lines.includes(lastOpts.scopeRef);
-        let nameVisible;
-        if (lastOpts.scopeRef) {
-          nameVisible = placed || (lastOpts.showStationNames && inScope) || !inScope;
-        } else {
-          nameVisible = lastOpts.showStationNames || placed;
-        }
+        let nameVisible = lastOpts.scopeRef
+          ? (placed || (lastOpts.showStationNames && inScope) || !inScope)
+          : (lastOpts.showStationNames || placed);
         if (!nameVisible) continue;
-        const inter = s.lines.length > 1;
-        if (zoom < ((placed || inter) ? gates.hi : gates.normal)) continue;
-        // 优先级：全网=换乘>普通；单线=所选线(换乘>普通) > 未选线提示名
-        candidates.push({ s, prio: (inScope ? 0 : 20) + (inter ? 0 : 10) + (placed ? 0 : 5) });
-      }
-      candidates.sort((a, b) => a.prio - b.prio);
-
-      const rects = [...numRects];
-      const keep = new Set();
-      for (const { s } of candidates) {
-        if (keep.size >= MAX_LABELS) break;
-        const p = map.latLngToContainerPoint(pointOf(s));
-        const x = p.x + 9, y = p.y - 10;
-        const w = s.zh.length * 12 + 18, h = 20;
-        // 已放置站的站名必显（不参与碰撞剔除）
-        const placedNow = lastOpts.placedNames.has(s.id);
-        if (!placedNow) {
-          const clash = rects.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y);
-          if (clash) continue;
-        }
-        rects.push({ x, y, w, h });
+        if (zoom < minZoom) continue;
         keep.add(s.id);
       }
 
@@ -555,17 +553,37 @@ const MetroMapView = (() => {
           obstacles.push(badge.getBoundingClientRect());
           continue;
         }
+        // 四方位按优先序找空位（横向线左右优先/纵向上下优先）；
+        // 全占则拉远一档再试（含四个斜角）；仍无空位选重叠面积最小的位置——线路信息永不隐藏
+        const order = badgePosOrder.get(ref) || ['R', 'L', 'D', 'U'];
+        badge.style.visibility = '';
         let done = false;
-        for (let k = 0; k < 24 && !done; k++) {
-          const ring = k >> 3;
-          const ang = (k % 8) * 45 + ring * 22.5;
-          const dist = 46 + ring * 26;
-          badge.style.setProperty('--tx', Math.round(Math.cos(ang * Math.PI / 180) * dist) + 'px');
-          badge.style.setProperty('--ty', Math.round(Math.sin(ang * Math.PI / 180) * dist) + 'px');
-          if (!overlapsPad(badge.getBoundingClientRect())) done = true;
+        for (const dist of [BADGE_DIST, BADGE_DIST + 22]) {
+          for (const dir of order) {
+            const [x, y] = cardinalXY(dir, dist);
+            badge.style.setProperty('--tx', x + 'px');
+            badge.style.setProperty('--ty', y + 'px');
+            if (!overlapsPad(badge.getBoundingClientRect())) { done = true; break; }
+          }
+          if (done) break;
         }
-        if (!done) badge.style.visibility = 'hidden';   // 无空位：让位给编号牌
-        else badge.style.visibility = '';
+        if (!done) {
+          const area = (r, t) => Math.max(0, Math.min(r.right, t.right) - Math.max(r.left, t.left)) *
+                                 Math.max(0, Math.min(r.bottom, t.bottom) - Math.max(r.top, t.top));
+          let best = null;
+          for (const dist of [BADGE_DIST, BADGE_DIST + 22]) {
+            for (const dir of order) {
+              const [x, y] = cardinalXY(dir, dist);
+              badge.style.setProperty('--tx', x + 'px');
+              badge.style.setProperty('--ty', y + 'px');
+              const r = badge.getBoundingClientRect();
+              const ov = obstacles.reduce((s2, t) => s2 + area(r, t), 0);
+              if (!best || ov < best.ov) best = { ov, x, y };
+            }
+          }
+          badge.style.setProperty('--tx', best.x + 'px');
+          badge.style.setProperty('--ty', best.y + 'px');
+        }
         obstacles.push(badge.getBoundingClientRect());
       }
     }
@@ -712,7 +730,9 @@ const MetroMapView = (() => {
         container.classList.remove('schematic-canvas');
         container.querySelector('.map-caption')?.remove();
       }
-      stationMk.clear(); badgeMk.clear(); numMk.clear();
+      for (const mk of badgeMk.values()) if (mk && mk.remove) mk.remove();
+      badgeMk.clear();
+      stationMk.clear(); numMk.clear();
     }
 
     Object.assign(view, {
