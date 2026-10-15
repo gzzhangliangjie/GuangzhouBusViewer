@@ -22,6 +22,7 @@
     filtered: [],
     active: new Map(),    // ref -> { variants, current, group, colour }
     selectedRef: null,
+    page: 1,
     colourSeq: 0
   };
 
@@ -97,9 +98,17 @@
       const hay = (l.ref + ' ' + l.name + ' ' + l.from + ' ' + l.to + ' ' + l.operator).toLowerCase();
       return hay.replace(/\s+/g, '').includes(kw);
     });
+    state.page = 1;   // 检索条件变化回到第一页
+    renderListPage();
+  }
 
+  const PAGE_SIZE = 100;
+
+  function renderListPage() {
+    const totalPages = Math.max(1, Math.ceil(state.filtered.length / PAGE_SIZE));
+    if (state.page > totalPages) state.page = totalPages;
     const frag = document.createDocumentFragment();
-    for (const l of state.filtered.slice(0, 500)) {
+    for (const l of state.filtered.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE)) {
       const li = document.createElement('li');
       li.dataset.ref = l.ref;
       li.dataset.id = l.id;
@@ -114,15 +123,27 @@
     els.list.innerHTML = '';
     els.list.appendChild(frag);
 
-    if (state.filtered.length > 500) {
-      const tip = document.createElement('li');
-      tip.innerHTML = `<span class="line-name">… 共 ${state.filtered.length} 条，仅显示前 500 条，请继续输入筛选</span>`;
-      tip.style.cursor = 'default';
-      els.list.appendChild(tip);
-    }
     if (state.filtered.length === 0 && state.index.length > 0) {
       els.list.innerHTML = '<li style="cursor:default"><span class="line-name">没有匹配的线路</span></li>';
     }
+    renderPager(totalPages);
+  }
+
+  function renderPager(totalPages) {
+    const pager = document.getElementById('list-pager');
+    if (!pager) return;
+    if (totalPages <= 1) { pager.hidden = true; return; }
+    pager.hidden = false;
+    pager.innerHTML =
+      `<button data-p="prev" ${state.page <= 1 ? 'disabled' : ''}>‹ 上一页</button>` +
+      `<span class="pg-info">第 ${state.page} / ${totalPages} 页 · 共 ${state.filtered.length} 条</span>` +
+      `<button data-p="next" ${state.page >= totalPages ? 'disabled' : ''}>下一页 ›</button>`;
+    pager.querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      if (btn.dataset.p === 'prev' && state.page > 1) state.page -= 1;
+      if (btn.dataset.p === 'next') state.page += 1;
+      renderListPage();
+      els.list.parentElement.scrollTop = 0;
+    }));
   }
 
   /* ---------- 选中线路 ---------- */

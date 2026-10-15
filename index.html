@@ -15,6 +15,7 @@
     <div class="seg">
       <button data-mode="bus" class="active">公交路线</button>
       <button data-mode="metro">地铁拼图</button>
+      <button data-mode="roads">道路查看</button>
     </div>
     <span class="nav-note">数据 © OpenStreetMap 贡献者</span>
   </nav>
@@ -41,6 +42,7 @@
         </section>
 
         <ul id="line-list" class="line-list"></ul>
+        <div id="list-pager" class="list-pager" hidden></div>
 
         <footer class="side-footer">
           <div id="active-lines" class="active-lines"></div>
@@ -58,7 +60,23 @@
     </div>
 
     <!-- ==================== 地铁拼图 ==================== -->
-    <div id="metro-view" class="mode-view" hidden>
+    <!-- ==================== 道路查看 ==================== -->
+  <div id="roads-view" class="mode-view roads-layout" hidden>
+    <aside class="roads-side">
+      <div class="roads-search-row">
+        <input id="road-search" type="text" placeholder="道路名称，如：黄埔大道" autocomplete="off" />
+        <button id="road-go">搜索</button>
+      </div>
+      <div id="road-status" class="roads-status">输入道路名查询全市匹配路段（OSM 数据）</div>
+      <ul id="road-list" class="road-list"></ul>
+    </aside>
+    <div class="roads-main">
+      <div id="roads-map"></div>
+      <div class="map-caption">底图 © 高德地图 · 道路数据 © OpenStreetMap 贡献者</div>
+    </div>
+  </div>
+
+  <div id="metro-view" class="mode-view" hidden>
       <!-- 设置（主菜单） -->
       <section id="metro-setup" class="metro-setup">
         <div class="setup-card">
@@ -158,6 +176,7 @@
   <script src="js/tiles.js"></script>
   <script src="js/overpass.js"></script>
     <script src="js/amap-line.js"></script>
+    <script src="js/roads.js"></script>
   <script src="js/map-layer.js"></script>
   <script src="js/app.js"></script>
   <script src="data/metro-data.js"></script>

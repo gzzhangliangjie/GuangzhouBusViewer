@@ -343,5 +343,5 @@ const Overpass = (() => {
     return Object.assign({}, v, { segments, stops });
   }
 
-  return { fetchLineIndex, fetchLineByRef };
+  return { fetchLineIndex, fetchLineByRef, runQuery };
 })();
