@@ -401,12 +401,20 @@ const MetroMapView = (() => {
 
     function stationNumberTag(s, scopeRef) {
       // 单线模式下优先用所选线的序号，全网用首条（主）线
-      const ref = (scopeRef && s.lines.includes(scopeRef)) ? scopeRef : s.lines[0];
-      const l = MetroData.line(ref);
-      if (!l) return null;
-      const idx = l.stations.indexOf(s.id);
-      if (idx < 0) return null;
-      return MetroData.refLabel(ref) + '-' + String(idx + 1).padStart(2, '0');
+      // 换乘站显示全部线编号（用户要求：多条线路交汇的站把多条线路的编号都列出来）
+      const parts = [];
+      const refs = scopeRef
+        ? [scopeRef, ...s.lines.filter(r => r !== scopeRef)]
+        : s.lines;
+      for (const ref of refs) {
+        const l = MetroData.line(ref);
+        if (!l) continue;
+        const idx = l.stations.indexOf(s.id);
+        if (idx < 0) continue;
+        parts.push(MetroData.refLabel(ref) + '-' + String(idx + 1).padStart(2, '0'));
+      }
+      if (!parts.length) return null;
+      return parts;
     }
 
     function drawNumberTag(s, opts) {
@@ -422,7 +430,7 @@ const MetroMapView = (() => {
         zIndexOffset: inScope ? 1000 : 200,
         icon: L.divIcon({
           className: 'mnum-wrap' + (inScope && opts.scopeRef ? ' scope-num' : ''),
-          html: `<span class="mnum${placed ? ' done' : ''}">${placed ? s.zh : tag}</span>`,
+          html: `<span class="mnum${placed ? ' done' : ''}">${placed ? s.zh : (Array.isArray(tag) ? tag.join('<br>') : tag)}</span>`,
           iconSize: null  // 由内容撑开，锚点在左下
         })
       }).addTo(overlay);
@@ -472,7 +480,8 @@ const MetroMapView = (() => {
         for (const { s, must } of nums) {
           if (!must && keepNums.size >= MAX_NUMS) break;
           const p = map.latLngToContainerPoint(pointOf(s));
-          const w = 34, h = 13;
+          const tagTexts = Array.isArray(stationNumberTag(s, lastOpts.scopeRef)) ? stationNumberTag(s, lastOpts.scopeRef) : [stationNumberTag(s, lastOpts.scopeRef) || ''];
+          const w = Math.max(...tagTexts.map(t => t.length)) * 6.5 + 8, h = tagTexts.length * 13;
           const x = p.x - w - 7, y = p.y + 3;
           if (!must) {
             const clash = numRects.some(o => x < o.x + o.w && x + w > o.x && y < o.y + o.h && y + h > o.y);
