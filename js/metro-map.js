@@ -415,7 +415,7 @@ const MetroMapView = (() => {
         const ln = ref.replace(/^0+/, '');
         const isNum = /^\d+$/.test(ln);
         const seq = String(idx + 1).padStart(2, '0');
-        parts.push(isNum ? ln + seq : ln + '-' + seq);
+        parts.push(ln + '-' + seq);
       }
       if (!parts.length) return null;
       return parts;
