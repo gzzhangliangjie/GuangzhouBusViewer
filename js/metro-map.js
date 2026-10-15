@@ -411,7 +411,11 @@ const MetroMapView = (() => {
         if (!l) continue;
         const idx = l.stations.indexOf(s.id);
         if (idx < 0) continue;
-        parts.push(MetroData.refLabel(ref) + '-' + String(idx + 1).padStart(2, '0'));
+        // 官方编号 = 线路号 + 站序（如 101、503、2201；广佛线 GF01、APM 线 APM01）
+        const ln = ref.replace(/^0+/, '');
+        const isNum = /^\d+$/.test(ln);
+        const seq = String(idx + 1).padStart(2, '0');
+        parts.push(isNum ? ln + seq : ln + '-' + seq);
       }
       if (!parts.length) return null;
       return parts;
