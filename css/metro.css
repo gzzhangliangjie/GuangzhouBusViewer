@@ -1,0 +1,434 @@
+/* ==================== 地铁拼图 ==================== */
+
+/* ---------- 设置（主菜单） ---------- */
+.metro-setup {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(1200px 500px at 70% -10%, rgba(74, 158, 255, 0.08), transparent),
+    radial-gradient(900px 420px at 15% 110%, rgba(243, 208, 62, 0.06), transparent),
+    #101418;
+}
+
+.setup-card {
+  width: min(760px, 100%);
+  background: #161b21;
+  border: 1px solid #2a313a;
+  border-radius: 14px;
+  padding: 26px 28px 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+.setup-head h1 {
+  font-size: 24px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, #f3d03e, #4a9eff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.setup-head p { margin-top: 6px; font-size: 12.5px; color: #8b949e; }
+
+.opt-block { margin-top: 20px; }
+.opt-title { font-size: 12px; color: #6e7681; margin-bottom: 8px; letter-spacing: 2px; }
+.opt-cards { display: flex; gap: 10px; }
+.opt-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid #2f3742;
+  border-radius: 10px;
+  background: #1a2027;
+  color: #c9d1d9;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.opt-card:hover { border-color: #48545f; background: #1e252d; }
+.opt-card.selected { border-color: #4a9eff; background: #1c2b3a; box-shadow: 0 0 0 1px #4a9eff inset; }
+.opt-card b { font-size: 14px; color: #fff; }
+.opt-card span { font-size: 11.5px; color: #8b949e; line-height: 1.5; }
+
+.scope-picker { display: flex; flex-wrap: wrap; gap: 7px; }
+.scope-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  font-size: 12.5px;
+  border: 1px solid #2f3742;
+  border-radius: 15px;
+  background: #1a2027;
+  color: #c9d1d9;
+  cursor: pointer;
+}
+.scope-pill:hover { border-color: #48545f; }
+.scope-pill.selected { border-color: #4a9eff; background: #1c2b3a; color: #fff; }
+.scope-pill .scope-badge {
+  padding: 2px 9px;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.setup-foot { display: flex; gap: 10px; margin-top: 24px; }
+.btn-primary {
+  flex: 1;
+  padding: 11px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: 9px;
+  background: linear-gradient(135deg, #3074c4, #4a9eff);
+  color: #fff;
+  cursor: pointer;
+}
+.btn-primary:hover { filter: brightness(1.12); }
+.btn-ghost {
+  padding: 11px 18px;
+  font-size: 13.5px;
+  border: 1px solid #2f3742;
+  border-radius: 9px;
+  background: none;
+  color: #c9d1d9;
+  cursor: pointer;
+}
+.btn-ghost:hover { background: #1e252d; }
+
+.best-line { margin-top: 14px; font-size: 12px; color: #6e7681; text-align: center; }
+
+/* ---------- 游戏界面 ---------- */
+#metro-game { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.metro-topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 14px;
+  background: #161b21;
+  border-bottom: 1px solid #2a313a;
+  flex-wrap: wrap;
+}
+.tb-btn {
+  padding: 6px 12px;
+  font-size: 12.5px;
+  border: 1px solid #2f3742;
+  border-radius: 7px;
+  background: #1d242c;
+  color: #c9d1d9;
+  cursor: pointer;
+}
+.tb-btn:hover { background: #262f39; }
+.tb-btn.accent { border-color: #2c5a8f; color: #79b8ff; }
+.tb-btn.danger { border-color: #6e2b28; color: #f85149; }
+.tb-btn.danger:hover { background: #33201e; }
+
+.tb-info { display: flex; flex-direction: column; min-width: 90px; }
+.tb-info #mq-title { font-size: 13.5px; font-weight: 600; color: #fff; }
+.tb-info #mq-scope { font-size: 11.5px; color: #8b949e; margin-top: 1px; }
+
+.tb-stats { display: flex; gap: 8px; margin-left: auto; }
+.stat {
+  padding: 5px 12px;
+  border-radius: 7px;
+  background: #0e1216;
+  border: 1px solid #2f3742;
+  font-size: 13px;
+  color: #c9d1d9;
+  font-variant-numeric: tabular-nums;
+}
+.stat.score { color: #f3d03e; font-weight: 700; min-width: 64px; text-align: center; }
+.stat.time { color: #79b8ff; }
+
+.tb-actions { display: flex; gap: 8px; }
+
+/* ---------- 地图舞台 ---------- */
+.metro-stage { flex: 1; min-height: 0; position: relative; background: #0d1216; }
+#metro-canvas { position: absolute; inset: 0; }
+
+.metro-toast {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1200;
+  padding: 7px 16px;
+  border-radius: 8px;
+  background: rgba(46, 14, 12, 0.92);
+  border: 1px solid #6e2b28;
+  color: #ffb3ad;
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.metro-toast.good {
+  background: rgba(7, 34, 18, 0.92);
+  border-color: #1d5c34;
+  color: #7ee787;
+}
+
+/* ---------- 名牌池 ---------- */
+.metro-dock {
+  border-top: 1px solid #2a313a;
+  background: #12171d;
+  flex-shrink: 0;
+}
+.dock-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px 2px;
+}
+.dock-count { font-size: 12px; color: #8b949e; white-space: nowrap; }
+#dock-filter {
+  width: 160px;
+  padding: 4px 10px;
+  border: 1px solid #2f3742;
+  border-radius: 6px;
+  background: #0e1216;
+  color: #e8eaed;
+  font-size: 12px;
+  outline: none;
+}
+#dock-filter:focus { border-color: #4a9eff; }
+.dock-tip { margin-left: auto; font-size: 11px; color: #58606a; }
+
+.chip-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 14px 10px;
+  max-height: 108px;
+  overflow-y: auto;
+}
+.mchip {
+  padding: 4px 11px;
+  font-size: 12.5px;
+  border-radius: 14px;
+  border: 1px solid #2f3742;
+  background: #1d242c;
+  color: #e8eaed;
+  cursor: grab;
+  user-select: none;
+}
+.mchip:hover { border-color: #4a9eff; }
+.mchip.selected {
+  border-color: #4a9eff;
+  background: #1c2b3a;
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.35);
+  color: #fff;
+}
+.mchip.mchip-badge {
+  font-weight: 700;
+  color: #fff;
+  background: var(--c, #4a9eff);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- 真实地图（Leaflet）叠加样式：与公交浏览一致 ---------- */
+/* 纯线路图：Tim 原图内联矢量底图（CC BY-SA 4.0） */
+#metro-canvas.schematic-canvas, #metro-canvas.schematic-canvas .leaflet-container {
+  background: #ffffff;
+}
+/* 底图永久无文字：站名/徽章/图例/区域文字层全部隐藏，文字由游戏层按需动态绘制 */
+.board-art [id="站名"],
+.board-art [id="图标"],
+.board-art [id="左上图例"],
+.board-art [id="左"],
+.board-art [id="右"],
+.board-art [id="左下"],
+.board-art [id="右上"] { display: none; }
+/* 棋盘模式站点透明热区：悬停给淡蓝提示 */
+#metro-canvas.schematic-canvas path.mst-hot { cursor: pointer; }
+#metro-canvas.schematic-canvas path.mst-hot:hover { fill-opacity: 0.35; }
+
+.map-caption {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  z-index: 800;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #9aa3ad;
+  pointer-events: none;
+  font-family: "Microsoft YaHei", sans-serif;
+}
+
+.mlab.light {
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(31, 38, 46, 0.28);
+  color: #1f262e;
+  box-shadow: 0 1px 3px rgba(15, 20, 25, 0.18);
+}
+.mlab.light.inter { border-color: rgba(197, 0, 62, 0.65); color: #7a1024; }
+/* 单线模式：非所选线站名半透明化，降低干扰 */
+.mlab.dim { opacity: 0.45; }
+.mlab.dim.light {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(31, 38, 46, 0.15);
+  color: #6b7684;
+}
+
+.mst { cursor: pointer; }
+.mst:hover { stroke: #4a9eff; }
+
+/* 站点编号牌（线号-序号），锚点即站点坐标，整体移到左下侧 */
+.mnum-wrap { background: none; border: none; cursor: pointer; }
+/* 已放置：序号牌原位变成站名，绿色完成样式 */
+.mnum.done {
+  border-color: #2ea043;
+  color: #166534;
+  background: #f0fff4;
+}
+/* 拖放热区扩边：牌本体 ~34x13 太小，::after 向四周扩 14px（约 62x41） */
+.mnum-wrap.dnd-target { position: absolute; }
+.mnum-wrap.dnd-target::after { content: ''; position: absolute; inset: -14px; }
+/* 拖放得分反馈：+100 飘字 */
+.pop-score {
+  position: absolute; z-index: 1200; pointer-events: none;
+  transform: translate(-50%, -100%);
+  color: #1a8a3c; font-size: 16px; font-weight: 800;
+  text-shadow: 0 0 4px #fff, 0 0 4px #fff, 0 1px 2px rgba(0,0,0,0.25);
+  animation: popfloat 0.95s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+}
+@keyframes popfloat {
+  0%   { opacity: 0; transform: translate(-50%, -60%) scale(0.7); }
+  18%  { opacity: 1; transform: translate(-50%, -110%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -230%) scale(1); }
+}
+/* 放置成功：站圆脉冲一圈 */
+.mst-scope.dot-pop { animation: dotpop 0.65s ease-out; }
+@keyframes dotpop {
+  0%   { stroke-width: 16px; stroke-opacity: 0.9; }
+  100% { stroke-width: 3px;  stroke-opacity: 1; }
+}
+.mnum-wrap:hover .mnum { border-color: #4a9eff; color: #1f262e; background: rgba(255,255,255,0.95); }
+.mnum {
+  display: inline-block;
+  transform: translate(calc(-100% - 7px), 3px);
+  font-size: 10px;
+  line-height: 13px;
+  padding: 0 4px;
+  white-space: nowrap;
+  color: #e3e9ee;
+  background: rgba(13, 18, 22, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 3px;
+  font-family: "Consolas", "Microsoft YaHei", monospace;
+}
+/* 纯线路图（白底）：编号牌是核心游戏线索 —— 高对比、描边、可交互 */
+.schematic-canvas .mnum {
+  font-size: 11px;
+  line-height: 15px;
+  font-weight: 600;
+  color: #14202e;
+  background: #ffffff;
+  border: 1.5px solid #31649c;
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(20, 40, 70, 0.25);
+}
+.schematic-canvas .mnum-wrap:hover .mnum {
+  border-color: #4a9eff;
+  background: #eaf3ff;
+  box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.25);
+}
+
+.mlab {
+  background: rgba(13, 18, 22, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 12px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  font-family: "Microsoft YaHei", sans-serif;
+}
+.mlab.inter { border-color: rgba(243, 208, 62, 0.75); }
+.mlab::before { display: none; }
+
+.mbadge-wrap { background: none; border: none; }
+/* 官方线路标识：线路色胶囊 + 白字（1号线 / 广佛线 / APM线） */
+.mbadge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* 居中于锚点后，再沿线路出方向平移固定屏幕距离（--tx/--ty 由 JS 按线路走向写入） */
+  transform: translate(calc(-50% + var(--tx, 0px)), calc(-50% + var(--ty, 0px)));
+  padding: 2.5px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  border: 1.5px dashed #8a939d;
+  color: #5a6472;
+  font-size: 12.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.15s;
+}
+.mbadge:hover { border-color: #4a9eff; border-style: solid; }
+.mbadge.placed {
+  background: var(--c, #4a9eff);
+  border: 1.5px solid #ffffff;
+  color: #fff;
+  cursor: default;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+.dnd-target.drop-hover .mbadge, .mbadge.drop-hover { border-color: #4a9eff; border-style: solid; }
+.dnd-target.wrong .mbadge, .mbadge.wrong { border-color: #f85149; }
+path.dnd-target { cursor: pointer; }
+path.dnd-target.drop-hover { stroke: #4a9eff; }
+path.dnd-target.wrong { stroke: #f85149 !important; }
+
+/* ---------- 结算浮层 ---------- */
+.metro-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1400;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 11, 14, 0.62);
+  backdrop-filter: blur(3px);
+}
+.result-card {
+  width: min(420px, 92%);
+  background: #161b21;
+  border: 1px solid #2a313a;
+  border-radius: 14px;
+  padding: 24px 26px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  text-align: center;
+}
+.result-card h2 { font-size: 20px; color: #fff; }
+.result-card > p { margin-top: 4px; font-size: 12.5px; color: #8b949e; }
+
+.rs-rows { margin-top: 16px; text-align: left; }
+.rs-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 4px;
+  font-size: 13px;
+  color: #c9d1d9;
+  border-bottom: 1px solid #1f262e;
+  font-variant-numeric: tabular-nums;
+}
+.rs-row b { color: #e8eaed; }
+.rs-row.total { border-bottom: none; margin-top: 4px; font-size: 15px; color: #fff; background: #1c2b3a; border-radius: 7px; padding: 9px 10px; }
+.rs-row.total b { color: #f3d03e; font-size: 17px; }
+
+.rs-actions { display: flex; gap: 10px; margin-top: 18px; }
+.rs-actions .btn-primary { flex: 1; padding: 9px; font-size: 13.5px; }
+.rs-actions .btn-ghost { padding: 9px 14px; font-size: 12.5px; }

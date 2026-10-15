@@ -2,21 +2,7 @@
 
 const MapLayer = (() => {
   const GUANGZHOU = [23.1291, 113.2644];
-
-  const tileDefs = {
-    amap: {
-      // 高德栅格瓦片，GCJ-02 坐标系（叠加 OSM 数据时需纠偏）
-      // 子域名必须是 webrd01~webrd04（带前导零），无零形式不解析
-      url: 'https://webrd{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}',
-      options: { subdomains: ['01', '02', '03', '04'], maxZoom: 18, attribution: '© 高德地图' },
-      needsGcj: true
-    },
-    osm: {
-      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      options: { maxZoom: 19, attribution: '© OpenStreetMap 贡献者' },
-      needsGcj: false
-    }
-  };
+  const tileDefs = Tiles.defs;
 
   let map;
   let baseLayer;
@@ -24,6 +10,7 @@ const MapLayer = (() => {
 
   function init() {
     map = L.map('map', { zoomControl: true, preferCanvas: true }).setView(GUANGZHOU, 12);
+    map.on('zoomend moveend', refreshStopLabels);
     setTiles(currentTiles);
   }
 
@@ -32,8 +19,8 @@ const MapLayer = (() => {
     currentTiles = name;
     if (baseLayer) map.removeLayer(baseLayer);
     const def = tileDefs[name];
-    baseLayer = L.tileLayer(def.url, def.options).addTo(map);
-    document.querySelectorAll('.tile-btn').forEach(btn =>
+    baseLayer = Tiles.createLayer(name).addTo(map);
+    document.querySelectorAll('#bus-view .tile-btn').forEach(btn =>
       btn.classList.toggle('active', btn.dataset.tiles === name));
   }
 
@@ -51,7 +38,12 @@ const MapLayer = (() => {
   function drawVariant(variant, colour, stopsClickable) {
     const group = L.layerGroup();
 
-    const segs = variant.segments.map(seg => seg.map(([la, ln]) => project(la, ln)));
+    // 最终防线：任何路径漏进来的非法坐标（null/越界）都不能进图层——
+    // 历史上 null 经度曾把视口 fitBounds 到经度 0 导致全白
+    const okLL = (la, ln) => Number.isFinite(la) && Number.isFinite(ln) && la > 17 && la < 27 && ln > 111 && ln < 117;
+    const segs = variant.segments
+      .map(seg => (seg || []).filter(p => okLL(p[0], p[1])).map(([la, ln]) => project(la, ln)))
+      .filter(seg => seg.length >= 2);
     if (segs.length) {
       L.polyline(segs, {
         color: '#101418', weight: 7, opacity: 0.55, lineCap: 'round'
@@ -61,12 +53,13 @@ const MapLayer = (() => {
       }).addTo(group);
     }
 
-    variant.stops.forEach((s, i) => {
+    (variant.stops || []).filter(s => okLL(s.lat, s.lng)).forEach((s, i) => {
       const p = project(s.lat, s.lng);
       const marker = L.circleMarker(p, {
         radius: 5, color: '#ffffff', weight: 1.5,
         fillColor: colour, fillOpacity: 1
       }).addTo(group);
+      marker.__stopName = s.name;
       marker.bindPopup(
         `<div class="popup-stop-name">${escapeHtml(s.name)}</div>` +
         `<div class="popup-stop-meta">${escapeHtml(variant.ref)} 路 · 第 ${i + 1} 站</div>`
@@ -84,10 +77,46 @@ const MapLayer = (() => {
     group.eachLayer(l => {
       if (l.getBounds) bounds.extend(l.getBounds());
     });
+    console.log('[fit]', bounds.isValid()
+      ? [bounds.getSouth(), bounds.getWest(), bounds.getNorth(), bounds.getEast()].map(v => Number(v).toFixed(4)).join(',')
+      : 'invalid');
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
   }
 
-  function addGroup(group) { group.addTo(map); }
+  function addGroup(group) {
+    group.addTo(map);
+    refreshStopLabels();
+  }
+
+  /* 站点名标签：z>=14 显示（参考地铁 mlab.light 效果），矩形碰撞放不下就不显示 */
+  const LABEL_ZOOM = 14;
+  function refreshStopLabels() {
+    if (!map) return;
+    const show = map.getZoom() >= LABEL_ZOOM;
+    const rects = [];
+    const taken = new Set();
+    for (const layer of []) {}   // 占位防误删
+    map.eachLayer(l => {
+      if (!(l instanceof L.CircleMarker) || !l.__stopName || !l._map) return;
+      if (!show) {
+        if (l.getTooltip()) l.unbindTooltip();
+        return;
+      }
+      if (l.getTooltip()) return;   // 已显示
+      const p = map.latLngToContainerPoint(l.getLatLng());
+      if (p.x < -80 || p.y < -30 || p.x > map.getSize().x + 80 || p.y > map.getSize().y + 30) return;
+      const w = l.__stopName.length * 13 + 16, h = 20;
+      const r = { x: p.x + 9, y: p.y - 10, w, h };
+      const clash = rects.some(o => r.x < o.x + o.w && r.x + r.w > o.x && r.y < o.y + o.h && r.y + r.h > o.y);
+      if (clash) return;
+      rects.push(r);
+      taken.add(l);
+      l.bindTooltip(l.__stopName, {
+        permanent: true, direction: 'right', offset: [8, 0],
+        className: 'blab', opacity: 1
+      }).openTooltip();
+    });
+  }
   function removeGroup(group) { map.removeLayer(group); }
   function flyTo(lat, lng, zoom) { map.flyTo(project(lat, lng), zoom == null ? 15 : zoom); }
 

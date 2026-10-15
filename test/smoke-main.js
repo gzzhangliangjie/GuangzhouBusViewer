@@ -1,5 +1,5 @@
 // Electron 渲染层冒烟测试：加载 index.html，等待 did-finish-load，
-// 检查 Leaflet 与页面模块是否就绪，输出结果后退出。
+// 检查 Leaflet 与页面模块是否就绪；再切换到地铁拼图页检查游戏模块，输出结果后退出。
 // 用法: ./node_modules/.bin/electron test/smoke-main.js
 const { app, BrowserWindow } = require('electron');
 const path = require('path');
@@ -20,14 +20,29 @@ app.whenReady().then(async () => {
 
   await win.loadFile(path.join(__dirname, '..', 'index.html'));
 
-  const result = await win.webContents.executeJavaScript(`({
-    leaflet: typeof L !== 'undefined' && !!L.version,
-    overpass: typeof Overpass !== 'undefined',
-    mapLayer: typeof MapLayer !== 'undefined',
-    appHooks: typeof AppHooks !== 'undefined',
-    mapContainer: !!document.getElementById('map'),
-    statusText: document.getElementById('status') ? document.getElementById('status').textContent.slice(0, 60) : null
-  })`);
+  const result = await win.webContents.executeJavaScript(`(() => {
+    const r = {
+      leaflet: typeof L !== 'undefined' && !!L.version,
+      overpass: typeof Overpass !== 'undefined',
+      mapLayer: typeof MapLayer !== 'undefined',
+      appHooks: typeof AppHooks !== 'undefined',
+      mapContainer: !!document.getElementById('map'),
+      statusText: document.getElementById('status') ? document.getElementById('status').textContent.slice(0, 60) : null,
+      metroData: typeof MetroData !== 'undefined' && MetroData.allStations().length,
+      metroQuiz: typeof MetroQuiz !== 'undefined',
+      metroMap: typeof MetroMapView !== 'undefined',
+      tiles: typeof Tiles !== 'undefined'
+    };
+    // 切到地铁拼图页，检查主菜单渲染
+    document.querySelector('#mode-nav [data-mode="metro"]').click();
+    r.metroSetupVisible = !document.getElementById('metro-setup').hidden;
+    r.scopePills = document.querySelectorAll('#scope-picker .scope-pill').length;
+    r.bestLine = document.getElementById('metro-best').textContent.slice(0, 30);
+    // 切回公交页确认互不干扰
+    document.querySelector('#mode-nav [data-mode="bus"]').click();
+    r.busVisibleAfterSwitch = !document.getElementById('bus-view').hidden;
+    return r;
+  })()`);
 
   console.log('SMOKE_RESULT ' + JSON.stringify(result));
   console.log('CONSOLE_ERRORS ' + JSON.stringify(errors));

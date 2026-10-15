@@ -1,8 +1,8 @@
 {
   "name": "guangzhou-bus-viewer",
-  "productName": "广州公交路线预览",
-  "version": "1.0.0",
-  "description": "在广州市地图上浏览各条公交线路的走向与站点（数据来源：OpenStreetMap）",
+  "productName": "广州公交 · 地铁拼图",
+  "version": "1.1.0",
+  "description": "广州公交路线浏览（OpenStreetMap）+ 广州地铁拼图（2026 线网记忆游戏）",
   "main": "main.js",
   "author": "GuangzhouBusViewer",
   "license": "MIT",

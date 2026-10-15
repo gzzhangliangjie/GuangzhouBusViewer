@@ -2,3 +2,12 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+assets/_pull*/
+assets/_test-profile/
+assets/_pull-profile/
+assets/_v-*.png
+assets/_*.log
+assets/_crop*
+assets/cropcbd.png
+assets/_boot10*
+.zcodeignore

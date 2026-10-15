@@ -3,51 +3,166 @@
 <head>
   <meta charset="UTF-8" />
   <meta http-equiv="Content-Security-Policy"
-        content="default-src 'self'; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'">
-  <title>广州公交路线预览</title>
+        content="default-src 'self'; script-src 'self' https://webapi.amap.com; img-src 'self' https: data:; connect-src 'self' https:; style-src 'self' 'unsafe-inline'">
+  <title>广州公交 · 地铁拼图</title>
   <link rel="stylesheet" href="node_modules/leaflet/dist/leaflet.css" />
   <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/metro.css" />
 </head>
 <body>
+  <nav id="mode-nav">
+    <span class="brand">广州交通图鉴</span>
+    <div class="seg">
+      <button data-mode="bus" class="active">公交路线</button>
+      <button data-mode="metro">地铁拼图</button>
+    </div>
+    <span class="nav-note">数据 © OpenStreetMap 贡献者</span>
+  </nav>
+
   <div id="app">
-    <aside id="sidebar">
-      <header class="side-header">
-        <h1>广州公交路线预览</h1>
-        <p class="sub">数据来源 OpenStreetMap · 共 <span id="line-count">–</span> 条线路</p>
-      </header>
+    <!-- ==================== 公交路线浏览 ==================== -->
+    <div id="bus-view" class="mode-view">
+      <aside id="sidebar">
+        <header class="side-header">
+          <h1>广州公交路线预览</h1>
+          <p class="sub">数据来源 OpenStreetMap · 共 <span id="line-count">–</span> 条线路</p>
+        </header>
 
-      <div class="search-row">
-        <input id="search" type="text" placeholder="搜索线路号 / 起终点，如 B7、夜102" autocomplete="off" />
-        <button id="refresh" title="重新拉取线路列表">刷新</button>
-      </div>
+        <div class="search-row">
+          <input id="search" type="text" placeholder="搜索线路号 / 起终点，如 B7、夜102" autocomplete="off" />
+          <button id="refresh" title="重新拉取线路列表">刷新</button>
+          <button id="amap-src" title="配置高德第二数据源（补 OSM 缺失线路，免费）">高德补源</button>
+        </div>
 
-      <div id="status" class="status"></div>
+        <div id="status" class="status"></div>
 
-      <section id="line-detail" class="line-detail" hidden>
-        <!-- 选中线路后填充：方向标签 + 站点列表 -->
+        <section id="line-detail" class="line-detail" hidden>
+          <!-- 选中线路后填充：方向标签 + 站点列表 -->
+        </section>
+
+        <ul id="line-list" class="line-list"></ul>
+
+        <footer class="side-footer">
+          <div id="active-lines" class="active-lines"></div>
+        </footer>
+      </aside>
+
+      <main id="map-wrap">
+        <div id="map"></div>
+        <div class="map-toolbar">
+          <button class="tile-btn active" data-tiles="amap">高德底图</button>
+          <button class="tile-btn" data-tiles="osm">OSM 底图</button>
+        </div>
+        <div id="loading" class="loading" hidden><span></span>正在查询 Overpass…</div>
+      </main>
+    </div>
+
+    <!-- ==================== 地铁拼图 ==================== -->
+    <div id="metro-view" class="mode-view" hidden>
+      <!-- 设置（主菜单） -->
+      <section id="metro-setup" class="metro-setup">
+        <div class="setup-card">
+          <div class="setup-head">
+            <h1>广州地铁拼图</h1>
+            <p>2026 年线网 · 19 条线 · 314 座车站 —— 凭记忆把收起的站名与线号拼回地图</p>
+          </div>
+
+          <div class="opt-block" data-block="mode">
+            <div class="opt-title">玩法模式</div>
+            <div class="opt-cards">
+              <button class="opt-card selected" data-v="name"><b>站名模式</b><span>线路与线号可见，把站名名牌放回对应站点</span></button>
+              <button class="opt-card" data-v="badge"><b>线号模式</b><span>站名可见，把 1~22 号线编号放回线路徽章</span></button>
+              <button class="opt-card" data-v="both"><b>挑战模式</b><span>站名 + 线号全部收起，硬核挑战</span></button>
+            </div>
+          </div>
+
+          <div class="opt-block" data-block="style">
+            <div class="opt-title">地图风格</div>
+            <div class="opt-cards">
+              <button class="opt-card selected" data-v="geo"><b>真实地图</b><span>真实经纬度叠加高德底图，与公交浏览一致</span></button>
+              <button class="opt-card" data-v="schematic"><b>纯线路图</b><span>官方风格 45° 折线示意图（数据绘制，白底可游玩）</span></button>
+            </div>
+          </div>
+
+          <div class="opt-block" data-block="scope">
+            <div class="opt-title">挑战范围</div>
+            <div class="scope-picker" id="scope-picker"></div>
+          </div>
+
+          <div class="setup-foot">
+            <button id="metro-start" class="btn-primary">开始拼图</button>
+            <button id="metro-answer" class="btn-ghost">查看答案图</button>
+          </div>
+          <div id="metro-best" class="best-line">该组合历史最佳：–</div>
+        </div>
       </section>
 
-      <ul id="line-list" class="line-list"></ul>
+      <!-- 游戏界面 -->
+      <section id="metro-game" hidden>
+        <div class="metro-topbar">
+          <button id="mq-back" class="tb-btn" title="返回菜单">← 菜单</button>
+          <div class="tb-info">
+            <span id="mq-title"></span>
+            <span id="mq-scope"></span>
+          </div>
+          <div class="tb-stats">
+            <span class="stat score" id="mq-score">0</span>
+            <span class="stat time" id="mq-time">00:00</span>
+            <span class="stat prog" id="mq-prog">0/0</span>
+          </div>
+          <div class="tb-actions">
+            <button id="mq-hint" class="tb-btn accent">提示 −50</button>
+            <button id="mq-restart" class="tb-btn" title="重新开始">↻</button>
+            <button id="mq-giveup" class="tb-btn danger">放弃并揭示</button>
+            <button id="mq-official" class="tb-btn accent" hidden>官方线网图</button>
+          </div>
+        </div>
 
-      <footer class="side-footer">
-        <div id="active-lines" class="active-lines"></div>
-      </footer>
-    </aside>
+        <div class="metro-stage">
+          <div id="metro-canvas"></div>
+          <div class="map-toolbar metro-tiles" hidden>
+            <button class="tile-btn active" data-tiles="amap">高德底图</button>
+            <button class="tile-btn" data-tiles="osm">OSM 底图</button>
+          </div>
+          <div id="mq-toast" class="metro-toast" hidden></div>
+        </div>
 
-    <main id="map-wrap">
-      <div id="map"></div>
-      <div class="map-toolbar">
-        <button class="tile-btn active" data-tiles="amap">高德底图</button>
-        <button class="tile-btn" data-tiles="osm">OSM 底图</button>
+        <div class="metro-dock" id="metro-dock">
+          <div class="dock-head">
+            <span id="dock-count" class="dock-count"></span>
+            <input id="dock-filter" type="text" placeholder="筛选名牌…" autocomplete="off" />
+            <span class="dock-tip">点名牌再点站点，或直接拖拽 · Esc 取消选中</span>
+          </div>
+          <div class="chip-pool" id="chip-pool"></div>
+        </div>
+      </section>
+
+      <!-- 结算 / 揭示浮层 -->
+      <div id="metro-result" class="metro-overlay" hidden>
+        <div class="result-card">
+          <h2 id="rs-title"></h2>
+          <p id="rs-sub"></p>
+          <div id="rs-body" class="rs-rows"></div>
+          <div class="rs-actions">
+            <button id="rs-again" class="btn-primary">再来一局</button>
+            <button id="rs-menu" class="btn-ghost">返回菜单</button>
+            <button id="rs-view" class="btn-ghost">查看答案</button>
+          </div>
+        </div>
       </div>
-      <div id="loading" class="loading" hidden><span></span>正在查询 Overpass…</div>
-    </main>
+    </div>
   </div>
 
   <script src="node_modules/leaflet/dist/leaflet.js"></script>
   <script src="js/coords.js"></script>
+  <script src="js/tiles.js"></script>
   <script src="js/overpass.js"></script>
+    <script src="js/amap-line.js"></script>
   <script src="js/map-layer.js"></script>
   <script src="js/app.js"></script>
+  <script src="data/metro-data.js"></script>
+  <script src="js/metro-data.js"></script>
+  <script src="js/metro-map.js"></script>
+  <script src="js/metro-quiz.js"></script>
 </body>
 </html>
