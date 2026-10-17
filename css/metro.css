@@ -274,6 +274,19 @@
 .mlab.light.inter { border-color: rgba(197, 0, 62, 0.65); color: #7a1024; }
 /* 单线模式：非所选线站名半透明化，降低干扰 */
 .mlab.dim { opacity: 0.45; }
+
+/* 官方风格站名：黑色无衬线、无底框、紧贴圆圈 */
+.mlab.official {
+  background: transparent;
+  border: none;
+  color: #1a1a1a;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 2px;
+  box-shadow: none;
+  text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+}
 .mlab.dim.light {
   background: rgba(255, 255, 255, 0.55);
   border-color: rgba(31, 38, 46, 0.15);
@@ -290,6 +303,15 @@
   border-color: #2ea043;
   color: #166534;
   background: #f0fff4;
+}
+/* 官方风格编号牌：更接近官方站的编码显示 */
+.mnum.official {
+  background: #fff;
+  border: 1.5px solid currentColor;
+  color: #333;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 /* 拖放热区扩边：牌本体 ~34x13 太小，::after 向四周扩 14px（约 62x41） */
 .mnum-wrap.dnd-target { position: absolute; }

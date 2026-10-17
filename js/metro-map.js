@@ -275,7 +275,7 @@ const MetroMapView = (() => {
       // 真实地图保持 tooltipPane（z 650）
       mk.bindTooltip(s.zh, {
         permanent: true, direction: 'right', offset: [8, 0],
-        className: 'mlab' + (s.lines.length > 1 ? ' inter' : '') + (dim ? ' dim' : '') + (simple ? ' light' : ''),
+        className: 'mlab' + (s.lines.length > 1 ? ' inter' : '') + (dim ? ' dim' : '') + (simple ? ' official' : ''),
         pane: simple ? (dim ? 'dimTooltip' : 'scopeLabel') : 'tooltipPane'
       });
     }
@@ -434,7 +434,7 @@ const MetroMapView = (() => {
         zIndexOffset: inScope ? 1000 : 200,
         icon: L.divIcon({
           className: 'mnum-wrap' + (inScope && opts.scopeRef ? ' scope-num' : ''),
-          html: `<span class="mnum${placed ? ' done' : ''}">${placed ? s.zh : (Array.isArray(tag) ? tag.join('<br>') : tag)}</span>`,
+          html: `<span class="mnum official${placed ? ' done' : ''}">${placed ? s.zh : (Array.isArray(tag) ? tag.join('<br>') : tag)}</span>`,
           iconSize: null  // 由内容撑开，锚点在左下
         })
       }).addTo(overlay);
