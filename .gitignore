@@ -11,3 +11,17 @@ assets/_crop*
 assets/cropcbd.png
 assets/_boot10*
 .zcodeignore
+tools/__pycache__/
+*.pyc
+assets/_*/
+assets/_*.*
+data/_windows-closed.npy
+data/box-glyphs.json
+data/glyph-classes.json
+data/multibox-raw.json
+data/q-idx.json
+data/reread-idx.json
+data/read-sheet-map.json
+data/sheet-mapping.json
+data/_l*.json
+data/_sw-walk.json

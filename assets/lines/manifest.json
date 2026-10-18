@@ -1,0 +1,177 @@
+[
+ {
+  "file": "line-12号线-01.svg",
+  "color": "#3f51b5",
+  "guess": "12号线",
+  "dist": 58.0,
+  "n": 83
+ },
+ {
+  "file": "line-5号线-02.svg",
+  "color": "#e53935",
+  "guess": "5号线",
+  "dist": 66.0,
+  "n": 78
+ },
+ {
+  "file": "line-3号线-03.svg",
+  "color": "#d08693",
+  "guess": "3号线",
+  "dist": 74.0,
+  "n": 75
+ },
+ {
+  "file": "line-3号线-04.svg",
+  "color": "#ffcc66",
+  "guess": "3号线",
+  "dist": 50.3,
+  "n": 45
+ },
+ {
+  "file": "line-7号线-05.svg",
+  "color": "#7cb342",
+  "guess": "7号线",
+  "dist": 79.9,
+  "n": 45
+ },
+ {
+  "file": "line-14号线-06.svg",
+  "color": "#6d4c41",
+  "guess": "14号线",
+  "dist": 38.1,
+  "n": 41
+ },
+ {
+  "file": "line-1号线-07.svg",
+  "color": "#fb8c00",
+  "guess": "1号线",
+  "dist": 71.4,
+  "n": 41
+ },
+ {
+  "file": "line-22号线-08.svg",
+  "color": "#8e24aa",
+  "guess": "22号线",
+  "dist": 45.9,
+  "n": 39
+ },
+ {
+  "file": "line-广佛线-09.svg",
+  "color": "#c0ca33",
+  "guess": "广佛线",
+  "dist": 52.5,
+  "n": 38
+ },
+ {
+  "file": "line-5号线-10.svg",
+  "color": "#ff1744",
+  "guess": "5号线",
+  "dist": 62.7,
+  "n": 34
+ },
+ {
+  "file": "line-8号线-11.svg",
+  "color": "#00897b",
+  "guess": "8号线",
+  "dist": 27.0,
+  "n": 33
+ },
+ {
+  "file": "line-21号线-12.svg",
+  "color": "#1a237e",
+  "guess": "21号线",
+  "dist": 56.6,
+  "n": 32
+ },
+ {
+  "file": "line-10号线-13.svg",
+  "color": "#1e88e5",
+  "guess": "10号线",
+  "dist": 40.8,
+  "n": 31
+ },
+ {
+  "file": "line-4号线-14.svg",
+  "color": "#33691e",
+  "guess": "4号线",
+  "dist": 65.5,
+  "n": 30
+ },
+ {
+  "file": "line-4号线-15.svg",
+  "color": "#43a047",
+  "guess": "4号线",
+  "dist": 73.3,
+  "n": 28
+ },
+ {
+  "file": "line-14号线-16.svg",
+  "color": "#827717",
+  "guess": "14号线",
+  "dist": 74.0,
+  "n": 27
+ },
+ {
+  "file": "line-1号线-17.svg",
+  "color": "#fdd835",
+  "guess": "1号线",
+  "dist": 54.2,
+  "n": 27
+ },
+ {
+  "file": "line-APM线-18.svg",
+  "color": "#00e5ff",
+  "guess": "APM线",
+  "dist": 56.1,
+  "n": 26
+ },
+ {
+  "file": "line-13号线-19.svg",
+  "color": "#90caf9",
+  "guess": "13号线",
+  "dist": 52.0,
+  "n": 25
+ },
+ {
+  "file": "line-8号线-20.svg",
+  "color": "#00bfa5",
+  "guess": "8号线",
+  "dist": 55.1,
+  "n": 24
+ },
+ {
+  "file": "line-APM线-21.svg",
+  "color": "#00b0ff",
+  "guess": "APM线",
+  "dist": 29.4,
+  "n": 20
+ },
+ {
+  "file": "line-APM线-22.svg",
+  "color": "#1de9b6",
+  "guess": "APM线",
+  "dist": 74.0,
+  "n": 19
+ },
+ {
+  "file": "line-22号线-23.svg",
+  "color": "#d901de",
+  "guess": "22号线",
+  "dist": 143.2,
+  "n": 18
+ },
+ {
+  "file": "line-8号线-24.svg",
+  "color": "#00e676",
+  "guess": "8号线",
+  "dist": 97.4,
+  "n": 18
+ },
+ {
+  "file": "line-5号线-25.svg",
+  "color": "#dd2c00",
+  "guess": "5号线",
+  "dist": 79.7,
+  "n": 18
+ }
+]

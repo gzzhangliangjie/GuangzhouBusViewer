@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>广州地铁线网图 · 官方位图（有序号）</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1a1a; overflow: hidden; }
+  #stage { position: absolute; inset: 0; cursor: grab; touch-action: none; overflow: hidden; }
+  #stage:active { cursor: grabbing; }
+  #stage img { position: absolute; transform-origin: 0 0; user-select: none; -webkit-user-drag: none; }
+  #hud {
+    position: fixed; left: 12px; top: 12px; z-index: 10;
+    background: rgba(0,0,0,.6); color: #eee; font: 13px/1.6 system-ui;
+    padding: 8px 12px; border-radius: 8px; user-select: none;
+  }
+  #hud b { color: #ffd54a; }
+  button {
+    background: #333; color: #eee; border: 1px solid #555; border-radius: 6px;
+    font: 13px system-ui; padding: 2px 10px; margin-right: 6px; cursor: pointer;
+  }
+  button:hover { background: #444; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div><b>广州地铁线网图 · 官方位图（含线号|序号）</b> 源: official-ref.jpg 5794×5791</div>
+  <div>滚轮缩放 <span id="z"></span> · 拖拽平移 · <button id="fit">适配窗口</button><button id="one">100%</button></div>
+</div>
+<div id="stage"><img id="map" src="official-ref.jpg"></div>
+<script>
+const IW = 5794, IH = 5791;
+const img = document.getElementById('map');
+const stage = document.getElementById('stage');
+let scale = 1, tx = 0, ty = 0;
+function apply() {
+  img.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+  document.getElementById('z').textContent = Math.round(scale * 100) + '%';
+}
+function fit() {
+  const s = Math.min(innerWidth / IW, innerHeight / IH);
+  scale = s; tx = (innerWidth - IW * s) / 2; ty = (innerHeight - IH * s) / 2;
+  apply();
+}
+img.decode ? img.decode().then(fit).catch(fit) : (img.onload = fit);
+addEventListener('resize', fit);
+document.getElementById('fit').onclick = fit;
+document.getElementById('one').onclick = () => { scale = 1; apply(); };
+stage.addEventListener('wheel', e => {
+  e.preventDefault();
+  const k = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+  const mx = e.clientX, my = e.clientY;
+  tx = mx - (mx - tx) * k; ty = my - (my - ty) * k; scale *= k;
+  apply();
+}, { passive: false });
+let drag = null;
+stage.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, tx, ty }; stage.setPointerCapture(e.pointerId); });
+stage.addEventListener('pointermove', e => { if (drag) { tx = drag.tx + e.clientX - drag.x; ty = drag.ty + e.clientY - drag.y; apply(); } });
+stage.addEventListener('pointerup', () => drag = null);
+</script>
+</body>
+</html>

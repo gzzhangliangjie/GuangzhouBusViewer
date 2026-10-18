@@ -1,5 +1,6 @@
 {
- "line": "1",
- "main_y": 2659,
+ "line": 1,
+ "color": "#f3d300",
+ "mask": "assets/_mask-line1.png",
  "stations": []
 }
