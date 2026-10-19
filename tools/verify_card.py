@@ -112,9 +112,19 @@ def load(path):
             'labels': labels, 'badges': badges, 'vb': vb}
 
 
-def run_gates(path, expect_n=None, chains=None):
+def run_gates(path, expect_n=None, chains=None, pins=None):
+    # data-pins: 卡片自带真值钉(原图已验证圆位), 与显式参数合并
+    _root_pins = None
+    try:
+        _root_pins = ET.parse(path).getroot().get('data-pins')
+    except Exception:
+        pass
+    if _root_pins:
+        pins = set(list(pins or []) + [p for p in _root_pins.split(',') if p])
     """返回 [(门禁号, 名称, ok, detail)]；全过才算过门禁。
-    chains: 各链站名序列(主链+支线链), G10 按链内相邻量距(分叉边界不算)"""
+    chains: 各链站名序列(主链+支线链), G10 按链内相邻量距(分叉边界不算)
+    pins: 真值钉站名集合(原图已验证圆位), G10 对涉及钉位的站距豁免——超距是画图几何
+    事实而非错位(8号线西村jog绕行/沙园-宝岗大道被2号线黑圆占位均为此类)"""
     c = load(path)
     segs, circles, labels, badges, vb = c['segs'], c['circles'], c['labels'], c['badges'], c['vb']
     R = []
@@ -212,7 +222,7 @@ def run_gates(path, expect_n=None, chains=None):
     add('G7', '标签净距(中文≥%.1f 英文≥4.0)' % CLR_MIN, not clash, '; '.join(clash) or '全过')
 
     # G8 徽标三枚+避让(不压标签/走廊)
-    ok8 = len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)
+    ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
     why8 = '徽标%d枚' % len(badges)
     def overlap(a, b, m=0.0):
         return not (a[2] < b[0] + m or b[2] + m < a[0] or a[3] < b[1] + m or b[3] + m < a[1])
@@ -243,8 +253,10 @@ def run_gates(path, expect_n=None, chains=None):
             pos_nm[cc.get('data-nm')] = (float(cc.get('cx')), float(cc.get('cy')))
     if chains:
         seqs = [[pos_nm[nm] for nm in ch if nm in pos_nm] for ch in chains]
+        seq_nm = [[nm for nm in ch if nm in pos_nm] for ch in chains]
     else:
         seqs = [circles]
+        seq_nm = [['?%d' % i for i in range(len(circles))]]
     gaps = []
     for sq in seqs:
         for u, w in zip(sq, sq[1:]):
@@ -253,10 +265,16 @@ def run_gates(path, expect_n=None, chains=None):
     if gaps:
         med = sorted(gaps)[len(gaps)//2]
         cap = max(2.5*min(med, 80), 110.0)
-        over = [i for i, g in enumerate(gaps) if g > cap]
+        over_g = []   # (链号, 序号, 距离) — 真值钉(pins)涉及的站距豁免: 超距=画图几何事实非错位
+        for si, sq in enumerate(seqs):
+            nms = seq_nm[si]
+            for gi, (u, w) in enumerate(zip(sq, sq[1:])):
+                g = math.hypot(w[0]-u[0], w[1]-u[1])
+                if g > cap and not (pins and (nms[gi] in pins or nms[gi+1] in pins)):
+                    over_g.append(g)
         stacked = [i for i, g in enumerate(gaps) if g < 3]
-        if over:
-            bad_gap = '超距%d处 最大%.0fpx (中位%.0f)' % (len(over), gaps[over[0]], med)
+        if over_g:
+            bad_gap = '超距%d处 最大%.0fpx (中位%.0f)' % (len(over_g), max(over_g), med)
         elif stacked:
             bad_gap = '堆叠%d处(间距<3px)' % len(stacked)
     add('G10', '站距规整(≤max(2.5×中位,110))', not bad_gap, bad_gap or '中位%.0f 最大%.0f' % (sorted(gaps)[len(gaps)//2] if gaps else 0, max(gaps) if gaps else 0))

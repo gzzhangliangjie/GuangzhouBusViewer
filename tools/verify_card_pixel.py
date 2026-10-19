@@ -155,7 +155,10 @@ def run_gates(card_path):
         d = zone.max(axis=2) < 150
         notfill = ((abs(zone[:, :, 0] - rgb[0]) > 60) | (abs(zone[:, :, 1] - rgb[1]) > 60) |
                    (abs(zone[:, :, 2] - rgb[2]) > 60))
-        n = int((d & notfill).sum())
+        m = d & notfill
+        if m.any():
+            m = _erode(m, 1)  # ClearType亚像素边滤除(12号线深绿底白字1px彩边, 文档§3同款坑)
+        n = int(m.sum())
         if n > 30:
             badg.append('徽标(%.0f,%.0f)内墨%d' % (bd['box'][0], bd['box'][1], n))
     add('P4', '徽标区无站名墨', not badg, '; '.join(badg) or '全过')

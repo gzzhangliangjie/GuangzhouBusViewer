@@ -13,7 +13,7 @@ import build_card as B
 from verify_card import run_gates
 
 
-def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
+def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_segs=None, branch=None, pad=None):
     src = open(os.path.join(ROOT, 'assets/gz-tim-2026.svg'), encoding='utf-8').read()
 
     # ===== 样式表(类->stroke, 记录display:none) =====
@@ -27,50 +27,85 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
         if pm:
             cls_stroke[mm.group(1)] = pm.group(1)
 
-    # ===== 组几何 =====
-    gm = re.search(r'<g\b[^>]*id="%s"[^>]*>' % re.escape(gid), src)
-    if not gm:
-        print('!! 找不到组 %s' % gid); return None
-    start = gm.end(); depth = 1; j = start
-    while depth > 0:
-        no = src.find('<g', j); nc = src.find('</g>', j)
-        if no != -1 and no < nc: depth += 1; j = no + 2
-        else: depth -= 1; j = nc + 4
-    inner = src[start:j]
-    segs = []
-    for lm in re.finditer(r'<line\b[^>]*/>', inner):
-        at = dict(re.findall(r'([\w-]+)="([^"]*)"', lm.group(0)))
-        if at.get('class') in cls_hidden:
-            continue
-        segs.append((float(at['x1']), float(at['y1']), float(at['x2']), float(at['y2'])))
-    for pm in re.finditer(r'<path\b[^>]*/>', inner):
-        at = dict(re.findall(r'([\w-]+)="([^"]*)"', pm.group(0)))
-        if at.get('class') in cls_hidden:
-            continue
-        d = at.get('d', '')
-        if not d.startswith('M'):
-            continue
-        pts = B.sample_d(d)
-        if len(pts) >= 2 and math.hypot(pts[-1][0]-pts[0][0], pts[-1][1]-pts[0][1]) > 1:
-            segs.append((pts[0][0], pts[0][1], pts[-1][0], pts[-1][1]))
+    # ===== 组几何(custom_segs=显式段表跳过组提取, 用于走廊重定向如12号线胶囊绕行) =====
+    if custom_segs is not None:
+        segs = [tuple(float(v) for v in s) for s in custom_segs]
+    else:
+        gm = re.search(r'<g\b[^>]*id="%s"[^>]*>' % re.escape(gid), src)
+        if not gm:
+            print('!! 找不到组 %s' % gid); return None
+        start = gm.end(); depth = 1; j = start
+        while depth > 0:
+            no = src.find('<g', j); nc = src.find('</g>', j)
+            if no != -1 and no < nc: depth += 1; j = no + 2
+            else: depth -= 1; j = nc + 4
+        inner = src[start:j]
+        segs = []
+        for lm in re.finditer(r'<line\b[^>]*/>', inner):
+            at = dict(re.findall(r'([\w-]+)="([^"]*)"', lm.group(0)))
+            if at.get('class') in cls_hidden:
+                continue
+            segs.append((float(at['x1']), float(at['y1']), float(at['x2']), float(at['y2'])))
+        for pm in re.finditer(r'<path\b[^>]*/>', inner):
+            at = dict(re.findall(r'([\w-]+)="([^"]*)"', pm.group(0)))
+            if at.get('class') in cls_hidden:
+                continue
+            d = at.get('d', '')
+            if not d.startswith('M'):
+                continue
+            pts = B.sample_d(d)
+            if len(pts) >= 2 and math.hypot(pts[-1][0]-pts[0][0], pts[-1][1]-pts[0][1]) > 1:
+                segs.append((pts[0][0], pts[0][1], pts[-1][0], pts[-1][1]))
 
-    # ===== 链化 =====
-    rem = list(segs); chain = []
-    s0 = min(rem, key=lambda s: min(s[0], s[2]))
-    chain.append(s0); rem.remove(s0)
-    cur = (s0[2], s0[3]) if (s0[0], s0[1]) <= (s0[2], s0[3]) else (s0[0], s0[1])
-    while rem:
-        best, bd = None, 31
-        for s in rem:
-            for pe in ((s[0], s[1]), (s[2], s[3])):
-                ddst = math.hypot(pe[0]-cur[0], pe[1]-cur[1])
-                if ddst < bd: bd, best = ddst, (s, pe)
-        if not best: break
-        s, pe = best; rem.remove(s)
-        if math.hypot(s[0]-pe[0], s[1]-pe[1]) < 1:
-            chain.append(s); cur = (s[2], s[3])
+    # ===== 孤立短段过滤(游离stub, 如22号线在建残段) =====
+    def _ends(s):
+        return [(s[0], s[1]), (s[2], s[3])]
+    keep = []
+    for i, s in enumerate(segs):
+        lonely = True
+        for j, t in enumerate(segs):
+            if i == j: continue
+            for ex, ey in _ends(s):
+                if min(math.hypot(ex-ox, ey-oy) for ox, oy in _ends(t)) <= 31:
+                    lonely = False; break
+            if not lonely: break
+        if not lonely:
+            keep.append(s)
         else:
-            chain.append((s[2], s[3], s[0], s[1])); cur = (s[0], s[1])
+            print('  过滤游离段 (%.1f,%.1f)-(%.1f,%.1f)' % s)
+    segs = keep
+
+    # ===== 链化(端点聚类成图, 从叶子走全链; 贪心死端会断链——广佛线教训) =====
+    nodes = []          # 节点=聚类后的端点
+    def node_of(x, y):
+        for i, (nx, ny) in enumerate(nodes):
+            if math.hypot(nx-x, ny-y) <= 4.0:
+                return i
+        nodes.append((x, y)); return len(nodes)-1
+    adj = {}            # 节点->[(段索引, 端点侧)]
+    for si, s in enumerate(segs):
+        a, b = node_of(s[0], s[1]), node_of(s[2], s[3])
+        adj.setdefault(a, []).append((si, 0))
+        adj.setdefault(b, []).append((si, 1))
+    leaves = sorted([n for n, v in adj.items() if len(v) == 1])
+    start = leaves[0] if leaves else 0
+    chain, used = [], [False]*len(segs)
+    cur, prev_side = start, None
+    while True:
+        nxt = [(si, side) for si, side in adj.get(cur, []) if not used[si]]
+        if not nxt:
+            break
+        si, side = nxt[0]
+        used[si] = True
+        s = segs[si]
+        if side == 0:   # 本段(x1,y1)在cur -> 定向为 (x2,y2)->(x1,y1) 使段首接cur
+            chain.append((s[2], s[3], s[0], s[1]))
+            cur = node_of(s[2], s[3])
+        else:
+            chain.append(s)
+            cur = node_of(s[0], s[1])
+    if len(chain) != len(segs):
+        print('  !! 链化不完整 %d/%d' % (len(chain), len(segs)))
     total = sum(math.hypot(s[2]-s[0], s[3]-s[1]) for s in chain)
 
     def narc(px, py):
@@ -95,12 +130,37 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
             acc += L
         return (chain[-1][2], chain[-1][3])
 
+    def _tdir(px, py):
+        # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
+        best, bd = None, 1e18
+        for s in chain:
+            x1, y1, x2, y2 = s
+            dx, dy = x2-x1, y2-y1; L2 = dx*dx+dy*dy
+            if L2 < 1e-9: continue
+            t = max(0, min(1, ((px-x1)*dx+(py-y1)*dy)/L2))
+            d = math.hypot(x1+t*dx-px, y1+t*dy-py)
+            if d < bd: bd, best = d, (dx, dy, L2**0.5, t)
+        dx, dy, L, t = best
+        ux, uy = dx/L, dy/L
+        if t < 0.5: ux, uy = -ux, -uy
+        return ux, uy
+
+    def _tdist(tn):
+        # 终点徽标距离: 水平终端排到终点标签外侧(标签宽+净距), 竖直终端55
+        tx, ty = coords_of.get(tn, (0, 0))
+        ux, uy = _tdir(tx, ty)
+        if abs(ux) > abs(uy):
+            bw = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
+            return 10 + bw + 8 + 19 + 12
+        return 68
+
     # ===== 站表 =====
     LD, SD = B.load_metro()
     L = LD[line_zh]
     sts = list(L['stations'])
     N = len(sts)
-    EN = {nm: SD[nm].get('en', '') for nm in sts if nm in SD}
+    _sts_all = list(sts) + (list(branch['stations']) if branch else [])
+    EN = {nm: SD[nm].get('en', '') for nm in _sts_all if nm in SD}
 
     codes = json.load(open(os.path.join(ROOT, 'data/gz-station-codes.json'), encoding='utf-8'))
     lkey = line_zh.replace('号线', '')
@@ -182,6 +242,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
                 best = (sc, order, coords, rev, ph)
     sc, order, coords, rev, ph = best
     print('%s 组%s: %d段链%0.fpx 圆%d/%d 分%d 方向%s 相位%d' % (line_zh, gid, len(chain), total, sum(1 for v in coords.values() if v[3]), N, sc, '反' if rev else '正', ph))
+    order = list(sts)  # V1: 卡内文档序=metro-data真值序(方向选择只作用于弧长对位)
 
     # ===== 定位覆盖 =====
     if overrides:
@@ -193,14 +254,60 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
 
     cxy = [(coords[nm][0], coords[nm][1]) for nm in order]
 
-    # G3: 走廊端点裁进终点圆
+    # ===== 支线(如14号线知识城线): 独立链弧长定位 + 并入卡 =====
+    bsegs = None
+    if branch:
+        bsegs = [tuple(float(v) for v in s) for s in branch['segs']]
+        border = list(branch['stations'])
+        bacc = 0.0; bsadd = []
+        for s in bsegs:
+            L = math.hypot(s[2]-s[0], s[3]-s[1]); bsadd.append((bacc, L)); bacc += L
+        def ba2xy(a):
+            a = max(0.0, min(a, bacc))
+            for (a0, L), s in zip(bsadd, bsegs):
+                if a0 + L >= a and L > 0:
+                    t = (a - a0) / L
+                    return (s[0]+t*(s[2]-s[0]), s[1]+t*(s[3]-s[1]))
+            return (bsegs[-1][2], bsegs[-1][3])
+        bcoords = {}
+        bo = (overrides or {})
+        Nb = len(border)
+        for i, nm in enumerate(border):
+            if nm in bo:
+                bcoords[nm] = (bo[nm][0], bo[nm][1])
+            else:
+                bcoords[nm] = ba2xy(bacc*i/(Nb-1) if Nb > 1 else 0.0)
+        print('  支线: %d站 %d段 %0.fpx' % (Nb, len(bsegs), bacc))
+        # 发射序(V1真值序): 主链锚站前段 + 支线(去锚) + 主链余段
+        anch = branch.get('anchor', border[0])
+        ai = order.index(anch) if anch in order else -1
+        emit = order[:ai+1] + border[1:] + order[ai+1:]
+        epos = {}
+        for nm in order:
+            epos[nm] = (coords[nm][0], coords[nm][1])
+        for nm in border[1:]:
+            epos[nm] = bcoords[nm]
+    else:
+        emit = order
+        epos = {nm: (coords[nm][0], coords[nm][1]) for nm in order}
+
+    # G3: 走廊端点裁进终点圆(端点取向: 取链首/链尾远离邻段的一端, 原始段序可能反向)
     if not loop:
+        if len(chain) > 1:
+            def _far(seg, ox, oy):
+                d1 = math.hypot(seg[0]-ox, seg[1]-oy)
+                d2 = math.hypot(seg[2]-ox, seg[3]-oy)
+                return (seg[0], seg[1]) if d1 > d2 else (seg[2], seg[3])
+            _term = [_far(chain[0], chain[1][0], chain[1][1]),
+                     _far(chain[-1], chain[-2][2], chain[-2][3])]
+        else:
+            _term = [(chain[0][0], chain[0][1]), (chain[0][2], chain[0][3])]
         def trim(seg_list):
             out = []
             for s in seg_list:
                 x1, y1, x2, y2 = s
                 for k, (px, py) in enumerate(((x1, y1), (x2, y2))):
-                    for ex, ey in ((chain[0][0], chain[0][1]), (chain[-1][2], chain[-1][3])):
+                    for ex, ey in _term:
                         if math.hypot(px-ex, py-ey) < 0.5:
                             bx, by = min(cxy, key=lambda c: math.hypot(c[0]-ex, c[1]-ey))
                             if math.hypot(bx-ex, by-ey) < 11: continue
@@ -222,15 +329,40 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
             print('  !! %s->%s %.0fpx' % (order[i], order[i+1], g))
 
     # ===== 组卡 =====
-    xs = [p[0] for p in cxy]+[s[0] for s in segs]+[s[2] for s in segs]
-    ys = [p[1] for p in cxy]+[s[1] for s in segs]+[s[3] for s in segs]
-    x0, x1 = min(xs)-115, max(xs)+65
-    y0, y1 = min(ys)-95, max(ys)+85
+    _all_segs = segs + (bsegs or [])
+    _all_xy = [epos[nm] for nm in emit]
+    xs = [p[0] for p in _all_xy]+[s[0] for s in _all_segs]+[s[2] for s in _all_segs]
+    ys = [p[1] for p in _all_xy]+[s[1] for s in _all_segs]+[s[3] for s in _all_segs]
+    coords_of = {k: (v[0], v[1]) for k, v in coords.items()}
+    _termi = list((order[0], order[-1]) if not loop else ())
+    if branch:
+        _termi.append(border[-1])
+    for tn in _termi:
+        if tn in coords_of:
+            tx, ty = coords_of[tn]
+            ux, uy = _tdir(tx, ty)
+            dist = _tdist(tn)
+        else:  # 支线终点
+            tx, ty = epos[tn]
+            s = bsegs[-1]
+            dx, dy = s[2]-s[0], s[3]-s[1]; L = math.hypot(dx, dy) or 1
+            ux, uy = dx/L, dy/L
+            bw2 = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
+            dist = 10 + bw2 + 8 + 19 + 12 if abs(ux) > abs(uy) else 68
+        xs += [tx+ux*dist-24, tx+ux*dist+24]
+        ys += [ty+uy*dist-14, ty+uy*dist+14]
+    _pad = dict(l=115, r=65, t=95, b=85); _pad.update(pad or {})
+    x0, x1 = min(xs)-_pad['l'], max(xs)+_pad['r']
+    y0, y1 = min(ys)-_pad['t'], max(ys)+_pad['b']
     num = line_zh.replace('号线', '').replace('线', '')
     lname = 'Line %s' % num if line_zh.endswith('号线') else line_zh
 
     svg = ET.Element('{%s}svg' % NS)
     svg.set('viewBox', '%.1f %.1f %.1f %.1f' % (x0, y0, x1-x0, y1-y0))
+    # 真值钉持久化: 门禁G10据此豁免画图几何事实性超距(钉位=原图已验证圆位)
+    _pins = sorted(set((overrides or {}).keys()))
+    if _pins:
+        svg.set('data-pins', ','.join(_pins))
     svg.set('width', str(round(x1-x0))); svg.set('height', str(round(y1-y0)))
     bg = ET.SubElement(svg, '{%s}rect' % NS)
     bg.set('x', str(x0)); bg.set('y', str(y0))
@@ -238,14 +370,15 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
 
     ST = 'fill:none;stroke:%s;stroke-width:7;stroke-linecap:round' % color
     gc = ET.SubElement(svg, '{%s}g' % NS); gc.set('id', '走廊')
-    for s in segs:
+    for s in _all_segs:
         ln = ET.SubElement(gc, '{%s}line' % NS)
         ln.set('x1', '%.2f' % s[0]); ln.set('y1', '%.2f' % s[1])
         ln.set('x2', '%.2f' % s[2]); ln.set('y2', '%.2f' % s[3])
         ln.set('style', ST)
 
     go = ET.SubElement(svg, '{%s}g' % NS); go.set('id', '站圆')
-    for nm, (cx, cy) in zip(order, cxy):
+    for nm in emit:
+        cx, cy = epos[nm]
         c = ET.SubElement(go, '{%s}circle' % NS)
         c.set('cx', '%.1f' % cx); c.set('cy', '%.1f' % cy); c.set('r', '4.5')
         c.set('data-nm', nm); c.set('style', 'fill:#FFFFFF;stroke:%s;stroke-width:2' % color)
@@ -253,11 +386,41 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
     gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
     gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, x1-96, y0+36))
     if not loop:
+        def _tdir(px, py):
+            # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
+            best, bd = None, 1e18
+            for s in chain:
+                x1, y1, x2, y2 = s
+                dx, dy = x2-x1, y2-y1; L2 = dx*dx+dy*dy
+                if L2 < 1e-9: continue
+                t = max(0, min(1, ((px-x1)*dx+(py-y1)*dy)/L2))
+                d = math.hypot(x1+t*dx-px, y1+t*dy-py)
+                if d < bd: bd, best = d, (dx, dy, L2**0.5, t)
+            dx, dy, L, t = best
+            ux, uy = dx/L, dy/L
+            if t < 0.5: ux, uy = -ux, -uy
+            return ux, uy
         for tn in (order[0], order[-1]):
             tx, ty = coords[tn][0], coords[tn][1]
-            gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, tx, ty-55, 0.6))
+            ux, uy = _tdir(tx, ty)
+            dist = _tdist(tn)
+            gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, tx+ux*dist, ty+uy*dist, 0.6))
+        if branch:
+            # 支线终点徽标(方向取支线末段向外)
+            tn = border[-1]
+            tx, ty = epos[tn]
+            s = bsegs[-1]
+            dx, dy = s[2]-s[0], s[3]-s[1]; L = math.hypot(dx, dy) or 1
+            ux, uy = dx/L, dy/L
+            if abs(ux) > abs(uy):
+                bw2 = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
+                dist = 10 + bw2 + 8 + 19 + 12
+            else:
+                dist = 68
+            xs2, ys2 = tx+ux*dist, ty+uy*dist
+            gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, xs2, ys2, 0.6))
 
-    pl = B.place_labels(order, cxy, segs, EN)
+    pl = B.place_labels(emit, _all_xy, _all_segs, EN)
     gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')
     gl.set('font-family', "'Microsoft YaHei', 'PingFang SC', sans-serif")
     for lb in pl:
@@ -275,7 +438,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None):
     out = os.path.join(ROOT, 'assets/lines/line-%s.svg' % line_zh)
     ET.ElementTree(svg).write(out, encoding='unicode', xml_declaration=False)
 
-    R = run_gates(out, expect_n=N, chains=chains)
+    R = run_gates(out, expect_n=N + (len(branch['stations'])-1 if branch else 0), chains=chains, pins=set((overrides or {}).keys()))
     npass = sum(o for _, _, o, _ in R)
     print('  门禁: %d/%d' % (npass, len(R)))
     for no, nm, o, dt in R:
