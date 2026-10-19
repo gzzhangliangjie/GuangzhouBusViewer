@@ -255,8 +255,10 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
         seqs = [[pos_nm[nm] for nm in ch if nm in pos_nm] for ch in chains]
         seq_nm = [[nm for nm in ch if nm in pos_nm] for ch in chains]
     else:
-        seqs = [circles]
-        seq_nm = [['?%d' % i for i in range(len(circles))]]
+        # 无chains时按卡内文档序取站名(占位序号会让data-pins豁免失效, 14号线支线边界误报教训)
+        _doc = [[nm for nm in pos_nm]]
+        seqs = [[pos_nm[nm] for nm in ch] for ch in _doc]
+        seq_nm = _doc
     gaps = []
     for sq in seqs:
         for u, w in zip(sq, sq[1:]):
