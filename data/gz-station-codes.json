@@ -1,0 +1,4188 @@
+{
+ "generated": "2026-10-19",
+ "sources": [
+  "OpenStreetMap route relations + station nodes",
+  "Wikidata P296"
+ ],
+ "count": {
+  "stations": 368,
+  "codes": 403
+ },
+ "stations": [
+  {
+   "name": "一德路",
+   "name_en": "Yide Lu",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "09",
+     "label": "6号线|09"
+    }
+   ]
+  },
+  {
+   "name": "万胜围",
+   "name_en": "Wanshengwei",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "21",
+     "label": "4号线|21"
+    },
+    {
+     "line": "8",
+     "serial": "28",
+     "label": "8号线|28"
+    }
+   ]
+  },
+  {
+   "name": "万顷沙",
+   "name_en": "Wanqingsha",
+   "codes": [
+    {
+     "line": "18",
+     "serial": "01",
+     "label": "18号线|01"
+    }
+   ]
+  },
+  {
+   "name": "三元里",
+   "name_en": "Sanyuanli",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "17",
+     "label": "2号线|17"
+    }
+   ]
+  },
+  {
+   "name": "三溪",
+   "name_en": "Sanxi",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "20",
+     "label": "5号线|20"
+    }
+   ]
+  },
+  {
+   "name": "上步",
+   "name_en": "Shangbu",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "07",
+     "label": "8号线|07"
+    }
+   ]
+  },
+  {
+   "name": "上涌",
+   "name_en": "Shangchong",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "29",
+     "label": "11号线|29"
+    }
+   ]
+  },
+  {
+   "name": "世纪莲",
+   "name_en": "Shijilian",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "03",
+     "label": "广佛|03"
+    }
+   ]
+  },
+  {
+   "name": "东圃",
+   "name_en": "Dongpu",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "19",
+     "label": "5号线|19"
+    }
+   ]
+  },
+  {
+   "name": "东山口",
+   "name_en": "Dongshankou",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "12",
+     "label": "1号线|12"
+    },
+    {
+     "line": "6",
+     "serial": "14",
+     "label": "6号线|14"
+    }
+   ]
+  },
+  {
+   "name": "东平",
+   "name_en": "Dongping",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "02",
+     "label": "广佛|02"
+    }
+   ]
+  },
+  {
+   "name": "东晓南",
+   "name_en": "Dongxiao South",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "07",
+     "label": "2号线|07"
+    },
+    {
+     "line": "10",
+     "serial": "06",
+     "label": "10号线|06"
+    }
+   ]
+  },
+  {
+   "name": "东沙",
+   "name_en": "Dongsha",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "03",
+     "label": "10号线|03"
+    }
+   ]
+  },
+  {
+   "name": "东涌",
+   "name_en": "Dongchong",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "12",
+     "label": "4号线|12"
+    }
+   ]
+  },
+  {
+   "name": "东湖",
+   "name_en": "Donghu",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "13",
+     "label": "6号线|13"
+    },
+    {
+     "line": "10",
+     "serial": "10",
+     "label": "10号线|10"
+    }
+   ]
+  },
+  {
+   "name": "东风",
+   "name_en": "Dongfeng",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "21",
+     "label": "14号线|21"
+    }
+   ]
+  },
+  {
+   "name": "中医药大学",
+   "name_en": "Guangzhou University of Chinese Medicine",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "12",
+     "label": "11号线|12"
+    }
+   ]
+  },
+  {
+   "name": "中大",
+   "name_en": "Sun Yat-sen University",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "21",
+     "label": "8号线|21"
+    }
+   ]
+  },
+  {
+   "name": "中大南门",
+   "name_en": "Sun Yat-sen University South Entrance",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "08",
+     "label": "10号线|08"
+    }
+   ]
+  },
+  {
+   "name": "中山",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "中山八",
+   "name_en": "Zhongshanba",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "03",
+     "label": "5号线|03"
+    },
+    {
+     "line": "11",
+     "serial": "17",
+     "label": "11号线|17"
+    }
+   ]
+  },
+  {
+   "name": "中新",
+   "name_en": "Zhongxin",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "15",
+     "label": "21号线|15"
+    }
+   ]
+  },
+  {
+   "name": "乐嘉路",
+   "name_en": "Lejia Road",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "02",
+     "label": "14号线|02"
+    }
+   ]
+  },
+  {
+   "name": "二十涌",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "二沙岛",
+   "name_en": "Ersha Island",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "17",
+     "label": "12号线|17"
+    }
+   ]
+  },
+  {
+   "name": "云台花园",
+   "name_en": "Yuntai Garden",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "10",
+     "label": "11号线|10"
+    }
+   ]
+  },
+  {
+   "name": "云霄路",
+   "name_en": "Yunxiao Road",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "03",
+     "label": "14号线|03"
+    }
+   ]
+  },
+  {
+   "name": "五凤",
+   "name_en": "Wufeng",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "07",
+     "label": "10号线|07"
+    },
+    {
+     "line": "11",
+     "serial": "27",
+     "label": "11号线|27"
+    }
+   ]
+  },
+  {
+   "name": "五山",
+   "name_en": "Wushan",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "15",
+     "label": "3号线|15"
+    }
+   ]
+  },
+  {
+   "name": "五羊邨",
+   "name_en": "Wuyangcun",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "12",
+     "label": "5号线|12"
+    },
+    {
+     "line": "10",
+     "serial": "11",
+     "label": "10号线|11"
+    }
+   ]
+  },
+  {
+   "name": "京溪南方医院",
+   "name_en": "Jingxi Nanfang Hospital",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "21",
+     "label": "3号线|21"
+    }
+   ]
+  },
+  {
+   "name": "京溪路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "亭岗",
+   "name_en": "Tinggang",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "02",
+     "label": "8号线|02"
+    }
+   ]
+  },
+  {
+   "name": "人和",
+   "name_en": "Renhe",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "27",
+     "label": "3号线|27"
+    }
+   ]
+  },
+  {
+   "name": "从化客运站",
+   "name_en": "Conghua Coach Terminal",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "20",
+     "label": "14号线|20"
+    }
+   ]
+  },
+  {
+   "name": "仓边路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "会江",
+   "name_en": "Huijiang",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "03",
+     "label": "2号线|03"
+    }
+   ]
+  },
+  {
+   "name": "低涌",
+   "name_en": "Dichong",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "13",
+     "label": "4号线|13"
+    }
+   ]
+  },
+  {
+   "name": "体育中心",
+   "name_en": "Tianhe Sports Center",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "15",
+     "label": "1号线|15"
+    }
+   ]
+  },
+  {
+   "name": "体育中心南",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "08",
+     "label": "APM|08"
+    }
+   ]
+  },
+  {
+   "name": "体育西路",
+   "name_en": "Tiyu Xilu",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "14",
+     "label": "1号线|14"
+    },
+    {
+     "line": "3",
+     "serial": "11",
+     "label": "3号线|11"
+    }
+   ]
+  },
+  {
+   "name": "何棠下",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "26",
+     "label": "14号线|26"
+    }
+   ]
+  },
+  {
+   "name": "保盈大道",
+   "name_en": "Baoying Dadao",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "28",
+     "label": "5号线|28"
+    }
+   ]
+  },
+  {
+   "name": "傍江",
+   "name_en": "Bangjiang",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "01-1",
+     "label": "3号线|01-1"
+    }
+   ]
+  },
+  {
+   "name": "公园前",
+   "name_en": "Gongyuanqian",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "09",
+     "label": "1号线|09"
+    },
+    {
+     "line": "2",
+     "serial": "13",
+     "label": "2号线|13"
+    }
+   ]
+  },
+  {
+   "name": "兴中",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "农讲所",
+   "name_en": "Peasant Movement Institute",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "10",
+     "label": "1号线|10"
+    }
+   ]
+  },
+  {
+   "name": "冼村",
+   "name_en": "Xiancun",
+   "codes": [
+    {
+     "line": "18",
+     "serial": "08",
+     "label": "18号线|08"
+    }
+   ]
+  },
+  {
+   "name": "凤凰南路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "凤凰新村",
+   "name_en": "Fenghuang Xincun",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "16",
+     "label": "8号线|16"
+    }
+   ]
+  },
+  {
+   "name": "凤岗",
+   "name_en": "Fenggang",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "17",
+     "label": "21号线|17"
+    }
+   ]
+  },
+  {
+   "name": "凤浦公园",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "凤翔路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "凰岗",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "加庄",
+   "name_en": "Jiazhuang",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "16",
+     "label": "7号线|16"
+    }
+   ]
+  },
+  {
+   "name": "动物园",
+   "name_en": "Zoo",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "10",
+     "label": "5号线|10"
+    }
+   ]
+  },
+  {
+   "name": "化龙",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "北京路",
+   "name_en": "Beijing Lu",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "11",
+     "label": "6号线|11"
+    }
+   ]
+  },
+  {
+   "name": "北山",
+   "name_en": "Beishan",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "22",
+     "label": "12号线|22"
+    }
+   ]
+  },
+  {
+   "name": "北滘公园",
+   "name_en": "Beijiao Park",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-7",
+     "label": "7号线|01-7"
+    }
+   ]
+  },
+  {
+   "name": "区庄",
+   "name_en": "Ouzhuang",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "09",
+     "label": "5号线|09"
+    },
+    {
+     "line": "6",
+     "serial": "15",
+     "label": "6号线|15"
+    }
+   ]
+  },
+  {
+   "name": "十三涌",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "十涌",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "千灯湖",
+   "name_en": "Qiandeng Lake",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "14",
+     "label": "广佛|14"
+    }
+   ]
+  },
+  {
+   "name": "华师",
+   "name_en": "South China Normal University",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "14",
+     "label": "3号线|14"
+    },
+    {
+     "line": "11",
+     "serial": "06",
+     "label": "11号线|06"
+    }
+   ]
+  },
+  {
+   "name": "华景路",
+   "name_en": "Huajing Road",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "05",
+     "label": "11号线|05"
+    }
+   ]
+  },
+  {
+   "name": "华林寺",
+   "name_en": "Hualinsi Buddhist Temple",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "13",
+     "label": "8号线|13"
+    }
+   ]
+  },
+  {
+   "name": "南岗",
+   "name_en": "Nangang",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "29",
+     "label": "13号线|29"
+    }
+   ]
+  },
+  {
+   "name": "南村万博",
+   "name_en": "Nancun Wanbo",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "06",
+     "label": "7号线|06"
+    },
+    {
+     "line": "18",
+     "serial": "04",
+     "label": "18号线|04"
+    }
+   ]
+  },
+  {
+   "name": "南桂路",
+   "name_en": "Nangui Road",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "12",
+     "label": "广佛|12"
+    }
+   ]
+  },
+  {
+   "name": "南横",
+   "name_en": "Nanheng",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "02",
+     "label": "4号线|02"
+    }
+   ]
+  },
+  {
+   "name": "南沙客运港",
+   "name_en": "Nansha Passenger Port",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "01",
+     "label": "4号线|01"
+    }
+   ]
+  },
+  {
+   "name": "南洲",
+   "name_en": "Nanzhou",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "06",
+     "label": "2号线|06"
+    },
+    {
+     "line": "广佛",
+     "serial": "24",
+     "label": "广佛|24"
+    }
+   ]
+  },
+  {
+   "name": "南浦",
+   "name_en": "Nanpu",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "04",
+     "label": "2号线|04"
+    }
+   ]
+  },
+  {
+   "name": "南浦西",
+   "name_en": "Nanpu West",
+   "codes": [
+    {
+     "line": "22",
+     "serial": "05",
+     "label": "22号线|05"
+    }
+   ]
+  },
+  {
+   "name": "南海神庙",
+   "name_en": "Nanhai God Temple",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "27",
+     "label": "13号线|27"
+    }
+   ]
+  },
+  {
+   "name": "南涌",
+   "name_en": "Nanchong",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-5",
+     "label": "7号线|01-5"
+    }
+   ]
+  },
+  {
+   "name": "南漖",
+   "name_en": "Nanjiao",
+   "codes": [
+    {
+     "line": "22",
+     "serial": "06",
+     "label": "22号线|06"
+    }
+   ]
+  },
+  {
+   "name": "厦滘",
+   "name_en": "Xiajiao",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "05",
+     "label": "3号线|05"
+    }
+   ]
+  },
+  {
+   "name": "双岗",
+   "name_en": "Shuanggang",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "26",
+     "label": "13号线|26"
+    }
+   ]
+  },
+  {
+   "name": "双沙",
+   "name_en": "Shuangsha",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "25",
+     "label": "5号线|25"
+    }
+   ]
+  },
+  {
+   "name": "同和",
+   "name_en": "Tonghe",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "22",
+     "label": "3号线|22"
+    }
+   ]
+  },
+  {
+   "name": "同德",
+   "name_en": "Tongde",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "08",
+     "label": "8号线|08"
+    }
+   ]
+  },
+  {
+   "name": "同济路",
+   "name_en": "Tongji Lu",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "07",
+     "label": "广佛|07"
+    }
+   ]
+  },
+  {
+   "name": "同福西",
+   "name_en": "Tongfuxi",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "15",
+     "label": "8号线|15"
+    }
+   ]
+  },
+  {
+   "name": "员岗",
+   "name_en": "Yuangang",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "07",
+     "label": "7号线|07"
+    }
+   ]
+  },
+  {
+   "name": "员村",
+   "name_en": "Yuancun",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "16",
+     "label": "5号线|16"
+    },
+    {
+     "line": "11",
+     "serial": "03",
+     "label": "11号线|03"
+    }
+   ]
+  },
+  {
+   "name": "员村山顶",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "嘉禾望岗",
+   "name_en": "Jiahewanggang",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "24",
+     "label": "2号线|24"
+    },
+    {
+     "line": "3",
+     "serial": "25",
+     "label": "3号线|25"
+    },
+    {
+     "line": "14",
+     "serial": "09",
+     "label": "14号线|09"
+    }
+   ]
+  },
+  {
+   "name": "团一大广场",
+   "name_en": "Tuanyida Square",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "12",
+     "label": "6号线|12"
+    }
+   ]
+  },
+  {
+   "name": "坑口",
+   "name_en": "Kengkou",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "02",
+     "label": "1号线|02"
+    }
+   ]
+  },
+  {
+   "name": "坑贝",
+   "name_en": "Kengbei",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "16",
+     "label": "21号线|16"
+    }
+   ]
+  },
+  {
+   "name": "坦尾",
+   "name_en": "Tanwei",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "02",
+     "label": "5号线|02"
+    },
+    {
+     "line": "6",
+     "serial": "05",
+     "label": "6号线|05"
+    }
+   ]
+  },
+  {
+   "name": "塘坑",
+   "name_en": "Tangkeng",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "03",
+     "label": "4号线|03"
+    }
+   ]
+  },
+  {
+   "name": "增城广场",
+   "name_en": "Zengcheng Square",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "21",
+     "label": "21号线|21"
+    }
+   ]
+  },
+  {
+   "name": "夏园",
+   "name_en": "Xiayuan",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "27",
+     "label": "5号线|27"
+    },
+    {
+     "line": "13",
+     "serial": "28",
+     "label": "13号线|28"
+    }
+   ]
+  },
+  {
+   "name": "夏港",
+   "name_en": "Xiagang",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "29",
+     "label": "5号线|29"
+    }
+   ]
+  },
+  {
+   "name": "夏良",
+   "name_en": "Xialiang",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "11",
+     "label": "14号线|11"
+    }
+   ]
+  },
+  {
+   "name": "夏茅",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "大冲口",
+   "name_en": "Dachongkou",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "21",
+     "label": "11号线|21"
+    }
+   ]
+  },
+  {
+   "name": "大剧院",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "03",
+     "label": "APM|03"
+    }
+   ]
+  },
+  {
+   "name": "大塘",
+   "name_en": "Datang",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "07",
+     "label": "3号线|07"
+    },
+    {
+     "line": "11",
+     "serial": "30",
+     "label": "11号线|30"
+    }
+   ]
+  },
+  {
+   "name": "大学城北",
+   "name_en": "Higher Education Mega Center North",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "19",
+     "label": "4号线|19"
+    },
+    {
+     "line": "12",
+     "serial": "24",
+     "label": "12号线|24"
+    }
+   ]
+  },
+  {
+   "name": "大学城南",
+   "name_en": "Higher Education Mega Center South",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "18",
+     "label": "4号线|18"
+    },
+    {
+     "line": "7",
+     "serial": "09",
+     "label": "7号线|09"
+    },
+    {
+     "line": "12",
+     "serial": "25",
+     "label": "12号线|25"
+    }
+   ]
+  },
+  {
+   "name": "大干围",
+   "name_en": "Daganwei",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "04",
+     "label": "10号线|04"
+    }
+   ]
+  },
+  {
+   "name": "大沙东",
+   "name_en": "Dashadong",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "23",
+     "label": "5号线|23"
+    },
+    {
+     "line": "7",
+     "serial": "14",
+     "label": "7号线|14"
+    }
+   ]
+  },
+  {
+   "name": "大沙地",
+   "name_en": "Dashadi",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "22",
+     "label": "5号线|22"
+    }
+   ]
+  },
+  {
+   "name": "大洲",
+   "name_en": "Dazhou",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-1",
+     "label": "7号线|01-1"
+    }
+   ]
+  },
+  {
+   "name": "大涌",
+   "name_en": "Dachong",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "04",
+     "label": "4号线|04"
+    }
+   ]
+  },
+  {
+   "name": "大石",
+   "name_en": "Dashi",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "04",
+     "label": "3号线|04"
+    }
+   ]
+  },
+  {
+   "name": "大观南路",
+   "name_en": "Daguan Nanlu",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "05",
+     "label": "21号线|05"
+    }
+   ]
+  },
+  {
+   "name": "大金钟路",
+   "name_en": "Dajinzhong Road",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "11",
+     "label": "11号线|11"
+    }
+   ]
+  },
+  {
+   "name": "天平架",
+   "name_en": "Tianpingjia",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "19",
+     "label": "6号线|19"
+    }
+   ]
+  },
+  {
+   "name": "天河公园",
+   "name_en": "Tianhe Park",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "04",
+     "label": "11号线|04"
+    },
+    {
+     "line": "13",
+     "serial": "20",
+     "label": "13号线|20"
+    },
+    {
+     "line": "21",
+     "serial": "02",
+     "label": "21号线|02"
+    }
+   ]
+  },
+  {
+   "name": "天河南",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "07",
+     "label": "APM|07"
+    }
+   ]
+  },
+  {
+   "name": "天河客运站",
+   "name_en": "Tianhe Coach Terminal",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "16",
+     "label": "3号线|16"
+    },
+    {
+     "line": "6",
+     "serial": "21",
+     "label": "6号线|21"
+    }
+   ]
+  },
+  {
+   "name": "天河智慧城",
+   "name_en": "Tianhe Smart City",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "06",
+     "label": "21号线|06"
+    }
+   ]
+  },
+  {
+   "name": "天河珠村",
+   "name_en": "Tianhe Zhucun",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "23",
+     "label": "13号线|23"
+    }
+   ]
+  },
+  {
+   "name": "太和",
+   "name_en": "Taihe",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "12",
+     "label": "14号线|12"
+    }
+   ]
+  },
+  {
+   "name": "太平",
+   "name_en": "Taiping",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "17",
+     "label": "14号线|17"
+    }
+   ]
+  },
+  {
+   "name": "如意坊",
+   "name_en": "Ruyifang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "06",
+     "label": "6号线|06"
+    },
+    {
+     "line": "11",
+     "serial": "18",
+     "label": "11号线|18"
+    }
+   ]
+  },
+  {
+   "name": "妇儿中心",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "05",
+     "label": "APM|05"
+    }
+   ]
+  },
+  {
+   "name": "姬堂",
+   "name_en": "Jitang",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "15",
+     "label": "7号线|15"
+    }
+   ]
+  },
+  {
+   "name": "季华园",
+   "name_en": "Jihua Park",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "06",
+     "label": "广佛|06"
+    }
+   ]
+  },
+  {
+   "name": "官桥",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "16",
+     "label": "4号线|16"
+    }
+   ]
+  },
+  {
+   "name": "官洲",
+   "name_en": "Guanzhou",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "20",
+     "label": "4号线|20"
+    },
+    {
+     "line": "12",
+     "serial": "23",
+     "label": "12号线|23"
+    }
+   ]
+  },
+  {
+   "name": "官湖",
+   "name_en": "Guanhu",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "33",
+     "label": "13号线|33"
+    }
+   ]
+  },
+  {
+   "name": "宝岗大道",
+   "name_en": "Baogang Dadao",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "18",
+     "label": "8号线|18"
+    }
+   ]
+  },
+  {
+   "name": "客村",
+   "name_en": "Kecun",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "08",
+     "label": "3号线|08"
+    },
+    {
+     "line": "8",
+     "serial": "23",
+     "label": "8号线|23"
+    }
+   ]
+  },
+  {
+   "name": "小北",
+   "name_en": "Xiaobei",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "07",
+     "label": "5号线|07"
+    }
+   ]
+  },
+  {
+   "name": "小坪",
+   "name_en": "Xiaoping",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "04",
+     "label": "8号线|04"
+    }
+   ]
+  },
+  {
+   "name": "展贸城",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "山田",
+   "name_en": "Shantian",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "19",
+     "label": "21号线|19"
+    }
+   ]
+  },
+  {
+   "name": "岐江新城",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "岐江道",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "岗顶",
+   "name_en": "Gangding",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "13",
+     "label": "3号线|13"
+    }
+   ]
+  },
+  {
+   "name": "工业大道南",
+   "name_en": "Gongye Avenue South",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "05",
+     "label": "10号线|05"
+    }
+   ]
+  },
+  {
+   "name": "市二宫",
+   "name_en": "The 2nd Workers' Cultural Palace",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "11",
+     "label": "2号线|11"
+    }
+   ]
+  },
+  {
+   "name": "市广路",
+   "name_en": "Shiguanglu",
+   "codes": [
+    {
+     "line": "22",
+     "serial": "02",
+     "label": "22号线|02"
+    }
+   ]
+  },
+  {
+   "name": "市桥",
+   "name_en": "Shiqiao",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "02",
+     "label": "3号线|02"
+    }
+   ]
+  },
+  {
+   "name": "广州东",
+   "name_en": "Guangzhou East Railway Station",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "16",
+     "label": "1号线|16"
+    },
+    {
+     "line": "3",
+     "serial": "18",
+     "label": "3号线|18"
+    },
+    {
+     "line": "11",
+     "serial": "08",
+     "label": "11号线|08"
+    }
+   ]
+  },
+  {
+   "name": "广州体育馆",
+   "name_en": "Guangzhou Gymnasium",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "09",
+     "label": "12号线|09"
+    }
+   ]
+  },
+  {
+   "name": "广州北",
+   "name_en": "Guangzhou North Railway Station",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "03",
+     "label": "9号线|03"
+    }
+   ]
+  },
+  {
+   "name": "广州南",
+   "name_en": "Guangzhou South Railway Station",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "01",
+     "label": "2号线|01"
+    },
+    {
+     "line": "7",
+     "serial": "01",
+     "label": "7号线|01"
+    },
+    {
+     "line": "22",
+     "serial": "03",
+     "label": "22号线|03"
+    },
+    {
+     "line": "佛山2号线",
+     "serial": "27",
+     "label": "佛山2号线|27"
+    }
+   ]
+  },
+  {
+   "name": "广州塔",
+   "name_en": "Canton Tower",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "09",
+     "label": "3号线|09"
+    },
+    {
+     "line": "APM",
+     "serial": "01",
+     "label": "APM|01"
+    }
+   ]
+  },
+  {
+   "name": "广州火车站",
+   "name_en": "Guangzhou Railway Station",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "16",
+     "label": "2号线|16"
+    },
+    {
+     "line": "5",
+     "serial": "06",
+     "label": "5号线|06"
+    },
+    {
+     "line": "11",
+     "serial": "14",
+     "label": "11号线|14"
+    }
+   ]
+  },
+  {
+   "name": "广州白云",
+   "name_en": "Guangzhou Baiyun Railway Station",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "05",
+     "label": "12号线|05"
+    }
+   ]
+  },
+  {
+   "name": "广隆",
+   "name_en": "Guanglong",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "05",
+     "label": "4号线|05"
+    }
+   ]
+  },
+  {
+   "name": "庆丰",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "庆盛",
+   "name_en": "Qingsheng",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "11",
+     "label": "4号线|11"
+    }
+   ]
+  },
+  {
+   "name": "庙头",
+   "name_en": "Miaotou",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "26",
+     "label": "5号线|26"
+    }
+   ]
+  },
+  {
+   "name": "建设六马路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "彩虹桥",
+   "name_en": "Caihong Bridge",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "11",
+     "label": "8号线|11"
+    },
+    {
+     "line": "11",
+     "serial": "16",
+     "label": "11号线|16"
+    }
+   ]
+  },
+  {
+   "name": "彭边",
+   "name_en": "Pengbian",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "08",
+     "label": "14号线|08"
+    }
+   ]
+  },
+  {
+   "name": "执信",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "文冲",
+   "name_en": "Wenchong",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "24",
+     "label": "5号线|24"
+    }
+   ]
+  },
+  {
+   "name": "文化公园",
+   "name_en": "Cultural Park",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "08",
+     "label": "6号线|08"
+    },
+    {
+     "line": "8",
+     "serial": "14",
+     "label": "8号线|14"
+    }
+   ]
+  },
+  {
+   "name": "新南",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "23",
+     "label": "14号线|23"
+    }
+   ]
+  },
+  {
+   "name": "新和",
+   "name_en": "Xinhe",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "16",
+     "label": "14号线|16"
+    }
+   ]
+  },
+  {
+   "name": "新城东",
+   "name_en": "Xincheng Dong",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "01",
+     "label": "广佛|01"
+    }
+   ]
+  },
+  {
+   "name": "新塘",
+   "name_en": "Xintang",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "32",
+     "label": "13号线|32"
+    }
+   ]
+  },
+  {
+   "name": "新市墟",
+   "name_en": "Xinshixu",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "07",
+     "label": "12号线|07"
+    },
+    {
+     "line": "14",
+     "serial": "04",
+     "label": "14号线|04"
+    }
+   ]
+  },
+  {
+   "name": "新沙",
+   "name_en": "Xinsha",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "34",
+     "label": "13号线|34"
+    }
+   ]
+  },
+  {
+   "name": "新洲",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "新港东",
+   "name_en": "Xingangdong",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "26",
+     "label": "8号线|26"
+    }
+   ]
+  },
+  {
+   "name": "新造",
+   "name_en": "Xinzao",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "17",
+     "label": "4号线|17"
+    }
+   ]
+  },
+  {
+   "name": "方石",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "旺村",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "27",
+     "label": "14号线|27"
+    }
+   ]
+  },
+  {
+   "name": "昌岗",
+   "name_en": "Changgang",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "09",
+     "label": "2号线|09"
+    },
+    {
+     "line": "8",
+     "serial": "19",
+     "label": "8号线|19"
+    }
+   ]
+  },
+  {
+   "name": "晓港",
+   "name_en": "Xiaogang",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "20",
+     "label": "8号线|20"
+    }
+   ]
+  },
+  {
+   "name": "普君北路",
+   "name_en": "Pujun Beilu",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "09",
+     "label": "广佛|09"
+    }
+   ]
+  },
+  {
+   "name": "景泰",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "暨大",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "暹岗",
+   "name_en": "Xiangang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "29",
+     "label": "6号线|29"
+    }
+   ]
+  },
+  {
+   "name": "朝安",
+   "name_en": "Chao'an",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "10",
+     "label": "广佛|10"
+    }
+   ]
+  },
+  {
+   "name": "朱村",
+   "name_en": "Zhucun",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "18",
+     "label": "21号线|18"
+    }
+   ]
+  },
+  {
+   "name": "机场东",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "机场北",
+   "name_en": "Airport North",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "30",
+     "label": "3号线|30"
+    }
+   ]
+  },
+  {
+   "name": "机场南",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "29",
+     "label": "3号线|29"
+    }
+   ]
+  },
+  {
+   "name": "杨箕",
+   "name_en": "Yangji",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "13",
+     "label": "1号线|13"
+    },
+    {
+     "line": "5",
+     "serial": "11",
+     "label": "5号线|11"
+    }
+   ]
+  },
+  {
+   "name": "杨箕东",
+   "name_en": "Yangji East",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "12",
+     "label": "10号线|12"
+    }
+   ]
+  },
+  {
+   "name": "松洲",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "板桥",
+   "name_en": "Banqiao",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "08",
+     "label": "7号线|08"
+    }
+   ]
+  },
+  {
+   "name": "林和西",
+   "name_en": "Linhexi",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "17",
+     "label": "3号线|17"
+    },
+    {
+     "line": "APM",
+     "serial": "09",
+     "label": "APM|09"
+    }
+   ]
+  },
+  {
+   "name": "枫下",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "24",
+     "label": "14号线|24"
+    }
+   ]
+  },
+  {
+   "name": "柯子岭",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "柯木塱",
+   "name_en": "Kemulang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "25",
+     "label": "6号线|25"
+    }
+   ]
+  },
+  {
+   "name": "桂城",
+   "name_en": "Guicheng",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "11",
+     "label": "广佛|11"
+    }
+   ]
+  },
+  {
+   "name": "梅东路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "梅花园",
+   "name_en": "Meihuayuan",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "20",
+     "label": "3号线|20"
+    }
+   ]
+  },
+  {
+   "name": "梓元岗",
+   "name_en": "Ziyuangang",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "13",
+     "label": "11号线|13"
+    }
+   ]
+  },
+  {
+   "name": "棠下",
+   "name_en": "Tangxia",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "21",
+     "label": "13号线|21"
+    }
+   ]
+  },
+  {
+   "name": "棠东",
+   "name_en": "Tangdong",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "03",
+     "label": "21号线|03"
+    }
+   ]
+  },
+  {
+   "name": "棠涌",
+   "name_en": "Tangchong",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "06",
+     "label": "12号线|06"
+    }
+   ]
+  },
+  {
+   "name": "棣园",
+   "name_en": "Diyuan",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "24",
+     "label": "11号线|24"
+    }
+   ]
+  },
+  {
+   "name": "植物园",
+   "name_en": "Botanical Garden",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "23",
+     "label": "6号线|23"
+    }
+   ]
+  },
+  {
+   "name": "槎龙",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "横沙",
+   "name_en": "Hengsha",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "02",
+     "label": "6号线|02"
+    }
+   ]
+  },
+  {
+   "name": "横沥",
+   "name_en": "Hengli",
+   "codes": [
+    {
+     "line": "18",
+     "serial": "02",
+     "label": "18号线|02"
+    }
+   ]
+  },
+  {
+   "name": "水西",
+   "name_en": "Shuixi",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "19",
+     "label": "7号线|19"
+    },
+    {
+     "line": "21",
+     "serial": "10",
+     "label": "21号线|10"
+    }
+   ]
+  },
+  {
+   "name": "永泰",
+   "name_en": "Yongtai",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "23",
+     "label": "3号线|23"
+    }
+   ]
+  },
+  {
+   "name": "汉溪长隆",
+   "name_en": "Hanxi Changlong",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "03",
+     "label": "3号线|03"
+    },
+    {
+     "line": "7",
+     "serial": "05",
+     "label": "7号线|05"
+    }
+   ]
+  },
+  {
+   "name": "江南西",
+   "name_en": "Jiangnanxi",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "10",
+     "label": "2号线|10"
+    }
+   ]
+  },
+  {
+   "name": "江夏",
+   "name_en": "Jiangxia",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "22",
+     "label": "2号线|22"
+    }
+   ]
+  },
+  {
+   "name": "江府",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "江村",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "江泰路",
+   "name_en": "Jiangtai Road",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "08",
+     "label": "2号线|08"
+    },
+    {
+     "line": "11",
+     "serial": "26",
+     "label": "11号线|26"
+    }
+   ]
+  },
+  {
+   "name": "江高",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "汤村",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "28",
+     "label": "14号线|28"
+    }
+   ]
+  },
+  {
+   "name": "沙园",
+   "name_en": "Shayuan",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "17",
+     "label": "8号线|17"
+    },
+    {
+     "line": "广佛",
+     "serial": "21",
+     "label": "广佛|21"
+    }
+   ]
+  },
+  {
+   "name": "沙村",
+   "name_en": "Shacun",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "30",
+     "label": "13号线|30"
+    }
+   ]
+  },
+  {
+   "name": "沙河",
+   "name_en": "Shahe",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "18",
+     "label": "6号线|18"
+    },
+    {
+     "line": "11",
+     "serial": "09",
+     "label": "11号线|09"
+    }
+   ]
+  },
+  {
+   "name": "沙河顶",
+   "name_en": "Shaheding",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "17",
+     "label": "6号线|17"
+    }
+   ]
+  },
+  {
+   "name": "沙涌",
+   "name_en": "Shachong",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "22",
+     "label": "11号线|22"
+    },
+    {
+     "line": "广佛",
+     "serial": "20",
+     "label": "广佛|20"
+    }
+   ]
+  },
+  {
+   "name": "沙溪",
+   "name_en": "Shaxi",
+   "codes": [
+    {
+     "line": "18",
+     "serial": "05",
+     "label": "18号线|05"
+    }
+   ]
+  },
+  {
+   "name": "沙贝",
+   "name_en": "Shabei",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "03",
+     "label": "6号线|03"
+    }
+   ]
+  },
+  {
+   "name": "沥滘",
+   "name_en": "Lijiao",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "06",
+     "label": "3号线|06"
+    },
+    {
+     "line": "广佛",
+     "serial": "25",
+     "label": "广佛|25"
+    }
+   ]
+  },
+  {
+   "name": "河沙",
+   "name_en": "Hesha",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "04",
+     "label": "6号线|04"
+    }
+   ]
+  },
+  {
+   "name": "洛溪",
+   "name_en": "Luoxi",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "05",
+     "label": "2号线|05"
+    }
+   ]
+  },
+  {
+   "name": "洪圣沙",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "12",
+     "label": "7号线|12"
+    }
+   ]
+  },
+  {
+   "name": "流花",
+   "name_en": "Liuhua",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "15",
+     "label": "11号线|15"
+    }
+   ]
+  },
+  {
+   "name": "浔峰岗",
+   "name_en": "Xunfenggang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "01",
+     "label": "6号线|01"
+    },
+    {
+     "line": "12",
+     "serial": "01",
+     "label": "12号线|01"
+    }
+   ]
+  },
+  {
+   "name": "浔峰岗北",
+   "name_en": "Xunfenggang North",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "02",
+     "label": "12号线|02"
+    }
+   ]
+  },
+  {
+   "name": "海傍",
+   "name_en": "Haibang",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "01-4",
+     "label": "3号线|01-4"
+    },
+    {
+     "line": "4",
+     "serial": "14",
+     "label": "4号线|14"
+    }
+   ]
+  },
+  {
+   "name": "海心沙",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "02",
+     "label": "APM|02"
+    }
+   ]
+  },
+  {
+   "name": "海涌路",
+   "name_en": "Haichong Lu",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "01-3",
+     "label": "3号线|01-3"
+    }
+   ]
+  },
+  {
+   "name": "海珠广场",
+   "name_en": "Haizhu Square",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "12",
+     "label": "2号线|12"
+    },
+    {
+     "line": "6",
+     "serial": "10",
+     "label": "6号线|10"
+    }
+   ]
+  },
+  {
+   "name": "淘金",
+   "name_en": "Taojin",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "08",
+     "label": "5号线|08"
+    }
+   ]
+  },
+  {
+   "name": "深井",
+   "name_en": "Shenjing",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "10",
+     "label": "7号线|10"
+    }
+   ]
+  },
+  {
+   "name": "清㘵",
+   "name_en": "Qingbu",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "09",
+     "label": "9号线|09"
+    }
+   ]
+  },
+  {
+   "name": "清塘",
+   "name_en": "Qingtang",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "10",
+     "label": "9号线|10"
+    }
+   ]
+  },
+  {
+   "name": "滘口",
+   "name_en": "Jiaokou",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "01",
+     "label": "5号线|01"
+    }
+   ]
+  },
+  {
+   "name": "滘心",
+   "name_en": "Jiaoxin",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "01",
+     "label": "8号线|01"
+    }
+   ]
+  },
+  {
+   "name": "滨江东路",
+   "name_en": "Binjiang East Road",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "09",
+     "label": "10号线|09"
+    }
+   ]
+  },
+  {
+   "name": "潭村",
+   "name_en": "Tancun",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "15",
+     "label": "5号线|15"
+    }
+   ]
+  },
+  {
+   "name": "澜石",
+   "name_en": "Lanshi",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "04",
+     "label": "广佛|04"
+    }
+   ]
+  },
+  {
+   "name": "火炬",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "火炬东",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "火炬西",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "烈士陵园",
+   "name_en": "Martyrs' Park",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "11",
+     "label": "1号线|11"
+    }
+   ]
+  },
+  {
+   "name": "燕塘",
+   "name_en": "Yantang",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "19",
+     "label": "3号线|19"
+    },
+    {
+     "line": "6",
+     "serial": "20",
+     "label": "6号线|20"
+    }
+   ]
+  },
+  {
+   "name": "燕山",
+   "name_en": "Yanshan",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "20",
+     "label": "7号线|20"
+    }
+   ]
+  },
+  {
+   "name": "燕岗",
+   "name_en": "Yangang",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "25",
+     "label": "11号线|25"
+    },
+    {
+     "line": "广佛",
+     "serial": "22",
+     "label": "广佛|22"
+    }
+   ]
+  },
+  {
+   "name": "猎德",
+   "name_en": "Liede",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "14",
+     "label": "5号线|14"
+    }
+   ]
+  },
+  {
+   "name": "珠江新城",
+   "name_en": "Zhujiang New Town",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "10",
+     "label": "3号线|10"
+    },
+    {
+     "line": "5",
+     "serial": "13",
+     "label": "5号线|13"
+    }
+   ]
+  },
+  {
+   "name": "琶洲",
+   "name_en": "Pazhou",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "27",
+     "label": "8号线|27"
+    },
+    {
+     "line": "11",
+     "serial": "02",
+     "label": "11号线|02"
+    }
+   ]
+  },
+  {
+   "name": "田心村",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "番禺广场",
+   "name_en": "Panyu Square",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "01",
+     "label": "3号线|01"
+    },
+    {
+     "line": "18",
+     "serial": "03",
+     "label": "18号线|03"
+    },
+    {
+     "line": "22",
+     "serial": "01",
+     "label": "22号线|01"
+    }
+   ]
+  },
+  {
+   "name": "白云东平",
+   "name_en": "Baiyun Dongping",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "10",
+     "label": "14号线|10"
+    }
+   ]
+  },
+  {
+   "name": "白云公园",
+   "name_en": "Baiyun Park",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "19",
+     "label": "2号线|19"
+    }
+   ]
+  },
+  {
+   "name": "白云城市中心",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "白云大道北",
+   "name_en": "Baiyun Dadaobei",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "24",
+     "label": "3号线|24"
+    }
+   ]
+  },
+  {
+   "name": "白云文化广场",
+   "name_en": "Baiyun Culture Square",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "20",
+     "label": "2号线|20"
+    },
+    {
+     "line": "12",
+     "serial": "08",
+     "label": "12号线|08"
+    }
+   ]
+  },
+  {
+   "name": "白江",
+   "name_en": "Baijiang",
+   "codes": [
+    {
+     "line": "13",
+     "serial": "31",
+     "label": "13号线|31"
+    }
+   ]
+  },
+  {
+   "name": "知识城",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "25",
+     "label": "14号线|25"
+    }
+   ]
+  },
+  {
+   "name": "石井",
+   "name_en": "Shijing",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "03",
+     "label": "8号线|03"
+    }
+   ]
+  },
+  {
+   "name": "石围塘",
+   "name_en": "Shiweitang",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "19",
+     "label": "11号线|19"
+    }
+   ]
+  },
+  {
+   "name": "石壁",
+   "name_en": "Shibi",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "02",
+     "label": "2号线|02"
+    },
+    {
+     "line": "7",
+     "serial": "02",
+     "label": "7号线|02"
+    }
+   ]
+  },
+  {
+   "name": "石岐",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "石溪",
+   "name_en": "Shixi",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "23",
+     "label": "广佛|23"
+    }
+   ]
+  },
+  {
+   "name": "石潭",
+   "name_en": "Shitan",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "05",
+     "label": "8号线|05"
+    }
+   ]
+  },
+  {
+   "name": "石牌南",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "石牌桥",
+   "name_en": "Shipaiqiao",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "12",
+     "label": "3号线|12"
+    }
+   ]
+  },
+  {
+   "name": "石碁",
+   "name_en": "Shiqi",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "15",
+     "label": "4号线|15"
+    }
+   ]
+  },
+  {
+   "name": "石碁南",
+   "name_en": "Shiqinan",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "01-2",
+     "label": "3号线|01-2"
+    }
+   ]
+  },
+  {
+   "name": "磨碟沙",
+   "name_en": "Modiesha",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "25",
+     "label": "8号线|25"
+    },
+    {
+     "line": "18",
+     "serial": "07",
+     "label": "18号线|07"
+    }
+   ]
+  },
+  {
+   "name": "祖庙",
+   "name_en": "Zumiao",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "08",
+     "label": "广佛|08"
+    }
+   ]
+  },
+  {
+   "name": "神岗",
+   "name_en": "Shengang",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "18",
+     "label": "14号线|18"
+    }
+   ]
+  },
+  {
+   "name": "神舟路",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "07",
+     "label": "21号线|07"
+    }
+   ]
+  },
+  {
+   "name": "科丰路",
+   "name_en": "Kefenglu",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "17",
+     "label": "7号线|17"
+    }
+   ]
+  },
+  {
+   "name": "科学城",
+   "name_en": "Science City",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "08",
+     "label": "21号线|08"
+    }
+   ]
+  },
+  {
+   "name": "科韵路",
+   "name_en": "Keyun Lu",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "17",
+     "label": "5号线|17"
+    }
+   ]
+  },
+  {
+   "name": "竹料",
+   "name_en": "Zhuliao",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "13",
+     "label": "14号线|13"
+    }
+   ]
+  },
+  {
+   "name": "红卫",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "22",
+     "label": "14号线|22"
+    }
+   ]
+  },
+  {
+   "name": "纪念堂",
+   "name_en": "Sun Yat-Sen Memorial Hall",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "14",
+     "label": "2号线|14"
+    }
+   ]
+  },
+  {
+   "name": "罗冲围",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "署前路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "美的",
+   "name_en": "Midea",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-6",
+     "label": "7号线|01-6"
+    }
+   ]
+  },
+  {
+   "name": "美的大道",
+   "name_en": "Meidi Dadao",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-8",
+     "label": "7号线|01-8"
+    }
+   ]
+  },
+  {
+   "name": "聚龙",
+   "name_en": "Julong",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "06",
+     "label": "8号线|06"
+    },
+    {
+     "line": "12",
+     "serial": "04",
+     "label": "12号线|04"
+    }
+   ]
+  },
+  {
+   "name": "花围",
+   "name_en": "Huawei",
+   "codes": [
+    {
+     "line": "10",
+     "serial": "02",
+     "label": "10号线|02"
+    }
+   ]
+  },
+  {
+   "name": "花地湾",
+   "name_en": "Huadiwan",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "03",
+     "label": "1号线|03"
+    }
+   ]
+  },
+  {
+   "name": "花城大道",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "04",
+     "label": "APM|04"
+    }
+   ]
+  },
+  {
+   "name": "花城广场北",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "花城路",
+   "name_en": "Huachenglu",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "04",
+     "label": "9号线|04"
+    }
+   ]
+  },
+  {
+   "name": "花果山公园",
+   "name_en": "Huaguoshan Park",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "05",
+     "label": "9号线|05"
+    }
+   ]
+  },
+  {
+   "name": "花都广场",
+   "name_en": "Huadu Square",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "06",
+     "label": "9号线|06"
+    }
+   ]
+  },
+  {
+   "name": "花都汽车城",
+   "name_en": "Huadu Auto City",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "02",
+     "label": "9号线|02"
+    }
+   ]
+  },
+  {
+   "name": "芳村",
+   "name_en": "Fangcun",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "04",
+     "label": "1号线|04"
+    },
+    {
+     "line": "11",
+     "serial": "20",
+     "label": "11号线|20"
+    },
+    {
+     "line": "22",
+     "serial": "08",
+     "label": "22号线|08"
+    }
+   ]
+  },
+  {
+   "name": "苏元",
+   "name_en": "Suyuan",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "30",
+     "label": "6号线|30"
+    },
+    {
+     "line": "21",
+     "serial": "09",
+     "label": "21号线|09"
+    }
+   ]
+  },
+  {
+   "name": "莲塘",
+   "name_en": "Liantang",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "08",
+     "label": "9号线|08"
+    }
+   ]
+  },
+  {
+   "name": "莲花",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "菊树",
+   "name_en": "Jushu",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "17",
+     "label": "广佛|17"
+    }
+   ]
+  },
+  {
+   "name": "萝岗",
+   "name_en": "Luogang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "31",
+     "label": "6号线|31"
+    },
+    {
+     "line": "7",
+     "serial": "18",
+     "label": "7号线|18"
+    }
+   ]
+  },
+  {
+   "name": "萧岗",
+   "name_en": "Xiao-gang",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "21",
+     "label": "2号线|21"
+    }
+   ]
+  },
+  {
+   "name": "蒙地",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "蕉门",
+   "name_en": "Jiaomen",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "08",
+     "label": "4号线|08"
+    }
+   ]
+  },
+  {
+   "name": "裕丰围",
+   "name_en": "Yufengwei",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "13",
+     "label": "7号线|13"
+    },
+    {
+     "line": "13",
+     "serial": "25",
+     "label": "13号线|25"
+    }
+   ]
+  },
+  {
+   "name": "西场",
+   "name_en": "Xichang",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "04",
+     "label": "5号线|04"
+    }
+   ]
+  },
+  {
+   "name": "西塱",
+   "name_en": "Xilang",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "01",
+     "label": "1号线|01"
+    },
+    {
+     "line": "10",
+     "serial": "01",
+     "label": "10号线|01"
+    },
+    {
+     "line": "22",
+     "serial": "07",
+     "label": "22号线|07"
+    },
+    {
+     "line": "广佛",
+     "serial": "18",
+     "label": "广佛|18"
+    }
+   ]
+  },
+  {
+   "name": "西村",
+   "name_en": "Xicun",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "05",
+     "label": "5号线|05"
+    },
+    {
+     "line": "8",
+     "serial": "10",
+     "label": "8号线|10"
+    }
+   ]
+  },
+  {
+   "name": "西洲",
+   "name_en": "Xizhou",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "03",
+     "label": "12号线|03"
+    }
+   ]
+  },
+  {
+   "name": "西门口",
+   "name_en": "Ximenkou",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "08",
+     "label": "1号线|08"
+    }
+   ]
+  },
+  {
+   "name": "谢村",
+   "name_en": "Xiecun",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "03",
+     "label": "7号线|03"
+    }
+   ]
+  },
+  {
+   "name": "赤岗",
+   "name_en": "Chigang",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "24",
+     "label": "8号线|24"
+    },
+    {
+     "line": "12",
+     "serial": "19",
+     "label": "12号线|19"
+    }
+   ]
+  },
+  {
+   "name": "赤岗塔",
+   "name_en": "Chigang Pagoda",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "18",
+     "label": "12号线|18"
+    }
+   ]
+  },
+  {
+   "name": "赤沙",
+   "name_en": "Chisha",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "01",
+     "label": "11号线|01"
+    },
+    {
+     "line": "12",
+     "serial": "21",
+     "label": "12号线|21"
+    }
+   ]
+  },
+  {
+   "name": "赤沙北",
+   "name_en": "Chisha North",
+   "codes": [
+    {
+     "line": "12",
+     "serial": "20",
+     "label": "12号线|20"
+    }
+   ]
+  },
+  {
+   "name": "赤草",
+   "name_en": "Chicao",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "19",
+     "label": "14号线|19"
+    }
+   ]
+  },
+  {
+   "name": "越秀公园",
+   "name_en": "Yuexiu Park",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "15",
+     "label": "2号线|15"
+    }
+   ]
+  },
+  {
+   "name": "车陂",
+   "name_en": "Chebei",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "23",
+     "label": "4号线|23"
+    },
+    {
+     "line": "13",
+     "serial": "22",
+     "label": "13号线|22"
+    }
+   ]
+  },
+  {
+   "name": "车陂南",
+   "name_en": "Chebeinan",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "22",
+     "label": "4号线|22"
+    },
+    {
+     "line": "5",
+     "serial": "18",
+     "label": "5号线|18"
+    }
+   ]
+  },
+  {
+   "name": "逸景路",
+   "name_en": "Yijing Road",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "28",
+     "label": "11号线|28"
+    }
+   ]
+  },
+  {
+   "name": "金坑",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "12",
+     "label": "21号线|12"
+    }
+   ]
+  },
+  {
+   "name": "金峰",
+   "name_en": "Jinfeng",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "28",
+     "label": "6号线|28"
+    }
+   ]
+  },
+  {
+   "name": "金洲",
+   "name_en": "Jinzhou",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "07",
+     "label": "4号线|07"
+    }
+   ]
+  },
+  {
+   "name": "金融高新区",
+   "name_en": "Financial Hi-Tech Zone",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "15",
+     "label": "广佛|15"
+    }
+   ]
+  },
+  {
+   "name": "钟岗",
+   "name_en": "Zhonggang",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "20",
+     "label": "21号线|20"
+    }
+   ]
+  },
+  {
+   "name": "钟村",
+   "name_en": "Zhongcun",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "04",
+     "label": "7号线|04"
+    }
+   ]
+  },
+  {
+   "name": "钟落潭",
+   "name_en": "Zhongluotan",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "14",
+     "label": "14号线|14"
+    }
+   ]
+  },
+  {
+   "name": "锦龙",
+   "name_en": "Jinlong",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-4",
+     "label": "7号线|01-4"
+    }
+   ]
+  },
+  {
+   "name": "镇龙",
+   "name_en": "Zhenlong",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "30",
+     "label": "14号线|30"
+    },
+    {
+     "line": "21",
+     "serial": "14",
+     "label": "21号线|14"
+    }
+   ]
+  },
+  {
+   "name": "镇龙北",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "29",
+     "label": "14号线|29"
+    }
+   ]
+  },
+  {
+   "name": "镇龙西",
+   "name_en": "Zhenlongxi",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "13",
+     "label": "21号线|13"
+    }
+   ]
+  },
+  {
+   "name": "长寿路",
+   "name_en": "Changshou Lu",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "06",
+     "label": "1号线|06"
+    }
+   ]
+  },
+  {
+   "name": "长平",
+   "name_en": "Changping",
+   "codes": [
+    {
+     "line": "21",
+     "serial": "11",
+     "label": "21号线|11"
+    }
+   ]
+  },
+  {
+   "name": "长洲",
+   "name_en": "Changzhou",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "11",
+     "label": "7号线|11"
+    }
+   ]
+  },
+  {
+   "name": "长湴",
+   "name_en": "Changban",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "22",
+     "label": "6号线|22"
+    }
+   ]
+  },
+  {
+   "name": "陈头岗",
+   "name_en": "Chentougang",
+   "codes": [
+    {
+     "line": "22",
+     "serial": "04",
+     "label": "22号线|04"
+    }
+   ]
+  },
+  {
+   "name": "陈家祠",
+   "name_en": "Chen Clan Academy",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "07",
+     "label": "1号线|07"
+    },
+    {
+     "line": "8",
+     "serial": "12",
+     "label": "8号线|12"
+    }
+   ]
+  },
+  {
+   "name": "陈村",
+   "name_en": "Chencun",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-3",
+     "label": "7号线|01-3"
+    }
+   ]
+  },
+  {
+   "name": "陈村北",
+   "name_en": "Chencunbei",
+   "codes": [
+    {
+     "line": "7",
+     "serial": "01-2",
+     "label": "7号线|01-2"
+    }
+   ]
+  },
+  {
+   "name": "飞沙角",
+   "name_en": "Feishajiao",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "06",
+     "label": "4号线|06"
+    }
+   ]
+  },
+  {
+   "name": "飞翔公园",
+   "name_en": "Feixiang Park",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "18",
+     "label": "2号线|18"
+    }
+   ]
+  },
+  {
+   "name": "飞鹅岭",
+   "name_en": "Fei'eling",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "01",
+     "label": "9号线|01"
+    }
+   ]
+  },
+  {
+   "name": "香山",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "香雪",
+   "name_en": "Xiangxue",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "32",
+     "label": "6号线|32"
+    }
+   ]
+  },
+  {
+   "name": "马务",
+   "name_en": "Mawu",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "05",
+     "label": "14号线|05"
+    }
+   ]
+  },
+  {
+   "name": "马沥",
+   "name_en": "Mali",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "15",
+     "label": "14号线|15"
+    }
+   ]
+  },
+  {
+   "name": "马鞍山公园",
+   "name_en": "Ma'anshan Park",
+   "codes": [
+    {
+     "line": "9",
+     "serial": "07",
+     "label": "9号线|07"
+    }
+   ]
+  },
+  {
+   "name": "高塘石",
+   "name_en": "Gaotangshi",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "26",
+     "label": "6号线|26"
+    }
+   ]
+  },
+  {
+   "name": "高增",
+   "name_en": "Gaozeng",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "28",
+     "label": "3号线|28"
+    },
+    {
+     "line": "9",
+     "serial": "11",
+     "label": "9号线|11"
+    }
+   ]
+  },
+  {
+   "name": "魁奇路",
+   "name_en": "Kuiqi Lu",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "05",
+     "label": "广佛|05"
+    }
+   ]
+  },
+  {
+   "name": "鱼珠",
+   "name_en": "Yuzhu",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "21",
+     "label": "5号线|21"
+    },
+    {
+     "line": "13",
+     "serial": "24",
+     "label": "13号线|24"
+    }
+   ]
+  },
+  {
+   "name": "鸦岗",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "鹅掌坦",
+   "name_en": "Ezhangtan",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "09",
+     "label": "8号线|09"
+    }
+   ]
+  },
+  {
+   "name": "鹤洞",
+   "name_en": "Hedong",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "19",
+     "label": "广佛|19"
+    }
+   ]
+  },
+  {
+   "name": "鹤洞东",
+   "name_en": "Hedong East",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "23",
+     "label": "11号线|23"
+    }
+   ]
+  },
+  {
+   "name": "鹤边",
+   "name_en": "Hebian",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "06",
+     "label": "14号线|06"
+    }
+   ]
+  },
+  {
+   "name": "鹤龙",
+   "name_en": "Helong",
+   "codes": [
+    {
+     "line": "14",
+     "serial": "07",
+     "label": "14号线|07"
+    }
+   ]
+  },
+  {
+   "name": "鹭江",
+   "name_en": "Lujiang",
+   "codes": [
+    {
+     "line": "8",
+     "serial": "22",
+     "label": "8号线|22"
+    }
+   ]
+  },
+  {
+   "name": "麓湖",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "黄埔大道",
+   "name_en": "",
+   "codes": [
+    {
+     "line": "APM",
+     "serial": "06",
+     "label": "APM|06"
+    }
+   ]
+  },
+  {
+   "name": "黄埔新港",
+   "name_en": "Huangpu New Port",
+   "codes": [
+    {
+     "line": "5",
+     "serial": "30",
+     "label": "5号线|30"
+    }
+   ]
+  },
+  {
+   "name": "黄村",
+   "name_en": "Huangcun",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "24",
+     "label": "4号线|24"
+    },
+    {
+     "line": "21",
+     "serial": "04",
+     "label": "21号线|04"
+    }
+   ]
+  },
+  {
+   "name": "黄沙",
+   "name_en": "Huangsha",
+   "codes": [
+    {
+     "line": "1",
+     "serial": "05",
+     "label": "1号线|05"
+    },
+    {
+     "line": "6",
+     "serial": "07",
+     "label": "6号线|07"
+    }
+   ]
+  },
+  {
+   "name": "黄花岗",
+   "name_en": "Huanghuagang",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "16",
+     "label": "6号线|16"
+    }
+   ]
+  },
+  {
+   "name": "黄边",
+   "name_en": "Huangbian",
+   "codes": [
+    {
+     "line": "2",
+     "serial": "23",
+     "label": "2号线|23"
+    }
+   ]
+  },
+  {
+   "name": "黄阁",
+   "name_en": "Huangge",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "09",
+     "label": "4号线|09"
+    }
+   ]
+  },
+  {
+   "name": "黄阁汽车城",
+   "name_en": "Huangge Auto Town",
+   "codes": [
+    {
+     "line": "4",
+     "serial": "10",
+     "label": "4号线|10"
+    }
+   ]
+  },
+  {
+   "name": "黄陂",
+   "name_en": "Huangbei",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "27",
+     "label": "6号线|27"
+    }
+   ]
+  },
+  {
+   "name": "龙口西",
+   "name_en": "Longkouxi",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "07",
+     "label": "11号线|07"
+    }
+   ]
+  },
+  {
+   "name": "龙归",
+   "name_en": "Longgui",
+   "codes": [
+    {
+     "line": "3",
+     "serial": "26",
+     "label": "3号线|26"
+    }
+   ]
+  },
+  {
+   "name": "龙泽路",
+   "name_en": "",
+   "codes": []
+  },
+  {
+   "name": "龙洞",
+   "name_en": "Longdong",
+   "codes": [
+    {
+     "line": "6",
+     "serial": "24",
+     "label": "6号线|24"
+    }
+   ]
+  },
+  {
+   "name": "龙溪",
+   "name_en": "Longxi",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "16",
+     "label": "广佛|16"
+    }
+   ]
+  },
+  {
+   "name": "龙潭",
+   "name_en": "Longtan",
+   "codes": [
+    {
+     "line": "11",
+     "serial": "31",
+     "label": "11号线|31"
+    },
+    {
+     "line": "18",
+     "serial": "06",
+     "label": "18号线|06"
+    }
+   ]
+  },
+  {
+   "name": "𧒽岗",
+   "name_en": "Leigang",
+   "codes": [
+    {
+     "line": "广佛",
+     "serial": "13",
+     "label": "广佛|13"
+    }
+   ]
+  }
+ ]
+}

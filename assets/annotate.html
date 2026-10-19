@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>站位标注工具</title>
+<style>
+html,body{margin:0;height:100%;background:#222;color:#eee;font-family:'Microsoft YaHei',sans-serif;overflow:hidden}
+#wrap{position:relative;width:100%;height:100%;overflow:hidden;cursor:crosshair}
+#map{position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;-webkit-user-drag:none}
+#ov{position:absolute;left:0;top:0;transform-origin:0 0;pointer-events:none}
+#panel{position:fixed;right:0;top:0;width:340px;height:100%;background:#2b2b2b;border-left:1px solid #555;
+  padding:10px;box-sizing:border-box;overflow-y:auto;font-size:13px}
+#panel h3{margin:4px 0 8px;font-size:15px}
+#panel select,#panel button{font-size:13px;padding:4px 8px;margin:2px 0;background:#3c3c3c;color:#eee;border:1px solid #666;border-radius:4px;cursor:pointer}
+#panel button:hover{background:#4a4a4a}
+.btnrow{display:flex;gap:6px;flex-wrap:wrap}
+#stlist{margin-top:8px}
+.st{display:flex;align-items:center;gap:6px;padding:3px 6px;border-radius:4px;cursor:pointer}
+.st:hover{background:#3a3a3a}
+.st.cur{background:#55402a;outline:1px solid #c80}
+.st .no{width:26px;color:#999;font-size:11px}
+.st .nm{flex:1}
+.st .dot{width:10px;height:10px;border-radius:50%;background:#c33}
+.st.ok .dot{background:#3c3}
+#hint{color:#e8b;margin:6px 0;font-size:12px}
+#cur{font-size:14px;margin:6px 0;color:#ffd}
+#exp{width:100%;height:120px;margin-top:8px;background:#1d1d1d;color:#9f9;border:none;padding:6px;font-size:11px;box-sizing:border-box}
+#tip{position:fixed;left:8px;top:8px;background:#000c;padding:6px 10px;border-radius:6px;font-size:12px;color:#ccc;z-index:9}
+kbd{background:#444;padding:1px 5px;border-radius:3px;font-size:11px}
+</style>
+</head>
+<body>
+<div id="tip">滚轮=缩放 拖拽=平移 单击=给当前站定位 S=下一站 W=上一站</div>
+<div id="wrap"><img id="map" src="gz-tim-annot.svg"><svg id="ov"></svg></div>
+<div id="panel">
+  <h3>站位标注</h3>
+  <div class="btnrow">
+    <select id="linesel"></select>
+  </div>
+  <div id="cur">—</div>
+  <div class="btnrow">
+    <button onclick="nav(-1)">◀ 上一站 (W)</button>
+    <button onclick="nav(1)">下一站 (S)</button>
+    <button onclick="clearCur()">清除当前</button>
+  </div>
+  <div id="hint">灰色虚线=原图被漂白隐形的线段(已恢复可见)。按站序逐个点击图上站位。</div>
+  <div id="stlist"></div>
+  <div class="btnrow" style="margin-top:10px">
+    <button onclick="exportJSON()">生成JSON</button>
+    <button onclick="copyExp()">复制</button>
+  </div>
+  <textarea id="exp" placeholder="点「生成JSON」"></textarea>
+</div>
+<script>
+// ===== 站表(官方案号序) + 已锁定预填 =====
+const LINES = {
+"5号线": {pos:{
+ "滘口":[994.5,956.2],"坦尾":[1066.5,956.2],"中山八":[1111.5,956.2],"西场":[1120.5,848.2],
+ "西村":[1174.5,839.2],"广州火车站":[1336.5,839.2],"小北":[1399.5,902.2],"淘金":[1444.5,947.2],
+ "区庄":[1498.5,920.2],"动物园":[1552.5,933.8],"杨箕":[1552.5,1010.2],"五羊邨":[1579.5,1064.2],
+ "珠江新城":[1660.5,1064.2],"猎德":[1768.5,1064.2],"潭村":[1822.5,1064.2],"员村":[1876.5,1064.2],
+ "科韵路":[1937.2,1064.2],
+ "车陂南":[2254.5,848.2],
+ "双沙":[2200.5,1010.2],"庙头":[2340.0,1010.2],"夏园":[2380.5,1010.2],
+ "保盈大道":[2452.5,1073.2],"夏港":[2488.5,1109.2],"黄埔新港":[2524.5,1145.2]},
+ sts:["滘口","坦尾","中山八","西场","西村","广州火车站","小北","淘金","区庄","动物园","杨箕","五羊邨","珠江新城","猎德","潭村","员村","科韵路","车陂南","东圃","三溪","鱼珠","大沙地","大沙东","文冲","双沙","庙头","夏园","保盈大道","夏港","黄埔新港"]},
+"6号线": {pos:{
+ "浔峰岗":[1066.5,740.2],"横沙":[1066.5,794.2],"沙贝":[1066.5,848.2],"河沙":[1066.5,902.2],
+ "坦尾":[1066.5,956.2],"黄沙":[1174.5,1064.2],"文化公园":[1228.5,1064.2],"一德路":[1282.5,1064.2],
+ "海珠广场":[1336.5,1064.2],"北京路":[1390.5,1064.2],"团一大广场":[1444.5,1064.2],
+ "东山口":[1498.5,1010.2],"区庄":[1498.5,920.2],"黄花岗":[1521.0,882.0],
+ "燕塘":[1606.5,848.2],"天河客运站":[1660.5,796.5],
+ "长湴":[1633.5,821.2],"龙洞":[1831.5,740.2],"柯木塱":[1878.8,740.2],
+ "高塘石":[1923.8,740.2],"黄陂":[1975.5,740.2],"金峰":[2020.5,740.2],"暹岗":[2065.5,740.2],
+ "苏元":[2110.5,740.2],"萝岗":[2155.5,740.2],"香雪":[2200.5,740.2]},
+ sts:["浔峰岗","横沙","沙贝","河沙","坦尾","如意坊","黄沙","文化公园","一德路","海珠广场","北京路","团一大广场","东湖","东山口","区庄","黄花岗","沙河顶","沙河","天平架","燕塘","天河客运站","长湴","植物园","龙洞","柯木塱","高塘石","黄陂","金峰","暹岗","苏元","萝岗","香雪"]}
+};
+const VB=[0,0,2848.5,2054.25];
+const map=document.getElementById('map'),ov=document.getElementById('ov'),wrap=document.getElementById('wrap');
+let scale=0.5,tx=0,ty=0;
+map.onload=init;
+if(map.complete)init();
+function init(){
+  ov.setAttribute('viewBox',VB.join(' '));
+  ov.setAttribute('width',VB[2]);ov.setAttribute('height',VB[3]);
+  fit();render();
+}
+function fit(){
+  const w=wrap.clientWidth,h=wrap.clientHeight;
+  scale=Math.min(w/VB[2],h/VB[3])*0.95;tx=(w-VB[2]*scale)/2;ty=(h-VB[3]*scale)/2;apply();
+}
+function apply(){map.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`;ov.style.transform=map.style.transform;}
+let curLine='5号线',curIdx=0;
+const sel=document.getElementById('linesel');
+Object.keys(LINES).forEach(k=>{const o=document.createElement('option');o.value=o.textContent=k;sel.appendChild(o);});
+sel.onchange=()=>{curLine=sel.value;curIdx=firstEmpty();render();};
+function firstEmpty(){const L=LINES[curLine];for(let i=0;i<L.sts.length;i++)if(!L.pos[L.sts[i]])return i;return 0;}
+wrap.addEventListener('wheel',e=>{e.preventDefault();
+  const f=e.deltaY<0?1.15:1/1.15;const ns=scale*f;
+  const r=wrap.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+  tx=mx-(mx-tx)*(ns/scale);ty=my-(my-ty)*(ns/scale);scale=ns;apply();
+},{passive:false});
+let drag=null;
+wrap.addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,tx,ty,moved:false};});
+window.addEventListener('mousemove',e=>{if(!drag)return;
+  if(Math.abs(e.clientX-drag.x)+Math.abs(e.clientY-drag.y)>4)drag.moved=true;
+  if(drag.moved){tx=drag.tx+e.clientX-drag.x;ty=drag.ty+e.clientY-drag.y;apply();}});
+window.addEventListener('mouseup',()=>{drag=null;});
+wrap.addEventListener('click',e=>{
+  if(drag&&drag.moved)return;
+  const r=wrap.getBoundingClientRect();
+  const x=(e.clientX-r.left-tx)/scale, y=(e.clientY-r.top-ty)/scale;
+  if(x<VB[0]||y<VB[1]||x>VB[0]+VB[2]||y>VB[1]+VB[3])return;
+  const L=LINES[curLine],nm=L.sts[curIdx];
+  L.pos[nm]=[Math.round(x*10)/10,Math.round(y*10)/10];
+  render();save();
+  if(curIdx<L.sts.length-1)nav(1);
+});
+window.addEventListener('keydown',e=>{
+  if(e.key==='s'||e.key==='S')nav(1);
+  if(e.key==='w'||e.key==='W')nav(-1);
+});
+function nav(d){const L=LINES[curLine];curIdx=Math.max(0,Math.min(L.sts.length-1,curIdx+d));render();}
+function clearCur(){const L=LINES[curLine];delete L.pos[L.sts[curIdx]];render();save();}
+function render(){
+  const L=LINES[curLine];
+  document.getElementById('cur').textContent=`#${curIdx+1} ${L.sts[curIdx]} ${L.pos[L.sts[curIdx]]?'✓'+L.pos[L.sts[curIdx]].join(','):''}`;
+  let h='';
+  L.sts.forEach((nm,i)=>{
+    const ok=!!L.pos[nm];
+    h+=`<div class="st${i===curIdx?' cur':''}${ok?' ok':''}" data-i="${i}"><span class="no">${String(i+1).padStart(2,'0')}</span><span class="nm">${nm}</span><span class="dot"></span></div>`;
+  });
+  document.getElementById('stlist').innerHTML=h;
+  document.querySelectorAll('.st').forEach(el=>el.onclick=()=>{curIdx=+el.dataset.i;render();});
+  let s='';
+  const pts=L.sts.map(nm=>L.pos[nm]).filter(Boolean);
+  if(pts.length>1){
+    const idx=L.sts.map((nm,i)=>L.pos[nm]?i:-1).filter(i=>i>=0);
+    let d='';idx.forEach((vi,k)=>{const p=L.pos[L.sts[vi]];d+=(k?'L':'M')+p[0]+','+p[1];});
+    s+=`<path d="${d}" fill="none" stroke="#ffcf40" stroke-width="4" opacity="0.85"/>`;
+  }
+  L.sts.forEach((nm,i)=>{const p=L.pos[nm];if(!p)return;
+    s+=`<circle cx="${p[0]}" cy="${p[1]}" r="9" fill="${i===curIdx?'#ff8':'#3c3'}" stroke="#000" stroke-width="1.5"/>`+
+       `<text x="${p[0]}" y="${p[1]-13}" font-size="14" font-weight="700" text-anchor="middle" fill="#ffd" stroke="#000" stroke-width="0.6" paint-order="stroke">${i+1}</text>`;
+  });
+  ov.innerHTML=s;
+}
+function exportJSON(){
+  document.getElementById('exp').value=JSON.stringify(LINES[curLine].pos);
+}
+function copyExp(){
+  exportJSON();const t=document.getElementById('exp');t.select();document.execCommand('copy');
+  document.getElementById('hint').textContent='已复制到剪贴板 ✓';
+}
+function save(){try{localStorage.setItem('annot-'+curLine,JSON.stringify(LINES[curLine].pos));}catch(e){}}
+Object.keys(LINES).forEach(k=>{try{const s=localStorage.getItem('annot-'+k);if(s)LINES[k].pos=JSON.parse(s);}catch(e){}});
+curIdx=firstEmpty();render();
+</script>
+</body>
+</html>

@@ -147,6 +147,14 @@ for nm in L1:
                    'diag': 0.45 < abs(ux) and 0.45 < abs(uy)})
 for _pi, _lb in enumerate(labels):
     _lb['_parity'] = _pi
+# 验收钉位: 用户确认过的终点标签盒(重放不得漂移; 嘉禾望岗 2026-10-19 验收)
+PINNED = {'嘉禾望岗': (1452.8, 577.8, 1494.8, 596.3)}
+for _lb in labels:
+    if _lb['nm'] in PINNED:
+        _lb['pinned'] = True
+        _lb['bx0'], _lb['by0'], _lb['bx1'], _lb['by1'] = PINNED[_lb['nm']]
+        _lb['desc'] = '钉位'
+print('钉位:', list(PINNED))
 print('拐角站:', [lb['nm'] for lb in labels if lb['junc']])
 print('斜线站:', [lb['nm'] for lb in labels if lb['diag']])
 
@@ -154,27 +162,41 @@ print('斜线站:', [lb['nm'] for lb in labels if lb['diag']])
 def candidates(lb):
     ax, ay, bw, bh = lb['ax'], lb['ay'], lb['bw'], lb['bh']
     out = []
+    if lb['diag'] and not lb['term']:
+
+        # 规则8: 法线两侧放置(优先线左侧 nx<0)
+        normals = sorted([(-lb['uy'], lb['ux']), (lb['uy'], -lb['ux'])], key=lambda n: n[0])
+        for k, (nx, ny) in enumerate(normals):
+            d = G + (abs(nx) * bw + abs(ny) * bh) / 2
+            cx, cy = ax + nx * d, ay + ny * d
+            out.append(('法左' if nx < 0 else '法右', cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2))
+        out.append(('上', ax - bw / 2, ay - G - bh, ax + bw / 2, ay - G))
+        out.append(('下', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh))
+        return out
     if lb['term']:
         if lb['horiz']:
-            out.append(('端左', ax-G-bw, ay-bh/2, ax-G, ay+bh/2))
-            out.append(('端右', ax+G, ay-bh/2, ax+G+bw, ay+bh/2))
+            out.append(('端左', ax - G - bw, ay - bh / 2, ax - G, ay + bh / 2))
+            out.append(('端右', ax + G, ay - bh / 2, ax + G + bw, ay + bh / 2))
         else:
-            out.append(('下中', ax-bw/2, ay+G, ax+bw/2, ay+G+bh))
-            out.append(('上中', ax-bw/2, ay-G-bh, ax+bw/2, ay-G))
+            out.append(('下中', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh))
+            out.append(('上中', ax - bw / 2, ay - G - bh, ax + bw / 2, ay - G))
         return out
     if lb['horiz']:
-        out.append(('上', ax-bw/2, ay-G-bh, ax+bw/2, ay-G))
-        out.append(('下', ax-bw/2, ay+G, ax+bw/2, ay+G+bh))
-        out.append(('左', ax-G-bw, ay-bh/2, ax-G, ay+bh/2))
-        out.append(('右', ax+G, ay-bh/2, ax+G+bw, ay+bh/2))
+        out.append(('上', ax - bw / 2, ay - G - bh, ax + bw / 2, ay - G))
+        out.append(('下', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh))
+        out.append(('左', ax - G - bw, ay - bh / 2, ax - G, ay + bh / 2))
+        out.append(('右', ax + G, ay - bh / 2, ax + G + bw, ay + bh / 2))
     else:
-        out.append(('左', ax-G-bw, ay-bh/2, ax-G, ay+bh/2))
-        out.append(('右', ax+G, ay-bh/2, ax+G+bw, ay+bh/2))
-        out.append(('上', ax-bw/2, ay-G-bh, ax+bw/2, ay-G))
-        out.append(('下', ax-bw/2, ay+G, ax+bw/2, ay+G+bh))
+        out.append(('左', ax - G - bw, ay - bh / 2, ax - G, ay + bh / 2))
+        out.append(('右', ax + G, ay - bh / 2, ax + G + bw, ay + bh / 2))
+        out.append(('上', ax - bw / 2, ay - G - bh, ax + bw / 2, ay - G))
+        out.append(('下', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh))
     return out
 
 def push_to_gap(lb, desc, bx0, by0, bx1, by1):
+    if desc.startswith('法'):
+        # 规则8法向盒的净距由构造保证(G+半投影), 轴向外推=沿线滑动, 禁推
+        return bx0, by0, bx1, by1
     pushed = 0.0
     for _ in range(6):
         cl = clearance(bx0, by0, bx1, by1)
@@ -257,7 +279,10 @@ def place(lb):
 
 
 for lb in labels:
-    if lb.get('pinned') or lb['junc']:
+    if lb.get('pinned'):
+        placed.append(lb)
+        continue
+    if lb['junc']:
         continue
     place(lb)
 for lb in labels:
