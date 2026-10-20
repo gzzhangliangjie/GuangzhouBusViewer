@@ -149,6 +149,24 @@ CFG = {
       '赤岗': (1714.5, 1176.8), '磨碟沙': (1768.5, 1145.2), '新港东': (1822.5, 1145.2),
       '琶洲': (1885.5, 1145.2), '万胜围': (1984.5, 1145.2),
   }),
+  # 12号线北段: 独立标准卡(中间产物), 由 line12-both.py 与南段合并为一卡两段
+  '12号线北段': dict(line='12号线', gid='_x31_2', color='#33691E',
+      outpath='data/_card-bases/line-12号线北段.svg',
+      stations=['浔峰岗', '浔峰岗北', '聚龙', '广州白云站', '新市墟', '白云文化广场', '广州体育馆'],
+      en_extra={'浔峰岗': 'Xunfenggang', '浔峰岗北': 'Xunfenggang North', '聚龙': 'Julong',
+                '广州白云站': 'Guangzhou Baiyun Railway Station', '新市墟': 'Xinshixu',
+                '白云文化广场': 'Baiyun Culture Square', '广州体育馆': 'Guangzhou Gymnasium'},
+      chains=[['浔峰岗', '浔峰岗北', '聚龙', '广州白云站', '新市墟', '白云文化广场', '广州体育馆']],
+      custom_segs=[
+          (1066.5, 740.25, 1075.5, 722.25), (1075.5, 722.25, 1102.5, 695.25),
+          (1102.5, 695.25, 1120.5, 686.25), (1120.5, 686.25, 1374.75, 686.25),
+          (1374.75, 686.25, 1392.75, 695.25), (1392.75, 695.25, 1437.75, 740.25),
+      ],
+      overrides={
+          '浔峰岗': (1066.5, 740.25), '浔峰岗北': (1089.0, 708.75), '聚龙': (1174.5, 686.25),
+          '广州白云站': (1246.5, 686.25), '新市墟': (1325.25, 686.25),
+          '白云文化广场': (1390.5, 693.0), '广州体育馆': (1437.75, 740.25),
+      }),
 }
 
 if __name__ == '__main__':
@@ -157,8 +175,10 @@ if __name__ == '__main__':
     for nm in names:
         c = CFG[nm]
         print('#### %s' % nm)
-        ok = build(nm, c['gid'], c['color'], overrides=c.get('overrides'),
-                   loop=c.get('loop', False), chains=_chains_for(nm),
-                   custom_segs=c.get('custom_segs'), branch=c.get('branch'), pad=c.get('pad'))
+        lz = c.get('line', nm)
+        ok = build(lz, c['gid'], c['color'], overrides=c.get('overrides'),
+                   loop=c.get('loop', False), chains=c.get('chains') or _chains_for(lz),
+                   custom_segs=c.get('custom_segs'), branch=c.get('branch'), pad=c.get('pad'),
+                   stations=c.get('stations'), en_extra=c.get('en_extra'), outpath=c.get('outpath'))
         ok_all = ok_all and ok
     sys.exit(0 if ok_all else 1)

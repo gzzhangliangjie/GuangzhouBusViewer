@@ -575,7 +575,7 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
     for nm, (ax, ay) in zip(stations, circles_xy):
         en = EN.get(nm, '')
         bw = max(2 * text_half_width(nm), 2 * text_half_width(en, zh=False))
-        bh = ZH_H + GAP2 + (EN_H if en else 0)
+        bh = ZH_H + GAP2 + (EN_H + (6.5 if split_en(en, nm) else 0) if en else 0)  # 拆行第二行预留
         best, bd, bdir = None, 1e18, (1, 0)
         for s in segs:
             d = seg_pt_dist(s, ax, ay)
@@ -610,7 +610,28 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
             out.append(('下', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh))
             return out
         if lb['nm'] in TERM:
-            # 终点文字=路线延长线上居中(嘉禾望岗验收版式): 竖直进站->上下中, 水平->端左端右
+            # 终点文字=路线延长线上居中(嘉禾望岗/二沙岛验收版式): 延长线候选一律最先,
+            # 外向=最近两段外向均值(贴轴|u|<0.25吸附, 45°不再被规则9阈值吞掉)
+            nn = sorted(segs, key=lambda s: seg_pt_dist(s, ax, ay))[:2]
+            vx = vy = 0.0
+            for s in nn:
+                d1 = math.hypot(s[0] - ax, s[1] - ay)
+                d2 = math.hypot(s[2] - ax, s[3] - ay)
+                fx, fy = (s[2], s[3]) if d1 < d2 else (s[0], s[1])
+                L2 = math.hypot(fx - ax, fy - ay) or 1.0
+                vx += (ax - fx) / L2
+                vy += (ay - fy) / L2
+            L2 = math.hypot(vx, vy) or 1.0
+            ux, uy = vx / L2, vy / L2
+            if 0 <= abs(ux) < 0.25:
+                ux = 0.0
+            if 0 <= abs(uy) < 0.25:
+                uy = 0.0
+            L2 = math.hypot(ux, uy) or 1.0
+            ux, uy = ux / L2, uy / L2
+            d = G + (bw * abs(ux) + bh * abs(uy)) / 2
+            cx, cy = ax + ux * d, ay + uy * d
+            out.append(('延长', cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2))
             if lb['diag']:
                 normals = sorted([(-lb['uy'], lb['ux']), (lb['uy'], -lb['ux'])], key=lambda n: n[0])
                 for nx, ny in normals:
@@ -638,7 +659,7 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
         return out
 
     def push(desc, bx0, by0, bx1, by1, ax, ay):
-        if desc.startswith('法'):
+        if desc.startswith('法') or desc == '延长':
             return bx0, by0, bx1, by1
         pushed = 0.0
         for _ in range(6):

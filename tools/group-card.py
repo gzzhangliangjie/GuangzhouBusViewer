@@ -13,7 +13,8 @@ import build_card as B
 from verify_card import run_gates
 
 
-def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_segs=None, branch=None, pad=None):
+def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_segs=None, branch=None, pad=None,
+          stations=None, en_extra=None, outpath=None):
     src = open(os.path.join(ROOT, 'assets/gz-tim-2026.svg'), encoding='utf-8').read()
 
     # ===== 样式表(类->stroke, 记录display:none) =====
@@ -131,7 +132,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         return (chain[-1][2], chain[-1][3])
 
     def _badge_half():
-        return max(B.badges_data()[L['ref']]['chip']['w'], B.badges_data()[L['ref']]['chip']['h']) / 2
+        return max(B.badges_data()[_REF]['chip']['w'], B.badges_data()[_REF]['chip']['h']) / 2
 
     def _tdir(px, py):
         # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
@@ -160,10 +161,12 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
     # ===== 站表 =====
     LD, SD = B.load_metro()
     L = LD[line_zh]
-    sts = list(L['stations'])
+    _REF = L['ref']   # 支线段长循环会重绑L(浮点), 徽标ref必须提前捕获
+    sts = list(stations) if stations else list(L['stations'])
     N = len(sts)
     _sts_all = list(sts) + (list(branch['stations']) if branch else [])
     EN = {nm: SD[nm].get('en', '') for nm in _sts_all if nm in SD}
+    EN.update(en_extra or {})
 
     codes = json.load(open(os.path.join(ROOT, 'data/gz-station-codes.json'), encoding='utf-8'))
     lkey = line_zh.replace('号线', '')
@@ -386,45 +389,29 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         c.set('cx', '%.1f' % cx); c.set('cy', '%.1f' % cy); c.set('r', '4.5')
         c.set('data-nm', nm); c.set('style', 'fill:#FFFFFF;stroke:%s;stroke-width:2' % color)
 
-    gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
-    _bw, _bh, _bs = B.badge_full_size(L['ref'])
-    gb.append(B.make_badge_official(L['ref'], color, x1 - 16 - _bw, y0 + 36, _bs, 'full'))
-    if not loop:
-        def _tdir(px, py):
-            # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
-            best, bd = None, 1e18
-            for s in chain:
-                x1, y1, x2, y2 = s
-                dx, dy = x2-x1, y2-y1; L2 = dx*dx+dy*dy
-                if L2 < 1e-9: continue
-                t = max(0, min(1, ((px-x1)*dx+(py-y1)*dy)/L2))
-                d = math.hypot(x1+t*dx-px, y1+t*dy-py)
-                if d < bd: bd, best = d, (dx, dy, L2**0.5, t)
-            dx, dy, L, t = best
-            ux, uy = dx/L, dy/L
-            if t < 0.5: ux, uy = -ux, -uy
-            return ux, uy
-        for tn in (order[0], order[-1]):
-            tx, ty = coords[tn][0], coords[tn][1]
-            ux, uy = _tdir(tx, ty)
-            dist = _tdist(tn)
-            gb.append(B.make_badge_official(L['ref'], color, tx+ux*dist, ty+uy*dist, 1.0, 'chip'))
-        if branch:
-            # 支线终点徽标(方向取支线末段向外)
-            tn = border[-1]
-            tx, ty = epos[tn]
-            s = bsegs[-1]
-            dx, dy = s[2]-s[0], s[3]-s[1]; L = math.hypot(dx, dy) or 1
-            ux, uy = dx/L, dy/L
-            if abs(ux) > abs(uy):
-                bw2 = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
-                dist = 10 + bw2 + 8 + 19 + 12
-            else:
-                dist = 68
-            xs2, ys2 = tx+ux*dist, ty+uy*dist
-            gb.append(B.make_badge_official(L['ref'], color, xs2, ys2, 1.0, 'chip'))
-
     pl = B.place_labels(emit, _all_xy, _all_segs, EN)
+    plmap = {lb['nm']: lb for lb in pl}
+
+    gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
+    _bw, _bh, _bs = B.badge_full_size(_REF)
+    gb.append(B.make_badge_official(_REF, color, x1 - 16 - _bw, y0 + 36, _bs, 'full'))
+    if not loop:
+        # 终点数字块(2026-10-20 全线统一): 与终点文字同x居中, 净距3px(门禁口径=末行基线+2.5),
+        # 在文字块背离圆点一侧; by1=末行基线(place_labels已为拆行英文预留+6.5)
+        _chh = B.badges_data()[_REF]['chip']['h'] / 2
+        def _chip_xy(tn):
+            lb = plmap[tn]
+            tx, ty = epos[tn]
+            cx = (lb['bx0'] + lb['bx1']) / 2
+            cy = lb['by1'] + 5.5 + _chh \
+                if (lb['by0'] + lb['by1']) / 2 > ty else lb['by0'] - 3.0 - _chh
+            return cx, cy
+        for tn in (order[0], order[-1]):
+            cx, cy = _chip_xy(tn)
+            gb.append(B.make_badge_official(_REF, color, cx, cy, 1.0, 'chip'))
+        if branch:
+            cx, cy = _chip_xy(border[-1])
+            gb.append(B.make_badge_official(_REF, color, cx, cy, 1.0, 'chip'))
     gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')
     gl.set('font-family', "'Microsoft YaHei', 'PingFang SC', sans-serif")
     for lb in pl:
@@ -436,16 +423,16 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         if lb['en']:
             sp = B.split_en(lb['en'], lb['nm'])
             te = ET.SubElement(gl, '{%s}text' % NS)
-            te.set('x', '%.1f' % zx); te.set('y', '%.1f' % lb['by1'])
+            te.set('x', '%.1f' % zx); te.set('y', '%.1f' % (lb['by0'] + 18.5))  # EN1紧随中文(Δ7.5<12, G5配对)
             te.set('text-anchor', 'middle'); te.set('font-size', '5.5'); te.set('font-family', 'Arial, sans-serif'); te.set('fill', '#444444')
             te.text = sp[0] if sp else lb['en']
             if sp:  # 第二行英文: 行距6.5
                 te2 = ET.SubElement(gl, '{%s}text' % NS)
-                te2.set('x', '%.1f' % zx); te2.set('y', '%.1f' % (lb['by1'] + 6.5))
+                te2.set('x', '%.1f' % zx); te2.set('y', '%.1f' % (lb['by0'] + 25.0))
                 te2.set('text-anchor', 'middle'); te2.set('font-size', '5.5'); te2.set('fill', '#444444')
                 te2.text = sp[1]
 
-    out = os.path.join(ROOT, 'assets/lines/line-%s.svg' % line_zh)
+    out = os.path.join(ROOT, outpath) if outpath else os.path.join(ROOT, 'assets/lines/line-%s.svg' % line_zh)
     ET.ElementTree(svg).write(out, encoding='unicode', xml_declaration=False)
 
     R = run_gates(out, expect_n=N + (len(branch['stations'])-1 if branch else 0), chains=chains, pins=set((overrides or {}).keys()))
@@ -457,12 +444,13 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
 
     vb = [float(v) for v in svg.get('viewBox').split()]
     W, H = round(vb[2]), round(vb[3])  # 原始尺寸渲染(用户明令, 禁400px缩略)
-    cb = int(time.time()*1000)
-    html = ('<!DOCTYPE html><html><head><meta charset="UTF-8">'
-            '<style>html,body{{margin:0;height:100%;background:#fff;overflow:hidden}}'
-            'img{{position:absolute;left:0;top:0}}</style></head><body>'
-            '<img id=m src="line-{}.svg?cb={}" width="{}" height="{}"></body></html>').format(line_zh, cb, W, H)
-    open(os.path.join(ROOT, 'assets/lines/_verify-%s.html' % line_zh), 'w', encoding='utf-8').write(html)
+    if not outpath:  # 中间产物(如12号线北段)不写verify页
+        cb = int(time.time()*1000)
+        html = ('<!DOCTYPE html><html><head><meta charset="UTF-8">'
+                '<style>html,body{{margin:0;height:100%;background:#fff;overflow:hidden}}'
+                'img{{position:absolute;left:0;top:0}}</style></head><body>'
+                '<img id=m src="line-{}.svg?cb={}" width="{}" height="{}"></body></html>').format(line_zh, cb, W, H)
+        open(os.path.join(ROOT, 'assets/lines/_verify-%s.html' % line_zh), 'w', encoding='utf-8').write(html)
     return npass == len(R)
 
 

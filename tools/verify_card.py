@@ -248,7 +248,9 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
                 clash.append('%s 英文2行净距%.1f' % (lb['nm'], cle2))
     add('G7', '标签净距(中文≥%.1f 英文≥4.0)' % CLR_MIN, not clash, '; '.join(clash) or '全过')
 
-    # G8 徽标三枚+避让(不压标签/走廊)
+    # G8 徽标三枚+避让+终点数字块-文字对齐(2026-10-20 全线统一规则:
+    # 数字块与文字同x居中≤3, 净间距2~8, 原独立G8b并入)
+    bad_al = []
     if badges and all('mode' in b for b in badges):
         # v7 官方徽标: 1 头部(full) + 2~3 终点(chip); 环线仅头部
         nhead = sum(1 for b in badges if b['mode'] == 'header')
@@ -256,28 +258,9 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
         multi = c['root'].get('data-multi') == '1'
         ok8 = nhead == 1 and (nchip in (2, 3, 4) if multi else nchip in (2, 3) or nchip == 0)
         why8 = '头%d+终点%d' % (nhead, nchip)
-    else:
-        ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
-        why8 = '徽标%d枚' % len(badges)
-    def overlap(a, b, m=0.0):
-        return not (a[2] < b[0] + m or b[2] + m < a[0] or a[3] < b[1] + m or b[3] + m < a[1])
-    for bd in badges:
-        for lb in labels:
-            if overlap(bd['box'], lb['box']):
-                ok8, why8 = False, '徽标压 %s 标签' % lb['nm']
-        if rect_seg_clearance(*bd['box'], segs) < 1.0:
-            ok8, why8 = False, '徽标压走廊'
-    add('G8', '徽标三枚+避让', ok8, why8)
-
-    # G8b 终点数字块-文字对齐(2026-10-20 用户, 12号线双段卡起生效):
-    # 数字块x与文字居中≤3, 净间距2~8统一(其余线路终点块各有一套既有摆法, 不回溯)
-    bad8b = []
-    nchip8b = 0
-    if c['multi']:
         for bd in badges:
             if bd.get('mode') != 'chip':
                 continue
-            nchip8b += 1
             bx0, by0, bx1, by1 = bd['box']
             ccx = (bx0 + bx1) / 2.0
             cand = []
@@ -291,16 +274,29 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
                 if 0 < ga < 15:
                     cand.append((ga, lb))
             if not cand:
-                bad8b.append('chip@(%.0f,%.0f)无相邻文字' % (ccx, (by0 + by1) / 2))
+                bad_al.append('chip@(%.0f,%.0f)无相邻文字' % (ccx, (by0 + by1) / 2))
                 continue
             gap, lb = min(cand, key=lambda t: abs(t[0] - 3.0))
             dx = abs(ccx - lb['x'])
             if dx > 3.0:
-                bad8b.append('%s 数字块偏%.1fpx' % (lb['nm'], dx))
+                bad_al.append('%s 数字块偏%.1fpx' % (lb['nm'], dx))
             if not (2.0 <= gap <= 8.0):
-                bad8b.append('%s 数字块间距%.1fpx' % (lb['nm'], gap))
-    add('G8b', '数字块-文字居中≤3+间距2~8', not bad8b,
-        '; '.join(bad8b) or ('%d块全对齐' % nchip8b if c['multi'] else '单段卡不适用'))
+                bad_al.append('%s 数字块间距%.1fpx' % (lb['nm'], gap))
+    else:
+        ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
+        why8 = '徽标%d枚' % len(badges)
+    def overlap(a, b, m=0.0):
+        return not (a[2] < b[0] + m or b[2] + m < a[0] or a[3] < b[1] + m or b[3] + m < a[1])
+    for bd in badges:
+        for lb in labels:
+            if overlap(bd['box'], lb['box']):
+                ok8, why8 = False, '徽标压 %s 标签' % lb['nm']
+        if rect_seg_clearance(*bd['box'], segs) < 1.0:
+            ok8, why8 = False, '徽标压走廊'
+    if bad_al:
+        ok8 = False
+        why8 = (why8 + '; ' if why8 else '') + '; '.join(bad_al)
+    add('G8', '徽标+避让+数字块对齐', ok8, why8)
 
     # G9 铁律2验收: 标签盒不得罩住他站圆(就近归属的操作化判据)
     wrong = []
