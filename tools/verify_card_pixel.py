@@ -149,18 +149,25 @@ def run_gates(card_path):
     # (深色线色如8号线teal(0,137,123)本身max<150, 必须排除自身底色, 否则假阳性)
     badg = []
     for bd in c['badges']:
-        px0, py0 = sv2px(*bd['box'][:2])
-        px1, py1 = sv2px(bd['box'][2], bd['box'][3])
+        # v7 官方头部徽标自带黑色字形: 纯净区=色块子区(data-chip); 终点chip/旧胶囊=整框
+        reg = bd.get('chip') or bd['box']
+        px0, py0 = sv2px(*reg[:2])
+        px1, py1 = sv2px(reg[2], reg[3])
         zone = im[max(py0, 0):py1, max(px0, 0):px1]
         d = zone.max(axis=2) < 150
         notfill = ((abs(zone[:, :, 0] - rgb[0]) > 60) | (abs(zone[:, :, 1] - rgb[1]) > 60) |
                    (abs(zone[:, :, 2] - rgb[2]) > 60))
+        ink = bd.get('ink')  # 亮底胶囊的深字是徽标自身墨色
+        if ink and ink != '#FFFFFF':
+            ir, ig, ib = int(ink[1:3], 16), int(ink[3:5], 16), int(ink[5:7], 16)
+            notfill = notfill & ((abs(zone[:, :, 0] - ir) > 60) | (abs(zone[:, :, 1] - ig) > 60) |
+                                 (abs(zone[:, :, 2] - ib) > 60))
         m = d & notfill
         if m.any():
             m = _erode(m, 1)  # ClearType亚像素边滤除(12号线深绿底白字1px彩边, 文档§3同款坑)
         n = int(m.sum())
         if n > 30:
-            badg.append('徽标(%.0f,%.0f)内墨%d' % (bd['box'][0], bd['box'][1], n))
+            badg.append('徽标(%.0f,%.0f)内墨%d' % (reg[0], reg[1], n))
     add('P4', '徽标区无站名墨', not badg, '; '.join(badg) or '全过')
 
     return R

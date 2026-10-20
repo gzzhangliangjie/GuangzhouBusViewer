@@ -82,11 +82,13 @@ def fix_badge(card):
             return False
         return _corr(bb, c['segs']) > 3
     spot = None
+    bw = bad['box'][2] - bad['box'][0]
+    bh = bad['box'][3] - bad['box'][1]
     for fi in range(33):
         for fj in range(33):
             bx = x0 + (x1 - x0) * fi / 32
             by = y0 + (y1 - y0) * fj / 32
-            bb = (bx - 24, by - 12.9, bx + 24, by + 12.9)
+            bb = (bx - bw / 2, by - bh / 2, bx + bw / 2, by + bh / 2)
             if free(bb):
                 spot = (bx, by)
                 break
@@ -95,10 +97,21 @@ def fix_badge(card):
     if not spot:
         return False, '无空位'
     s = open(card, encoding='utf-8').read()
-    cx0 = (bad['box'][0] + bad['box'][2]) / 2
-    cy0 = (bad['box'][1] + bad['box'][3]) / 2
-    s = re.sub(r'translate\(%s %s\) scale\(0\.6\)' % (re.escape('%.2f' % cx0 if abs(cx0 - round(cx0)) > 0.01 else '%.1f' % cx0), re.escape('%.1f' % cy0)),
-               'translate(%.1f %.1f) scale(0.6)' % spot, s)
+    if bad.get('mode') == 'chip':
+        # v7 官方徽标: 色块中心即 translate 锚点, 同步重写 data-box
+        pat = re.compile(r'(<g[^>]*data-badge="chip"[^>]*transform="translate\()([-\d.]+)[ ,]+([-\d.]+)(\)[^>]*data-box=")[^"]*(")')
+        m = pat.search(s)
+        if not m:
+            return False, '找不到 chip 徽标'
+        nx, ny = spot
+        s = pat.sub(lambda mm: '%s%.1f %.1f%s%.1f,%.1f,%.1f,%.1f%s' % (
+            mm.group(1), nx, ny, mm.group(4),
+            nx - bw / 2, ny - bh / 2, nx + bw / 2, ny + bh / 2, mm.group(5)), s, count=1)
+    else:
+        cx0 = (bad['box'][0] + bad['box'][2]) / 2
+        cy0 = (bad['box'][1] + bad['box'][3]) / 2
+        s = re.sub(r'translate\(%s %s\) scale\(0\.6\)' % (re.escape('%.2f' % cx0 if abs(cx0 - round(cx0)) > 0.01 else '%.1f' % cx0), re.escape('%.1f' % cy0)),
+                   'translate(%.1f %.1f) scale(0.6)' % spot, s)
     open(card, 'w', encoding='utf-8').write(s)
     return True, '徽标挪至(%.0f,%.0f)' % spot
 

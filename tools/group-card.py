@@ -130,6 +130,9 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
             acc += L
         return (chain[-1][2], chain[-1][3])
 
+    def _badge_half():
+        return max(B.badges_data()[L['ref']]['chip']['w'], B.badges_data()[L['ref']]['chip']['h']) / 2
+
     def _tdir(px, py):
         # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
         best, bd = None, 1e18
@@ -151,7 +154,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         ux, uy = _tdir(tx, ty)
         if abs(ux) > abs(uy):
             bw = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
-            return 10 + bw + 8 + 19 + 12
+            return 10 + bw + 8 + _badge_half() + 6
         return 68
 
     # ===== 站表 =====
@@ -348,7 +351,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
             dx, dy = s[2]-s[0], s[3]-s[1]; L = math.hypot(dx, dy) or 1
             ux, uy = dx/L, dy/L
             bw2 = 2*max(B.text_half_width(tn), B.text_half_width(EN.get(tn, ''), zh=False))
-            dist = 10 + bw2 + 8 + 19 + 12 if abs(ux) > abs(uy) else 68
+            dist = 10 + bw2 + 8 + _badge_half() + 6 if abs(ux) > abs(uy) else 68
         xs += [tx+ux*dist-24, tx+ux*dist+24]
         ys += [ty+uy*dist-14, ty+uy*dist+14]
     _pad = dict(l=115, r=65, t=95, b=85); _pad.update(pad or {})
@@ -384,7 +387,8 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         c.set('data-nm', nm); c.set('style', 'fill:#FFFFFF;stroke:%s;stroke-width:2' % color)
 
     gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
-    gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, x1-96, y0+36))
+    _bw, _bh, _bs = B.badge_full_size(L['ref'])
+    gb.append(B.make_badge_official(L['ref'], color, x1 - 16 - _bw, y0 + 36, _bs, 'full'))
     if not loop:
         def _tdir(px, py):
             # 终点徽标方向: 沿走廊末端向外(1号线定稿规则: 三点一线)
@@ -404,7 +408,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
             tx, ty = coords[tn][0], coords[tn][1]
             ux, uy = _tdir(tx, ty)
             dist = _tdist(tn)
-            gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, tx+ux*dist, ty+uy*dist, 0.6))
+            gb.append(B.make_badge_official(L['ref'], color, tx+ux*dist, ty+uy*dist, 1.0, 'chip'))
         if branch:
             # 支线终点徽标(方向取支线末段向外)
             tn = border[-1]
@@ -418,7 +422,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
             else:
                 dist = 68
             xs2, ys2 = tx+ux*dist, ty+uy*dist
-            gb.append(B.make_badge(color, num, '号线' if line_zh.endswith('号线') else '', lname, xs2, ys2, 0.6))
+            gb.append(B.make_badge_official(L['ref'], color, xs2, ys2, 1.0, 'chip'))
 
     pl = B.place_labels(emit, _all_xy, _all_segs, EN)
     gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')

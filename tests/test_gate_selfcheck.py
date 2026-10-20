@@ -61,9 +61,24 @@ def test_mutation_zorder_swapped(tmp_path):
 
 
 def test_mutation_badge_over_label(tmp_path):
-    """终点徽标压到站名(铁律1) → G8必红。"""
-    p = _mutated(tmp_path, r'translate\(1392\.8 1650\)', 'translate(1392.8 1618)')
-    assert 'G8' in _fails(p)
+    """终点徽标压到站名(铁律1) → G8必红。
+    v7 官方徽标: 门禁消费 data-box, 渲染真身是 transform——变异须两者同步
+    搬到站名上, 模拟"终点徽标压站名"真实翻车。"""
+    s = open(LINE2, encoding='utf-8').read()
+    mc = re.search(r'<g data-badge="chip" transform="translate\(([-\d.]+) ([-\d.]+)\)" data-box="([-\d.]+),([-\d.]+),([-\d.]+),([-\d.]+)"', s)
+    assert mc, '卡内无 chip 徽标'
+    cx, cy = float(mc.group(1)), float(mc.group(2))
+    x0, y0, x1, y1 = (float(mc.group(i)) for i in range(3, 7))
+    mt = re.search(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*>广州南站</text>', s)
+    assert mt, '锚站名不存在'
+    tx, ty = float(mt.group(1)), float(mt.group(2))
+    dx, dy = tx - (x0 + x1) / 2, (ty - 6) - (y0 + y1) / 2
+    new = ('<g data-badge="chip" transform="translate(%.2f %.2f)" data-box="%.1f,%.1f,%.1f,%.1f"'
+           % (cx + dx, cy + dy, x0 + dx, y0 + dy, x1 + dx, y1 + dy))
+    s2 = s.replace(mc.group(0), new, 1)
+    p2 = tmp_path / 'mut.svg'
+    p2.write_text(s2, encoding='utf-8')
+    assert 'G8' in _fails(str(p2))
 
 
 def test_mutation_text_out_of_frame(tmp_path):

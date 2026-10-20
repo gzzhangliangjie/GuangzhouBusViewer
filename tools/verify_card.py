@@ -92,6 +92,14 @@ def load(path):
 
     badges = []
     for g in groups.get('线路徽标', []):
+        db = g.get('data-box')
+        if db:  # 官方徽标(v7): 卡片自带缩放后包围盒
+            x0, y0, x1, y1 = [float(v) for v in db.split(',')]
+            badges.append({'box': (x0, y0, x1, y1), 'scale': 1.0,
+                           'mode': g.get('data-badge') or 'full',
+                           'chip': tuple(float(v) for v in g.get('data-chip').split(',')) if g.get('data-chip') else None,
+                           'ink': g.get('data-ink')})
+            continue
         r = g.find('{%s}rect' % NS)
         if r is None:
             continue
@@ -222,8 +230,15 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
     add('G7', '标签净距(中文≥%.1f 英文≥4.0)' % CLR_MIN, not clash, '; '.join(clash) or '全过')
 
     # G8 徽标三枚+避让(不压标签/走廊)
-    ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
-    why8 = '徽标%d枚' % len(badges)
+    if badges and all('mode' in b for b in badges):
+        # v7 官方徽标: 1 头部(full) + 2~3 终点(chip); 环线仅头部
+        nhead = sum(1 for b in badges if b['mode'] == 'header')
+        nchip = sum(1 for b in badges if b['mode'] == 'chip')
+        ok8 = nhead == 1 and (nchip in (2, 3) or nchip == 0)  # 环线(11号线)无终点徽标
+        why8 = '头%d+终点%d' % (nhead, nchip)
+    else:
+        ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
+        why8 = '徽标%d枚' % len(badges)
     def overlap(a, b, m=0.0):
         return not (a[2] < b[0] + m or b[2] + m < a[0] or a[3] < b[1] + m or b[3] + m < a[1])
     for bd in badges:

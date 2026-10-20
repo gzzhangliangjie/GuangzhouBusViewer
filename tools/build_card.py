@@ -746,25 +746,121 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
     return placed
 
 
-def make_badge(color, num, zh, en, x, y, scale=1.0):
+_BADGES_JSON = None
+
+
+def badges_data():
+    global _BADGES_JSON
+    if _BADGES_JSON is None:
+        _BADGES_JSON = json.load(open(os.path.join(ROOT, 'data/badges-official.json'), encoding='utf-8'))
+    return _BADGES_JSON
+
+
+# ===== 头部官方胶囊(v8): 比例承官图网格(107x59->80x43 圆角9), 排版全部墨迹实测校准 =====
+PILL_W, PILL_H, PILL_RX = 80.0, 43.0, 9.0
+PILL_NUM_X, PILL_NUM_SIZE = 9.5, 25.0
+PILL_ZH_SIZE, PILL_EN_SIZE = 11.5, 7.5
+PILL_COL_MIN, PILL_COL_GAP = 38.0, 5.0
+PILL_DARK = '#614F2E'          # 亮底深字(官方黄底徽标暖褐)
+_NUM_FONT = None
+_EN_FONT = None
+
+
+def _num_ink_w(num):
+    """数字串在 YaHei bold 25pt 下的墨宽(PIL 实测, 不手估)。"""
+    global _NUM_FONT
+    if _NUM_FONT is None:
+        from PIL import ImageFont
+        _NUM_FONT = ImageFont.truetype('C:/Windows/Fonts/msyhbd.ttc', 200)  # 25pt x8
+    return _NUM_FONT.getlength(num) / 8.0 * 0.98
+
+
+def _en_ink_w(en):
+    global _EN_FONT
+    if _EN_FONT is None:
+        from PIL import ImageFont
+        _EN_FONT = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 60)  # 7.5pt x8
+    return _EN_FONT.getlength(en) / 8.0 * 0.98
+
+
+def pill_text_color(color):
+    """亮底(黄/金/黄绿)用暖褐深字, 其余白字——对应官方胶囊实际配色。"""
+    r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    L = 0.299 * r + 0.587 * g + 0.114 * b
+    return PILL_DARK if L >= 175 else '#FFFFFF'
+
+
+def pill_metrics(ref):
+    """返回 (W, col_x, num, zh, en): 胶囊宽与右列 x 由数字墨宽自适应。"""
+    num = ref
+    zh = '号线' if ref.isdigit() else '线'
+    en = {'GF': 'Guangfo Line', 'APM': 'APM'}.get(ref, 'Line %s' % ref if ref.isdigit() else ref)
+    col_x = max(PILL_COL_MIN, PILL_NUM_X + _num_ink_w(num) + PILL_COL_GAP)
+    W = max(PILL_W, col_x + max(PILL_ZH_SIZE * 2, _en_ink_w(en)) + 5)
+    return W, col_x, num, zh, en
+
+
+def badge_header_scale(ref):
+    return 1.0
+
+
+def badge_full_size(ref):
+    return pill_metrics(ref)[0], PILL_H, 1.0
+
+
+def make_badge_official(ref, color, x, y, scale, mode):
+    """官方徽标组(mode: full=头部官方胶囊, x/y=左上角 | chip=终点数字块, x/y=色块中心)。
+    头部: 线色胶囊+深/白数字+右列号线/Line N; 终点: Tim 图抠出的 13.5 色块白数字。
+    产出 <g data-badge data-box [data-ink]>, 门禁按属性消费。"""
     g = ET.Element('{%s}g' % NS)
-    if scale != 1.0:
-        g.set('transform', 'translate(%g %g) scale(%g) translate(%g %g)' % (x, y, scale, -x, -y))
-        x, y = x - 40, y - 21.5
-    r = ET.SubElement(g, '{%s}rect' % NS)
-    r.set('x', str(x)); r.set('y', str(y)); r.set('width', '80'); r.set('height', '43'); r.set('rx', '9')
-    r.set('fill', color)
-    t = ET.SubElement(g, '{%s}text' % NS)
-    t.set('x', str(x + 10)); t.set('y', str(y + 32.5)); t.set('text-anchor', 'middle')
-    t.set('font-family', "'Microsoft YaHei', sans-serif"); t.set('font-size', '25')
-    t.set('font-weight', 'bold'); t.set('fill', '#FFFFFF'); t.text = num
-    t2 = ET.SubElement(g, '{%s}text' % NS)
-    t2.set('x', str(x + 42)); t2.set('y', str(y + 22)); t2.set('font-family', "'Microsoft YaHei', sans-serif")
-    t2.set('font-size', '11'); t2.set('font-weight', '600'); t2.set('fill', '#FFFFFF'); t2.text = zh
-    t3 = ET.SubElement(g, '{%s}text' % NS)
-    t3.set('x', str(x + 42)); t3.set('y', str(y + 35)); t3.set('font-family', 'Arial, sans-serif')
-    t3.set('font-size', '7.5'); t3.set('fill', '#FFFFFF'); t3.text = en
+    if mode == 'full':
+        W, col_x, num, zh, en = pill_metrics(ref)
+        ink = pill_text_color(color)
+        g.set('data-badge', 'header')
+        g.set('transform', 'translate(%g %g)' % (x, y))
+        r = ET.SubElement(g, '{%s}rect' % NS)
+        r.set('x', '0'); r.set('y', '0')
+        r.set('width', '%.1f' % W); r.set('height', '%.1f' % PILL_H); r.set('rx', '%.1f' % PILL_RX)
+        r.set('fill', color)
+        t = ET.SubElement(g, '{%s}text' % NS)
+        t.set('x', '%.1f' % PILL_NUM_X); t.set('y', '%.1f' % 32.5)
+        t.set('font-family', "'Microsoft YaHei', sans-serif"); t.set('font-size', '%g' % PILL_NUM_SIZE)
+        t.set('font-weight', 'bold'); t.set('fill', ink); t.text = num
+        t2 = ET.SubElement(g, '{%s}text' % NS)
+        t2.set('x', '%.1f' % col_x); t2.set('y', '%.1f' % 21.5)
+        t2.set('font-family', "'Microsoft YaHei', sans-serif"); t2.set('font-size', '%g' % PILL_ZH_SIZE)
+        t2.set('font-weight', '600'); t2.set('fill', ink); t2.text = zh
+        t3 = ET.SubElement(g, '{%s}text' % NS)
+        t3.set('x', '%.1f' % col_x); t3.set('y', '%.1f' % 35.0)
+        t3.set('font-family', 'Arial, sans-serif'); t3.set('font-size', '%g' % PILL_EN_SIZE)
+        t3.set('fill', ink); t3.text = en
+        g.set('data-ink', ink)
+        g.set('data-box', '%.1f,%.1f,%.1f,%.1f' % (x, y, x + W, y + PILL_H))
+        g.set('data-chip', '%.1f,%.1f,%.1f,%.1f' % (x, y, x + W, y + PILL_H))
+        return g
+    # 终点数字块: 原图抠出色块+白数字, 中心锚点
+    m = badges_data()[ref]['chip']
+    g.set('data-badge', 'chip')
+    tx = x - m['w'] * scale / 2
+    ty = y - m['h'] * scale / 2
+    tr = 'translate(%g %g)' % (tx, ty)
+    if scale and scale != 1.0:
+        tr += ' scale(%g)' % scale
+    g.set('transform', tr)
+    for e in m['elements']:
+        p = ET.SubElement(g, '{%s}path' % NS)
+        p.set('d', e['d'])
+        p.set('fill', e['fill'])
+    g.set('data-box', '%.1f,%.1f,%.1f,%.1f' % (tx, ty, tx + m['w'] * scale, ty + m['h'] * scale))
     return g
+
+
+def make_badge(color, num, zh, en, x, y, scale=1.0):
+    """兼容包装(v8): 旧脚本(l5-card/l6-card/_l3/_fix_l3等)的旧胶囊调用自动产出官方徽标。
+    scale=1: x/y=左上角(头部胶囊); scale<1: x/y=中心(终点数字块, 原尺寸)。zh/en 由 ref 推导。"""
+    if scale == 1.0:
+        return make_badge_official(num, color, x, y, 1.0, 'full')
+    return make_badge_official(num, color, x, y, 1.0, 'chip')
 
 
 def _decreasing(pairs):
@@ -1456,12 +1552,17 @@ def build_line(linename, src, groups, lines, S, pins):
         return False
 
     def badge_box(cx, cy):
-        return (cx - 24, cy - 12.9, cx + 24, cy + 12.9)
+        cw = badges_data()[L['ref']]['chip']['w']
+        ch = badges_data()[L['ref']]['chip']['h']
+        return (cx - cw / 2 - 2, cy - ch / 2 - 2, cx + cw / 2 + 2, cy + ch / 2 + 2)
 
     gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
-    zh_short = '号线' if L['ref'].isdigit() else '线'
-    en_short = L['en'] or ('Line %s' % L['ref'])
-    gb.append(make_badge(color, L['ref'], zh_short, en_short, x0 + 56, y0 + 36))
+    gb_boxes = []
+    def _gb_add(gel):
+        gb.append(gel)
+        gb_boxes.append(tuple(float(v) for v in gel.get('data-box').split(',')))
+    _hw, _hh, _hs = badge_full_size(L['ref'])
+    _gb_add(make_badge_official(L['ref'], color, x0 + 56, y0 + 36, _hs, 'full'))
     ends = chain_ends if len(chain_ends) >= 2 else [circles_xy[0], circles_xy[-1]]
     if L.get('loop'):
         ends = ends[:1] + [circles_xy[0], circles_xy[1]]
@@ -1495,7 +1596,7 @@ def build_line(linename, src, groups, lines, S, pins):
             far = max(((cx-tx)*ux + (cy-ty)*uy)
                       for cx in (tlb['bx0'], tlb['bx1'])
                       for cy in (tlb['by0'], tlb['by1']))
-            min_ext = max(min_ext, far + 24 + 5)
+            min_ext = max(min_ext, far + badges_data()[L['ref']]['chip']['w'] / 2 + 6)
         import itertools as _it
         for extra in sorted(set(round(min_ext) + d for d in (0, 12, 26, 42, 60, 80))):
             bx = tx + ux*extra
@@ -1507,7 +1608,7 @@ def build_line(linename, src, groups, lines, S, pins):
             others = [lbb for lbb in lb_boxes if lbb != _own]
             if any(rect_hit(bb, lbb) for lbb in others):
                 continue
-            gb.append(make_badge(color, L['ref'], zh_short, en_short, bx, by, 0.6))
+            _gb_add(make_badge_official(L['ref'], color, bx, by, 1.0, 'chip'))
             placed_ok = True
             break
         if not placed_ok:
@@ -1520,7 +1621,7 @@ def build_line(linename, src, groups, lines, S, pins):
                         continue
                     if corridor_hit(bb) or any(rect_hit(bb, lb) for lb in lb_boxes):
                         continue
-                    gb.append(make_badge(color, L['ref'], zh_short, en_short, bx, by, 0.6))
+                    _gb_add(make_badge_official(L['ref'], color, bx, by, 1.0, 'chip'))
                     placed_ok = True
                     break
                 if placed_ok:
@@ -1532,7 +1633,7 @@ def build_line(linename, src, groups, lines, S, pins):
                     continue
                 if corridor_hit(bb) or any(rect_hit(bb, lbb) for lbb in lb_boxes):
                     continue
-                gb.append(make_badge(color, L['ref'], zh_short, en_short, bx, by, 0.6))
+                _gb_add(make_badge_official(L['ref'], color, bx, by, 1.0, 'chip'))
                 placed_ok = True
                 break
 
@@ -1544,20 +1645,10 @@ def build_line(linename, src, groups, lines, S, pins):
         bm = max(lb['by1'] for lb in placed)
         if placed_ok and 'bb' in dir():
             pass
-        # 徽标远缘计入(射线徽标随英文宽站名外伸)
-        for _gb in gb:
-            for _r in _gb.iter('{%s}rect' % NS):
-                if _r.get('width') == '80':
-                    bx0, by0 = float(_r.get('x')), float(_r.get('y'))
-                    tr = _gb.get('transform') or ''
-                    if 'scale(0.6)' in tr:
-                        import re as _re
-                        _m = _re.search(r'translate[ (]([-\d.]+)[ ,]+([-\d.]+)', tr)
-                        if _m:
-                            bx0 = float(_m.group(1)) - 24
-                            by0 = float(_m.group(2)) - 12.9
-                    rm = max(rm, bx0 + 80)
-                    bm = max(bm, by0 + 43)
+        # 徽标远缘计入(官方徽标 data-box 即缩放后实际包围盒)
+        for (bx0, by0, bx1, by1) in gb_boxes:
+            rm = max(rm, bx1)
+            bm = max(bm, by1)
         if lm - 12 < x0:
             x0 = lm - 12
         if rm + 12 > x1m:
