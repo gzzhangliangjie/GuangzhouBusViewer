@@ -76,8 +76,10 @@ def sample_d(d):
 
 
 def translate_d(d, ox, oy):
-    """路径平移: 绝对命令坐标减 (ox,oy), 相对命令不动。"""
+    """路径平移: 绝对命令坐标减 (ox,oy), 相对命令不动。
+    例外: 首命令为相对 m 时其首对坐标即绝对定位(自原点起算), 必须随之平移。"""
     out = []
+    first_m = True
     for m in re.finditer(r'([MmLlHhVvCcSsQqTtAaZz])([^MmLlHhVvCcSsQqTtAaZz]*)', d):
         cmd, body = m.group(1), m.group(2)
         nums = re.findall(r'-?\d+\.?\d*(?:[eE][-+]?\d+)?', body)
@@ -86,11 +88,8 @@ def translate_d(d, ox, oy):
         xidx = {'M': [0], 'L': [0], 'H': [0], 'V': [],
                 'C': [0, 2, 4], 'S': [0, 2], 'Q': [0, 2], 'T': [0],
                 'A': [5]}.get(c, [])
-        yidx = [i + 1 for i in xidx if c not in ('V',)] if c not in ('H', 'V') else ([1] if False else [i + 1 for i in xidx])
-        if c == 'V':
-            yidx = [0]
+        yidx = [i + 1 for i in xidx] if c not in ('H', 'V') else ([0] if c == 'V' else [])
         parts = []
-        k = 0
         i = 0
         while i < len(nums):
             if c == 'A':
@@ -107,7 +106,13 @@ def translate_d(d, ox, oy):
                 for yi in (yidx if c != 'H' else []):
                     if yi < len(g):
                         g[yi] = repr(float(g[yi]) - oy)
+            elif first_m and c == 'M':
+                g[0] = repr(float(g[0]) - ox)
+                if len(g) > 1:
+                    g[1] = repr(float(g[1]) - oy)
             parts.append(' '.join(g))
+            if c == 'M':
+                first_m = False
         out.append(cmd + (' '.join(parts) if parts else ''))
     return ''.join(out)
 
@@ -190,18 +195,43 @@ def main():
         # chip 子集: bbox 完全在色块内(数字)
         cx0, cy0, cx1, cy1 = chip['x0'], chip['y0'], chip['x1'], chip['y1']
         chip_els = [c for c in content if c[1] >= cx0-0.6 and c[2] >= cy0-0.6 and c[3] <= cx1+0.6 and c[4] <= cy1+0.6]
-        def emit(subset, ox, oy):
-            els = []
+
+        def emit(subset, box):
+            # 元件级过滤: 整条 d 绝对采样 bbox 与 box 相交才保留。
+            # (禁止按 M 块拆样: 相对子路径从原点起算会落进盒内, 拼出跨行大杂烩)
+            bx0, by0, bx1, by1 = box
+            keep = []
             for el, x0, y0, x1, y1, f in subset:
-                els.append({'d': translate_d(el.get('d'), ox, oy), 'fill': f or '#000000'})
-            bb = [min(c[1] for c in subset)-ox, min(c[2] for c in subset)-oy,
-                  max(c[3] for c in subset)-ox, max(c[4] for c in subset)-oy]
-            return {'w': round(bb[2]-bb[0], 2), 'h': round(bb[3]-bb[1], 2), 'bb': [round(v, 2) for v in bb], 'elements': els}
-        full = emit(content, chip['x0'], top)
-        chipo = emit(chip_els, cx0, cy0)
+                pts = sample_d(el.get('d'))
+                if len(pts) < 2:
+                    continue
+                sx0, sx1 = min(q[0] for q in pts), max(q[0] for q in pts)
+                sy0, sy1 = min(q[1] for q in pts), max(q[1] for q in pts)
+                if sx1 < bx0 - 2 or sx0 > bx1 + 2 or sy1 < by0 - 2 or sy0 > by1 + 2:
+                    continue
+                keep.append((el.get('d'), f))
+            assert keep, 'emit 空集 box=%s' % (box,)
+            # 归一化基准必须是采样几何极值(d 里相对命令的负数会污染数字 min → 锚点偏移)
+            nx = min(min(q[0] for q in sample_d(d_)) for d_, _ in keep)
+            ny = min(min(q[1] for q in sample_d(d_)) for d_, _ in keep)
+            els = [{'d': translate_d(d_, nx, ny), 'fill': f or '#000000'} for d_, f in keep]
+            xs = []; ys = []
+            for e in els:
+                for q in sample_d(e['d']):
+                    xs.append(q[0]); ys.append(q[1])
+            # 锚点铁律(生成端保证): 平移后采样极值必须归零, 否则元件在卡上飞出
+            assert abs(min(xs)) < 0.05 and abs(min(ys)) < 0.05, \
+                '徽标锚点未归零: min=(%.2f,%.2f)' % (min(xs), min(ys))
+            return {'w': round(max(xs)-min(xs), 2), 'h': round(max(ys)-min(ys), 2), 'elements': els}
+
+        box_s = (chip['x0']-2, chip['y0']-2.2, chip['x1']+2, chip['y1']+2.2)
+        full = emit(content, box_s)
+        chipo = emit(chip_els, box_s)
+        # 内容合理性断言: 数字块=色块本身, 条目不得跨行混入他条目内容
+        assert abs(chipo['w'] - chip['w']) < 0.8 and abs(chipo['h'] - chip['h']) < 0.8, \
+            '%s chip 尺寸异常: %.1fx%.1f vs 色块 %.1fx%.1f' % (ref, chipo['w'], chipo['h'], chip['w'], chip['h'])
+        assert full['h'] < 32, '%s 条目高异常: %.1f (跨行混入)' % (ref, full['h'])
         chipo['fill'] = chip['fill']
-        chipo['dx'] = round(cx0 - min(c[1] for c in content), 2)   # chip 在 full 内偏移
-        chipo['dy'] = round(cy0 - top, 2)
         ndig = len(chip_els)
         print('%-4s full %5.1fx%-5.1f (%d elems)  chip %4.1fx%-4.1f (%d 白件) fill %s'
               % (ref, full['w'], full['h'], len(full['elements']), chipo['w'], chipo['h'], ndig, chip['fill']))

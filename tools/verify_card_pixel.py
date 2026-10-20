@@ -132,8 +132,11 @@ def run_gates(card_path):
     near = _dilate(corridor, 2)
     clash = []
     for lb in c['labels']:
-        for row in (('zh', lb['x'], lb['zy'], 11.0, text_half_width(lb['nm'])),
-                    ('en', lb['x'], lb['ey'], 5.5, text_half_width(lb['en'], zh=False))):
+        rows = [('zh', lb['x'], lb['zy'], 11.0, text_half_width(lb['nm'])),
+                ('en', lb['x'], lb['ey'], 5.5, text_half_width(lb['en'], zh=False))]
+        if lb.get('ey2') is not None:
+            rows.append(('en2', lb['x'], lb['ey2'], 5.5, text_half_width(lb.get('en2', ''), zh=False)))
+        for row in rows:
             _, tx, ty, hh, hw = row
             x0, y0, x1, y1 = tx - hw, ty - hh, tx + hw, ty + 1.5
             px0, py0 = sv2px(x0, y0)

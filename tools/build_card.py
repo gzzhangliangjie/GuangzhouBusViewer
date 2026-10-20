@@ -746,6 +746,22 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
     return placed
 
 
+def split_en(en, zh):
+    """英文宽>中文1.5倍且多单词 → 按词拆两行(两行宽差最小)。返回 (行1,行2) 或 None。"""
+    if not en or ' ' not in en:
+        return None
+    if text_half_width(en, zh=False) <= 1.5 * text_half_width(zh):
+        return None
+    words = en.split(' ')
+    best = None
+    for i in range(1, len(words)):
+        a, b = ' '.join(words[:i]), ' '.join(words[i:])
+        d = abs(text_half_width(a, zh=False) - text_half_width(b, zh=False))
+        if best is None or d < best[0]:
+            best = (d, a, b)
+    return best[1], best[2]
+
+
 _BADGES_JSON = None
 
 
@@ -794,7 +810,7 @@ def pill_metrics(ref):
     """返回 (W, col_x, num, zh, en): 胶囊宽与右列 x 由数字墨宽自适应。"""
     num = ref
     zh = '号线' if ref.isdigit() else '线'
-    en = {'GF': 'Guangfo Line', 'APM': 'APM'}.get(ref, 'Line %s' % ref if ref.isdigit() else ref)
+    en = {'GF': 'Guangfo Line', 'APM': 'Line'}.get(ref, 'Line %s' % ref if ref.isdigit() else ref)
     col_x = max(PILL_COL_MIN, PILL_NUM_X + _num_ink_w(num) + PILL_COL_GAP)
     W = max(PILL_W, col_x + max(PILL_ZH_SIZE * 2, _en_ink_w(en)) + 5)
     return W, col_x, num, zh, en
@@ -805,6 +821,8 @@ def badge_header_scale(ref):
 
 
 def badge_full_size(ref):
+    if ref == 'GF':  # 广佛线: 堆叠两行(广佛线/Guangfo Line), 无编号
+        return 73.0, PILL_H, 1.0
     return pill_metrics(ref)[0], PILL_H, 1.0
 
 
@@ -813,6 +831,30 @@ def make_badge_official(ref, color, x, y, scale, mode):
     头部: 线色胶囊+深/白数字+右列号线/Line N; 终点: Tim 图抠出的 13.5 色块白数字。
     产出 <g data-badge data-box [data-ink]>, 门禁按属性消费。"""
     g = ET.Element('{%s}g' % NS)
+    if mode == 'full' and ref == 'GF':
+        # 广佛线堆叠胶囊: 上「广佛线」下「Guangfo Line」, 均居中, 无编号
+        ink = pill_text_color(color)
+        W, H = 73.0, PILL_H
+        g.set('data-badge', 'header')
+        g.set('transform', 'translate(%g %g)' % (x, y))
+        r = ET.SubElement(g, '{%s}rect' % NS)
+        r.set('x', '0'); r.set('y', '0')
+        r.set('width', '%.1f' % W); r.set('height', '%.1f' % H); r.set('rx', '%.1f' % PILL_RX)
+        r.set('fill', color)
+        t = ET.SubElement(g, '{%s}text' % NS)
+        t.set('x', '%.1f' % (W / 2)); t.set('y', '%.1f' % 21.2)
+        t.set('text-anchor', 'middle'); t.set('font-family', "'Microsoft YaHei', sans-serif")
+        t.set('font-size', '15'); t.set('font-weight', '600'); t.set('fill', ink)
+        t.text = '广佛线'
+        t2 = ET.SubElement(g, '{%s}text' % NS)
+        t2.set('x', '%.1f' % (W / 2)); t2.set('y', '%.1f' % 32.75)
+        t2.set('text-anchor', 'middle'); t2.set('font-family', 'Arial, sans-serif')
+        t2.set('font-size', '8'); t2.set('fill', ink)
+        t2.text = 'Guangfo Line'
+        g.set('data-ink', ink)
+        g.set('data-box', '%.1f,%.1f,%.1f,%.1f' % (x, y, x + W, y + H))
+        g.set('data-chip', '%.1f,%.1f,%.1f,%.1f' % (x, y, x + W, y + H))
+        return g
     if mode == 'full':
         W, col_x, num, zh, en = pill_metrics(ref)
         ink = pill_text_color(color)
@@ -840,6 +882,12 @@ def make_badge_official(ref, color, x, y, scale, mode):
         return g
     # 终点数字块: 原图抠出色块+白数字, 中心锚点
     m = badges_data()[ref]['chip']
+    # 锚点铁律: 元件必须 0 基(2026-10-20 12号线数字块飞出事故), 绝对首坐标越界当场炸
+    for e in m['elements']:
+        mm = re.match(r'M\s*([-\d.]+)[ ,]+([-\d.]+)', e['d'])
+        assert mm and -0.05 <= float(mm.group(1)) <= m['w'] + 0.05 \
+            and -0.05 <= float(mm.group(2)) <= m['h'] + 0.05, \
+            'chip 锚点未归一化 ref=%s M=%s w=%s' % (ref, mm.groups() if mm else '?', m['w'])
     g.set('data-badge', 'chip')
     tx = x - m['w'] * scale / 2
     ty = y - m['h'] * scale / 2
@@ -1642,7 +1690,7 @@ def build_line(linename, src, groups, lines, S, pins):
         lm = min(lb['bx0'] for lb in placed)
         rm = max(lb['bx1'] for lb in placed)
         tm = min(lb['by0'] for lb in placed)
-        bm = max(lb['by1'] for lb in placed)
+        bm = max(lb['by1'] + (6.5 if split_en(lb['en'], lb['nm']) else 0) for lb in placed)
         if placed_ok and 'bb' in dir():
             pass
         # 徽标远缘计入(官方徽标 data-box 即缩放后实际包围盒)
@@ -1672,10 +1720,16 @@ def build_line(linename, src, groups, lines, S, pins):
         t.set('text-anchor', 'middle'); t.set('font-size', '10.5'); t.set('font-weight', '500')
         t.set('fill', '#1a1a1a'); t.text = lb['nm']
         if lb['en']:
+            sp = split_en(lb['en'], lb['nm'])
             te = ET.SubElement(gl, '{%s}text' % NS)
             te.set('x', str(round(zx, 1))); te.set('y', str(round(lb['by1'], 1)))
-            te.set('text-anchor', 'middle'); te.set('font-size', '5.5'); te.set('fill', '#444444')
-            te.text = lb['en']
+            te.set('text-anchor', 'middle'); te.set('font-size', '5.5'); te.set('font-family', 'Arial, sans-serif'); te.set('fill', '#444444')
+            te.text = sp[0] if sp else lb['en']
+            if sp:  # 第二行英文: 行距6.5, 同 x 同字号
+                te2 = ET.SubElement(gl, '{%s}text' % NS)
+                te2.set('x', str(round(zx, 1))); te2.set('y', str(round(lb['by1'] + 6.5, 1)))
+                te2.set('text-anchor', 'middle'); te2.set('font-size', '5.5'); te2.set('fill', '#444444')
+                te2.text = sp[1]
     out = os.path.join(OUTDIR, 'line-%s.svg' % linename)
     draft = out.replace('.svg', '_draft.svg')
     ET.ElementTree(svg).write(draft, encoding='unicode', xml_declaration=False)

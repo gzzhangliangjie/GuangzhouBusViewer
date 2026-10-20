@@ -84,11 +84,20 @@ def load(path):
         en = min((r for r in raw if abs(r['fs'] - 5.5) < 0.01
                   and abs(r['x'] - z['x']) < 0.3 and 0 < r['y'] - z['y'] < 12),
                  key=lambda r: r['y'] - z['y'], default=None)
-        labels.append({'nm': z['t'], 'x': z['x'], 'zy': z['y'],
-                       'ey': en['y'] if en else None, 'en': en['t'] if en else ''})
+        lb = {'nm': z['t'], 'x': z['x'], 'zy': z['y'],
+              'ey': en['y'] if en else None, 'en': en['t'] if en else ''}
+        if en:  # 拆行英文第二行: 链式自 en1(同x, 紧随其下一行), 不参与 zh 配对
+            en2 = min((r for r in raw if abs(r['fs'] - 5.5) < 0.01
+                       and abs(r['x'] - en['x']) < 0.3 and 3 < r['y'] - en['y'] < 10),
+                      key=lambda r: r['y'] - en['y'], default=None)
+            if en2:
+                lb['en2'], lb['ey2'] = en2['t'], en2['y']
+        labels.append(lb)
     for lb in labels:  # 重建标签盒(以实测文本为准, 不信放置器内部状态)
-        wm = max(text_half_width(lb['nm']), text_half_width(lb['en'], zh=False))
-        lb['box'] = (lb['x'] - wm, lb['zy'] - 11.0, lb['x'] + wm, (lb['ey'] or lb['zy']) + 2.5)
+        wm = max(text_half_width(lb['nm']), text_half_width(lb['en'], zh=False),
+                 text_half_width(lb.get('en2', ''), zh=False))
+        lb['box'] = (lb['x'] - wm, lb['zy'] - 11.0, lb['x'] + wm,
+                     (lb.get('ey2') or lb['ey'] or lb['zy']) + 2.5)
 
     badges = []
     for g in groups.get('线路徽标', []):
@@ -117,7 +126,9 @@ def load(path):
 
     vb = [float(v) for v in root.get('viewBox').split()]
     return {'root': root, 'order': order, 'segs': segs, 'circles': circles,
-            'labels': labels, 'badges': badges, 'vb': vb}
+            'labels': labels, 'badges': badges, 'vb': vb,
+            'multi': root.get('data-multi') == '1',
+            'card_chains': (root.get('data-chains') or '').split('|') if root.get('data-chains') else None}
 
 
 def run_gates(path, expect_n=None, chains=None, pins=None):
@@ -190,7 +201,9 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
     loose = [reps[i] for i, d in enumerate(vdeg) if d == 1]
     loose_ok = all(any(math.hypot(k[0] - cx, k[1] - cy) < TERM_CLIP for cx, cy, _ in circles)
                    for k in loose)
-    add('G3', '走廊单连通+终点裁剪', ncomp == 1 and len(loose) <= 3 and loose_ok,
+    multi = c['root'].get('data-multi') == '1'  # 12号线: 两段开通实线同图展示
+    ok3 = (ncomp == 2 and len(loose) <= 4) if multi else (ncomp == 1 and len(loose) <= 3)
+    add('G3', '走廊单连通+终点裁剪', ok3 and loose_ok,
         '%d连通段, %d游离端点%s' % (ncomp, len(loose), '' if loose_ok else '(有端点不在终点圆内)'))
 
     # G4 站名=站圆=站数
@@ -227,6 +240,12 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             cle = rect_seg_clearance(*ebox, segs)
             if cle < 4.0:
                 clash.append('%s 英文净距%.1f' % (lb['nm'], cle))
+        if lb.get('ey2') is not None:  # 拆行英文第二行
+            wm_e2 = text_half_width(lb.get('en2', ''), zh=False)
+            ebox2 = (lb['x'] - wm_e2, lb['ey2'] - 5.5, lb['x'] + wm_e2, lb['ey2'] + 1.5)
+            cle2 = rect_seg_clearance(*ebox2, segs)
+            if cle2 < 4.0:
+                clash.append('%s 英文2行净距%.1f' % (lb['nm'], cle2))
     add('G7', '标签净距(中文≥%.1f 英文≥4.0)' % CLR_MIN, not clash, '; '.join(clash) or '全过')
 
     # G8 徽标三枚+避让(不压标签/走廊)
@@ -234,7 +253,8 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
         # v7 官方徽标: 1 头部(full) + 2~3 终点(chip); 环线仅头部
         nhead = sum(1 for b in badges if b['mode'] == 'header')
         nchip = sum(1 for b in badges if b['mode'] == 'chip')
-        ok8 = nhead == 1 and (nchip in (2, 3) or nchip == 0)  # 环线(11号线)无终点徽标
+        multi = c['root'].get('data-multi') == '1'
+        ok8 = nhead == 1 and (nchip in (2, 3, 4) if multi else nchip in (2, 3) or nchip == 0)
         why8 = '头%d+终点%d' % (nhead, nchip)
     else:
         ok8 = (len(badges) in (3, 4) and sum(1 for b in badges if b['scale'] == 0.6) in (2, 3)) or len(badges) == 1  # 环线(11号线)无终点徽标
@@ -248,6 +268,39 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
         if rect_seg_clearance(*bd['box'], segs) < 1.0:
             ok8, why8 = False, '徽标压走廊'
     add('G8', '徽标三枚+避让', ok8, why8)
+
+    # G8b 终点数字块-文字对齐(2026-10-20 用户, 12号线双段卡起生效):
+    # 数字块x与文字居中≤3, 净间距2~8统一(其余线路终点块各有一套既有摆法, 不回溯)
+    bad8b = []
+    nchip8b = 0
+    if c['multi']:
+        for bd in badges:
+            if bd.get('mode') != 'chip':
+                continue
+            nchip8b += 1
+            bx0, by0, bx1, by1 = bd['box']
+            ccx = (bx0 + bx1) / 2.0
+            cand = []
+            for lb in labels:
+                if abs(lb['x'] - ccx) > 60:
+                    continue
+                gb = by0 - lb['box'][3]   # 数字块在文字块下方
+                ga = lb['box'][1] - by1   # 数字块在文字块上方
+                if 0 < gb < 15:
+                    cand.append((gb, lb))
+                if 0 < ga < 15:
+                    cand.append((ga, lb))
+            if not cand:
+                bad8b.append('chip@(%.0f,%.0f)无相邻文字' % (ccx, (by0 + by1) / 2))
+                continue
+            gap, lb = min(cand, key=lambda t: abs(t[0] - 3.0))
+            dx = abs(ccx - lb['x'])
+            if dx > 3.0:
+                bad8b.append('%s 数字块偏%.1fpx' % (lb['nm'], dx))
+            if not (2.0 <= gap <= 8.0):
+                bad8b.append('%s 数字块间距%.1fpx' % (lb['nm'], gap))
+    add('G8b', '数字块-文字居中≤3+间距2~8', not bad8b,
+        '; '.join(bad8b) or ('%d块全对齐' % nchip8b if c['multi'] else '单段卡不适用'))
 
     # G9 铁律2验收: 标签盒不得罩住他站圆(就近归属的操作化判据)
     wrong = []
@@ -266,7 +319,10 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
     for cc in c['root'].iter('{%s}circle' % NS):
         if cc.get('data-nm'):
             pos_nm[cc.get('data-nm')] = (float(cc.get('cx')), float(cc.get('cy')))
+    if not chains and c.get('card_chains'):
+        chains = c['card_chains']  # 多段卡(12号线)自带链序
     if chains:
+        chains = [ch.split(',') if isinstance(ch, str) else ch for ch in chains]
         seqs = [[pos_nm[nm] for nm in ch if nm in pos_nm] for ch in chains]
         seq_nm = [[nm for nm in ch if nm in pos_nm] for ch in chains]
     else:

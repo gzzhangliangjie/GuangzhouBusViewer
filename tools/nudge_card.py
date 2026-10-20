@@ -59,7 +59,13 @@ def fix_label(card, nm):
     seg2 = men.group(0)
     seg2n = seg2.replace('x="%s"' % men.group(2), 'x="%.1f"' % (en_x + ddx)).replace('y="%s"' % men.group(4), 'y="%.1f"' % (en_y + ddy))
     s = s.replace(seg2, seg2n, 1)
-    open(card, 'w', encoding='utf-8').write(s)
+    # 拆行英文第二行(同新 en1 的 x, 紧随其下一行)同步平移
+    m2 = re.search(r'<text x="%s" y="([\d.]+)"([^>]*font-size="5\.5"[^>]*>[^<]*</text>)'
+                   % re.escape('%.1f' % (en_x + ddx)), s[s.find(seg2n) + len(seg2n):])
+    if m2 and 3 < float(m2.group(1)) - (en_y + ddy) < 10:
+        base = s.find(seg2n) + len(seg2n)
+        s = s[:base + m2.start()] + m2.group(0).replace(
+            'y="%s"' % m2.group(1), 'y="%.1f"' % (float(m2.group(1)) + ddy)) + s[base + m2.end():]
     return True, '位移(%.1f,%.1f)' % (ddx, ddy)
 
 

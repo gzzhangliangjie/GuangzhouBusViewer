@@ -16,6 +16,10 @@ def _lines():
     for L in d['lines']:
         n = len(L['stations']) + sum(len(b) - 1 for b in L.get('branches', []))
         out[L['zh']] = n
+    # 12号线双段卡: 北段(浔峰岗→广州体育馆 7站) + 南段(9站)
+    p12 = os.path.join(ROOT, 'data', 'line12-both.json')
+    if os.path.exists(p12):
+        out['12号线'] = len(json.load(open(p12, encoding='utf-8'))['north']) + out['12号线']
     return out
 
 
@@ -37,6 +41,10 @@ def _chains():
     out = {}
     for L in d['lines']:
         out[L['zh']] = [list(L['stations'])] + [list(b) for b in L.get('branches', [])]
+    # 12号线双段卡链序: 北段 + 南段
+    p12 = os.path.join(ROOT, 'data', 'line12-both.json')
+    if os.path.exists(p12):
+        out['12号线'] = [json.load(open(p12, encoding='utf-8'))['north']] + out['12号线']
     return out
 
 

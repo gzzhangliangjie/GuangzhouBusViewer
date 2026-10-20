@@ -19,14 +19,20 @@ const MIME = {
 };
 
 http.createServer((req, res) => {
-  let urlPath = decodeURIComponent(req.url.split('?')[0]);
+  let urlPath;
+  try {
+    urlPath = decodeURIComponent(req.url.split('?')[0]);
+  } catch (e) {
+    urlPath = req.url.split('?')[0];
+  }
   if (urlPath === '/') urlPath = '/index.html';
   const file = path.normalize(path.join(ROOT, urlPath));
   if (!file.startsWith(ROOT)) { res.writeHead(403); return res.end('Forbidden'); }
 
   fs.readFile(file, (err, buf) => {
     if (err) { res.writeHead(404); return res.end('Not Found: ' + urlPath); }
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
+      'Cache-Control': 'no-store, must-revalidate' });
     res.end(buf);
   });
 }).listen(PORT, '127.0.0.1', () => {

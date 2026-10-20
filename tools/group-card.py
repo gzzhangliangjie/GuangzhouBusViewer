@@ -434,10 +434,16 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         t.set('text-anchor', 'middle'); t.set('font-size', '10.5'); t.set('font-weight', '500')
         t.set('fill', '#1a1a1a'); t.text = lb['nm']
         if lb['en']:
+            sp = B.split_en(lb['en'], lb['nm'])
             te = ET.SubElement(gl, '{%s}text' % NS)
             te.set('x', '%.1f' % zx); te.set('y', '%.1f' % lb['by1'])
-            te.set('text-anchor', 'middle'); te.set('font-size', '5.5'); te.set('fill', '#444444')
-            te.text = lb['en']
+            te.set('text-anchor', 'middle'); te.set('font-size', '5.5'); te.set('font-family', 'Arial, sans-serif'); te.set('fill', '#444444')
+            te.text = sp[0] if sp else lb['en']
+            if sp:  # 第二行英文: 行距6.5
+                te2 = ET.SubElement(gl, '{%s}text' % NS)
+                te2.set('x', '%.1f' % zx); te2.set('y', '%.1f' % (lb['by1'] + 6.5))
+                te2.set('text-anchor', 'middle'); te2.set('font-size', '5.5'); te2.set('fill', '#444444')
+                te2.text = sp[1]
 
     out = os.path.join(ROOT, 'assets/lines/line-%s.svg' % line_zh)
     ET.ElementTree(svg).write(out, encoding='unicode', xml_declaration=False)

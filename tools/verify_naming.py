@@ -77,6 +77,13 @@ def analyze(want=None):
         got = [nm for nm, _, _ in seq]
         if zh == '1号线':
             pass  # 旧结构卡圆为绘制序, 站序由 verify-line1.py 历史把关; 坐标仍入互检池
+        elif zh == '12号线':
+            # 双段卡: 北段(浔峰岗→广州体育馆) + 南段(metro-data), 站序文件 data/line12-both.json
+            p12 = os.path.join(ROOT, 'data', 'line12-both.json')
+            if os.path.exists(p12):
+                expect = json.load(open(p12, encoding='utf-8'))['north'] + expect
+            if got != expect:
+                why.append('站序≠真值(期望首%s 实际首%s)' % (expect[:3], got[:3]))
         elif got != expect:
             why.append('站序≠真值(期望首%s 实际首%s)' % (expect[:3], got[:3]))
         reports[zh] = why
