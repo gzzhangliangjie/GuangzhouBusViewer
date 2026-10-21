@@ -119,8 +119,16 @@ def fmt(v):
 corridors = []          # (线名, x1,y1,x2,y2, 颜色)
 instances = {}          # 站名 -> [(线名, x, y)]
 colors = {}
+badge_inner = {}        # 线名 -> header徽标组内容(局部坐标)
+badge_size = {}         # 线名 -> (w, h)
 for name in ORDER:
     path = os.path.join(LINES_DIR, 'line-%s.svg' % name)
+    src = open(path, encoding='utf-8').read()
+    m = re.search(r'<g data-badge="header"[^>]*>(.*?)</g>', src, re.S)
+    assert m, '%s 缺 header 徽标组' % name
+    badge_inner[name] = m.group(1)
+    rr = re.search(r'<rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.]+)" height="([\d.]+)"', m.group(1))
+    badge_size[name] = (float(rr.group(3)), float(rr.group(4)))
     root = ET.parse(path).getroot()
     for g in root.findall(Q('g')):
         gid = g.get('id')
@@ -263,11 +271,97 @@ for mk in sorted(transfers, key=lambda m: (option_count(m), m['name'])):
     if not done:
         failed.append(mk['name'])
 
+# ---------- 各线徽标(复用主卡header徽标, 端点外推摆位) ----------
+allx = [v for c in corridors for v in (c[1], c[3])]
+ally = [v for c in corridors for v in (c[2], c[4])]
+gx, gy = sum(allx) / len(allx), sum(ally) / len(ally)
+
+
+def badge_rect_why(rect, placed_badges):
+    x, y, w, h = rect
+    for nm2, x2, y2, w2, h2 in placed_badges:
+        if not (x + w + 6 < x2 or x2 + w2 + 6 < x or y + h + 6 < y2 or y2 + h2 + 6 < y):
+            return '撞徽标%s' % nm2
+    for nm2, ax, ay, bx, by, _c in corridors:
+        if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 3.0:
+            return '撞走廊%s@(%g,%g)' % (nm2, ax, ay)
+    for other in markers:
+        if other['kind'] == 'capsule':
+            edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
+            for a, b in edges:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 3.0:
+                    return '撞胶囊'
+        else:
+            ox, oy = other['center']
+            qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
+            if dist((ox, oy), (qx, qy)) < other['r'] + 3.0:
+                return '撞站圆(%g,%g)' % (ox, oy)
+    for nm2, x2, y2, w2, h2 in placed_boxes:
+        if not (x + w + 2 < x2 or x2 + w2 + 2 < x or y + h + 2 < y2 or y2 + h2 + 2 < y):
+            return '撞标签%s' % nm2
+    return None
+
+
+def badge_rect_ok(rect, placed_badges):
+    return badge_rect_why(rect, placed_badges) is None
+
+
+badges = []             # (线名, 左上x, 左上y, w, h)
+badge_fail = []
+BADGE_AT = {
+    # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_ok
+    'APM线': [(1580, 790), (1570, 800), (1590, 780)],  # 155px内仅此3位合法: APM两侧被1号线双横线/18号线斜线夹死
+}
+for name in ORDER:
+    bw, bh = badge_size[name]
+    done = False
+    for cx, cy in BADGE_AT.get(name, []):
+        rect = (cx - bw / 2, cy - bh / 2, bw, bh)
+        why = badge_rect_why(rect, badges)
+        if why is None:
+            badges.append((name, rect[0], rect[1], bw, bh))
+            done = True
+            break
+        print('  BADGE_AT %s (%g,%g) 拒: %s' % (name, cx, cy, why))
+    if done:
+        continue
+    segs = [(c[1], c[2], c[3], c[4]) for c in corridors if c[0] == name]
+    deg, adj = {}, {}
+    for ax, ay, bx, by in segs:
+        a, b = (round(ax, 1), round(ay, 1)), (round(bx, 1), round(by, 1))
+        deg[a] = deg.get(a, 0) + 1; deg[b] = deg.get(b, 0) + 1
+        adj.setdefault(a, []).append(b); adj.setdefault(b, []).append(a)
+    ends = [p for p, d in deg.items() if d == 1]
+    cand = sorted(ends or deg, key=lambda p: -dist(p, (gx, gy)))[:6]
+    for p in cand:
+        others = adj[p]
+        base = others[0] if others else (gx, gy)
+        dx, dy = p[0] - base[0], p[1] - base[1]
+        n = (dx * dx + dy * dy) ** 0.5 or 1.0
+        ux, uy = dx / n, dy / n
+        dirs = [(ux, uy)] + [(d2[0] or 0, d2[1] or 0) for d2 in DIRS]
+        for reach in (max(bw, bh) / 2 + 8.0, max(bw, bh) / 2 + 30.0, max(bw, bh) / 2 + 52.0, 90.0, 130.0):
+            for vx, vy in dirs:
+                cx, cy = p[0] + vx * reach, p[1] + vy * reach
+                rect = (cx - bw / 2, cy - bh / 2, bw, bh)
+                if badge_rect_ok(rect, badges):
+                    badges.append((name, rect[0], rect[1], bw, bh))
+                    done = True
+                    break
+            if done:
+                break
+        if done:
+            break
+    if not done:
+        badge_fail.append(name)
+
 # ---------- 画布 ----------
 xs = [v for c in corridors for v in (c[1], c[3])]
 ys = [v for c in corridors for v in (c[2], c[4])]
 for lb in labels:
     xs += [lb[3], lb[3] + lb[5]]; ys += [lb[4], lb[4] + lb[6]]
+for _nm, bx, by, bw, bh in badges:
+    xs += [bx, bx + bw]; ys += [by, by + bh]
 for mk in markers:
     if mk['kind'] == 'capsule':
         xs += [p[0] for p in mk['hull']]; ys += [p[1] for p in mk['hull']]
@@ -339,6 +433,10 @@ for mk in markers:
                        (d, mk['name'], INK, fmt(2 * CAP_RING)))
             out.append('<path d="%s" style="fill:none;stroke:#FFFFFF;stroke-width:%s;stroke-linejoin:round"/>' % (d, fmt(2 * (CAP_W / 2 - CAP_RING))))
 out.append('</g>')
+out.append('<g id="线路徽标">')
+for nm, bx, by, bw, bh in badges:
+    out.append('<g data-badge="header" transform="translate(%s %s)">%s</g>' % (fmt(bx), fmt(by), badge_inner[nm]))
+out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">')
 for nm, tx, ty, _bx, _by, _w, _h, _mk in labels:
     out.append('<text x="%s" y="%s" font-size="%s" font-weight="600" fill="%s">%s</text>' %
@@ -380,6 +478,8 @@ for nm, pts in instances.items():
                 errs.append('N2 %s 实例(%.1f,%.1f)超出共享圆 r=%s' % (nm, x, y, mk['r']))
 if failed:
     errs.append('N3 标签放不下: %s' % ', '.join(failed))
+if badge_fail:
+    errs.append('N6 徽标放不下: %s' % ', '.join(badge_fail))
 for i, a in enumerate(markers):
     for b in markers[i + 1:]:
         if a['name'] == b['name']:
@@ -390,6 +490,8 @@ for i, a in enumerate(markers):
 audit['labels'] = len(labels)
 audit['label_failed'] = failed
 audit['corridors'] = len(corridors)
+audit['badges'] = [(nm, round(bx, 1), round(by, 1)) for nm, bx, by, _w, _h in badges]
+audit['badge_failed'] = badge_fail
 audit['viewBox'] = [round(v, 2) for v in vb]
 with open(OUT_JSON, 'w', encoding='utf-8') as f:
     json.dump(audit, f, ensure_ascii=False, indent=1)

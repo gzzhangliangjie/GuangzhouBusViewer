@@ -530,6 +530,33 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
     else:
         add('G15', '密集线左右交替', True, '非均匀密集线豁免(中位站距≥30)')
 
+    # G16 无之字折角(2026-10-21 固化, 用户拍板"线路要平滑过渡不能有折角"):
+    # 相邻走廊段在同一轴继续推进的同时另一轴反向折叠(山峰/之字)=明显折角;
+    # 转向>123°(dot<-0.55)也算。3号线海傍曾被画成"先45°上再45°下"山峰形。
+    def _unit(ax, ay, bx, by):
+        L = math.hypot(bx - ax, by - ay) or 1.0
+        return ((bx - ax) / L, (by - ay) / L)
+    by_pt = {}
+    for k, (x1, y1, x2, y2) in enumerate(segs):
+        by_pt.setdefault((round(x1, 1), round(y1, 1)), []).append((k, 0))
+        by_pt.setdefault((round(x2, 1), round(y2, 1)), []).append((k, 1))
+    fold = []
+    for (px, py), refs in by_pt.items():
+        if len(refs) != 2:
+            continue  # 链端/分叉关节不查
+        # T型并线关节(第三条段穿越此点, 如3号线支线45°并入主竖线)不算折角
+        if any(seg_pt_dist(sg[0], sg[1], sg[2], sg[3], px, py) < 0.6
+               for k, sg in enumerate(segs) if k not in (refs[0][0], refs[1][0])):
+            continue
+        (k1, e1), (k2, e2) = refs
+        a, b = segs[k1], segs[k2]
+        u = _unit(a[0], a[1], a[2], a[3]) if e1 == 1 else _unit(a[2], a[3], a[0], a[1])
+        v = _unit(b[0], b[1], b[2], b[3]) if e2 == 0 else _unit(b[2], b[3], b[0], b[1])
+        if ((u[0] * v[0] > 0.3 and u[1] * v[1] < -0.3) or (u[1] * v[1] > 0.3 and u[0] * v[0] < -0.3)
+                or (u[0] * v[0] + u[1] * v[1]) < -0.55):
+            fold.append('(%g,%g)' % (px, py))
+    add('G16', '无之字折角', not fold, '; '.join(fold[:4]) or '全过')
+
     return R
 
 
