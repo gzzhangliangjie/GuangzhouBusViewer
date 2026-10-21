@@ -83,7 +83,7 @@ def main():
             _, lb = min(tcand)
             dot = terms[lb['nm']]
             lcy = (lb['box'][1] + lb['box'][3]) / 2
-            if abs(lb['x'] - dot[0]) > abs(lcy - dot[1]):  # 横向连线: 徽标横排(同y居中)
+            if abs(lcy - dot[1]) <= 3.0:  # 文字与圆点同高才横排; 斜上斜下竖排(延长线)
                 cx = lb['box'][2] + 3.0 + CHIP_HW if lb['x'] > dot[0] else lb['box'][0] - 3.0 - CHIP_HW
                 cy = lcy
             else:  # 竖向连线: 与终点文字同x居中

@@ -410,7 +410,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
             lb = plmap[tn]
             tx, ty = epos[tn]
             lcx, lcy = (lb['bx0'] + lb['bx1']) / 2, (lb['by0'] + lb['by1']) / 2
-            if abs(lcx - tx) > abs(lcy - ty):  # 横向连线: 徽标横排(同y居中)
+            if abs(lcy - ty) <= 3.0:  # 文字与圆点同高(真正线侧/轴向)才横排; 斜上斜下一律竖排(延长线, 海傍教训)
                 cx = lb['bx1'] + 3.0 + _chw if lcx > tx else lb['bx0'] - 3.0 - _chw
                 cy = lcy
             else:  # 竖向连线: 与终点文字同x居中(净距3=末行基线+2.5口径)

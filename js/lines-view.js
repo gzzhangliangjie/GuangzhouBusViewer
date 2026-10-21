@@ -55,7 +55,7 @@
         `<span class="cap-chip" style="background:${lines[curLine].color}"></span>` +
         `${file.split('/').pop()} · ${imgW}×${imgH} · 官图提取卡`;
     };
-    im.src = encodeURI(file);
+    im.src = encodeURI(file) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
     [...$('#line-segs').children].forEach(c =>
       c.classList.toggle('active', c.dataset.file === file));
   }
