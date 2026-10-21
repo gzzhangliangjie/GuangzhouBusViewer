@@ -513,8 +513,8 @@
 <circle cx="1984.5" cy="1145.2" r="5" data-nm="万胜围" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1498.5" cy="1010.2" r="5" data-nm="东山口" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1455.8" cy="1314" r="5" data-nm="东晓南" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<line x1="1498.5" y1="1032" x2="1498.5" y2="1096" data-nm="东湖" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1498.5" y1="1032" x2="1498.5" y2="1096" data-nm="东湖" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<line x1="1498.5" y1="1055.2" x2="1498.5" y2="1082.2" data-nm="东湖" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
+<line x1="1498.5" y1="1055.2" x2="1498.5" y2="1082.2" data-nm="东湖" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1120.5" cy="947.2" r="5" data-nm="中山八" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1489.5" cy="1280.2" r="5" data-nm="五凤" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1579.5" cy="1068.7" r="5" data-nm="五羊邨" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
@@ -655,15 +655,15 @@
 <text x="1647.75" y="892.35" font-size="10.5" font-weight="600" fill="#1a1a1a">林和西</text>
 <text x="1671.95" y="784.9" font-size="10.5" font-weight="600" fill="#1a1a1a">燕塘</text>
 <text x="1212.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">陈家祠</text>
-<text x="1510.5" y="1050.5" font-size="10.5" font-weight="600" fill="#1a1a1a">东湖</text>
+<text x="1510.5" y="1055.2" font-size="10.5" font-weight="600" fill="#1a1a1a">东湖</text>
 <text x="1500.5" y="1284.2" font-size="10.5" font-weight="600" fill="#1a1a1a">五凤</text>
 <text x="1542" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">杨箕</text>
-<text x="1482.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">东山口</text>
 <text x="1823.5" y="1014.2" font-size="10.5" font-weight="600" fill="#1a1a1a">天河公园</text>
 <text x="1650" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">客村</text>
 <text x="1618" y="1104.2" font-size="10.5" font-weight="600" fill="#1a1a1a">广州塔</text>
 <text x="1056" y="943.7" font-size="10.5" font-weight="600" fill="#1a1a1a">坦尾</text>
 <text x="1736.5" y="1265.4" font-size="10.5" font-weight="600" fill="#1a1a1a">龙潭</text>
+<text x="1482.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">东山口</text>
 <text x="1164" y="826.7" font-size="10.5" font-weight="600" fill="#1a1a1a">西村</text>
 <text x="1077.5" y="744.2" font-size="10.5" font-weight="600" fill="#1a1a1a">浔峰岗</text>
 <text x="1315.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">海珠广场</text>
