@@ -482,6 +482,16 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
                 break
     add('G13', '终点贴圆(≤1.5px)', not bad_stub, '; '.join(bad_stub[:4]) or '全过')
 
+    # G14 站圆不塌缩(2026-10-21 固化): 任意两站圆间距≥8px。
+    # 8号线彩虹桥曾被走链塌到凤凰新村钉位(两圆距离0), 圆点数=文字数由G4把守, 本门禁把守位置
+    collapse = []
+    for i in range(len(circles)):
+        for j in range(i + 1, len(circles)):
+            d = math.hypot(circles[i][0] - circles[j][0], circles[i][1] - circles[j][1])
+            if d < 8.0:
+                collapse.append('第%d/%d圆相距%.1fpx' % (i + 1, j + 1, d))
+    add('G14', '站圆不塌缩(≥8px)', not collapse, '; '.join(collapse[:4]) or '全过')
+
     return R
 
 
