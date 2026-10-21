@@ -40,6 +40,7 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
          '21号线', '22号线', '广佛线', 'APM线']
 
 SPREAD_CIRC = 9.0        # 同名实例最大两两距离阈值: 内=共享圆, 外=胶囊包络
+BADGE_SCALE = 0.7        # 徽标整体缩放(用户: 全部调小+2/22号线曾盖线, 2026-10-22)
 CAP_W = 10.0             # 胶囊白色带宽(=直径)
 CAP_RING = 2.0           # 胶囊黑描边宽
 CIRC_R_MULTI = 5.0       # 多线共享圆半径
@@ -321,7 +322,7 @@ BADGE_AT = {
     'APM线': [(1580, 790), (1570, 800), (1590, 780)],  # 155px内仅此3位合法: APM两侧被1号线双横线/18号线斜线夹死
 }
 for name in ORDER:
-    bw, bh = badge_size[name]
+    bw, bh = badge_size[name][0] * BADGE_SCALE, badge_size[name][1] * BADGE_SCALE
     done = False
     for cx, cy in BADGE_AT.get(name, []):
         rect = (cx - bw / 2, cy - bh / 2, bw, bh)
@@ -362,6 +363,12 @@ for name in ORDER:
             break
     if not done:
         badge_fail.append(name)
+        print('  !! 徽标 %s 未找到合法位' % name)
+# 落位审计: 每枚复检(应全过; 2号线/22号线曾盖线的防线)
+for _nm, _bx, _by, _bw, _bh in badges:
+    _why = badge_rect_why((_bx, _by, _bw, _bh), [b for b in badges if b[0] != _nm])
+    if _why:
+        print('  !! 徽标 %s 复检撞: %s' % (_nm, _why))
 
 # ---------- 画布 ----------
 xs = [v for c in corridors for v in (c[1], c[3])]
@@ -444,7 +451,8 @@ for mk in markers:
 out.append('</g>')
 out.append('<g id="线路徽标">')
 for nm, bx, by, bw, bh in badges:
-    out.append('<g data-badge="header" transform="translate(%s %s)">%s</g>' % (fmt(bx), fmt(by), badge_inner[nm]))
+    out.append('<g data-badge="header" transform="translate(%s %s) scale(%s)">%s</g>'
+               % (fmt(bx), fmt(by), fmt(BADGE_SCALE), badge_inner[nm]))
 out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">')
 for nm, tx, ty, _bx, _by, _w, _h, _mk in labels:
