@@ -429,9 +429,10 @@ for mk in markers:
                            (fmt(x1), fmt(y1), fmt(x2), fmt(y2), mk['name'], col, fmt(wid)))
         else:
             d = 'M' + ' L'.join('%s %s' % (fmt(x), fmt(y)) for x, y in h) + ' Z'
+            # 黑14/白10双描边(与两点胶囊同口径): 旧4黑/6白=黑被白全盖, 多边形胶囊描边隐形(2026-10-21)
             out.append('<path d="%s" data-nm="%s" style="fill:#FFFFFF;stroke:%s;stroke-width:%s;stroke-linejoin:round;stroke-miterlimit:10"/>' %
-                       (d, mk['name'], INK, fmt(2 * CAP_RING)))
-            out.append('<path d="%s" style="fill:none;stroke:#FFFFFF;stroke-width:%s;stroke-linejoin:round"/>' % (d, fmt(2 * (CAP_W / 2 - CAP_RING))))
+                       (d, mk['name'], INK, fmt(CAP_W + 2 * CAP_RING)))
+            out.append('<path d="%s" style="fill:none;stroke:#FFFFFF;stroke-width:%s;stroke-linejoin:round"/>' % (d, fmt(CAP_W)))
 out.append('</g>')
 out.append('<g id="线路徽标">')
 for nm, bx, by, bw, bh in badges:
