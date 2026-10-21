@@ -257,7 +257,7 @@
 <line x1="1687.5" y1="938.25" x2="1687.5" y2="1064.25" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
 <line x1="1687.5" y1="1064.25" x2="1678.5" y2="1082.25" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
 <line x1="1678.5" y1="1082.25" x2="1660.5" y2="1100.25" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
-<line x1="1678.5" y1="920.25" x2="1668.38" y2="910.12" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
+<line x1="1678.5" y1="920.25" x2="1666.5" y2="907.5" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
 <line x1="1687.5" y1="938.25" x2="1678.5" y2="920.25" style="fill:none;stroke:#00B0FF;stroke-width:7;stroke-linecap:round"/>
 </g>
 <g id="站圆">
@@ -386,7 +386,7 @@
 <circle cx="2002.5" cy="416.2" r="4.5" data-nm="枫下" style="fill:#FFFFFF;stroke:#6D4C41;stroke-width:2"/>
 <circle cx="1878.8" cy="740.2" r="4.5" data-nm="柯木塱" style="fill:#FFFFFF;stroke:#80286c;stroke-width:2"/>
 <circle cx="832.5" cy="1388.2" r="4.5" data-nm="桂城" style="fill:#FFFFFF;stroke:#C0CA33;stroke-width:2"/>
-<circle cx="1660.5" cy="805.6" r="4.5" data-nm="梅花园" style="fill:#FFFFFF;stroke:#ECA154;stroke-width:2"/>
+<circle cx="1660.5" cy="776.9" r="4.5" data-nm="梅花园" style="fill:#FFFFFF;stroke:#ECA154;stroke-width:2"/>
 <circle cx="1398.8" cy="848.2" r="4.5" data-nm="梓元岗" style="fill:#FFFFFF;stroke:#FFCC66;stroke-width:2"/>
 <circle cx="1939.5" cy="1010.2" r="4.5" data-nm="棠下" style="fill:#FFFFFF;stroke:#827717;stroke-width:2"/>
 <circle cx="1919.2" cy="967.5" r="4.5" data-nm="棠东" style="fill:#FFFFFF;stroke:#1A237E;stroke-width:2"/>
@@ -538,8 +538,7 @@
 <line x1="1109" y1="1021" x2="1120.5" y2="1081.5" data-nm="如意坊" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1982.35" cy="1262.2" r="5" data-nm="官洲" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1660.5" cy="1208.2" r="5" data-nm="客村" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<path d="M1660 848.2 L1660.5 857.2 L1660.5 902.2 Z" data-nm="广州东站" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:4;stroke-linejoin:round;stroke-miterlimit:10"/>
-<path d="M1660 848.2 L1660.5 857.2 L1660.5 902.2 Z" style="fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linejoin:round"/>
+<circle cx="1660.4" cy="852.7" r="5" data-nm="广州东站" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <path d="M1386 1593 L1399.5 1593 L1392.8 1599.8 Z" data-nm="广州南站" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:4;stroke-linejoin:round;stroke-miterlimit:10"/>
 <path d="M1386 1593 L1399.5 1593 L1392.8 1599.8 Z" style="fill:none;stroke:#FFFFFF;stroke-width:6;stroke-linejoin:round"/>
 <circle cx="1660.5" cy="1100.2" r="5" data-nm="广州塔" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
@@ -551,8 +550,7 @@
 <circle cx="1325.2" cy="686.2" r="5" data-nm="新市墟" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1350" cy="1208.2" r="5" data-nm="昌岗" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1552.5" cy="1010.2" r="5" data-nm="杨箕" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<line x1="1660.5" y1="933.7" x2="1668.4" y2="910.1" data-nm="林和西" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1660.5" y1="933.7" x2="1668.4" y2="910.1" data-nm="林和西" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<circle cx="1663.5" cy="904.85" r="5" data-nm="林和西" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="2200.5" cy="686.2" r="5" data-nm="水西" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1660.5" cy="1550.2" r="5" data-nm="汉溪长隆" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1422" cy="1280.2" r="5" data-nm="江泰路" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
@@ -564,8 +562,7 @@
 <circle cx="1066.5" cy="740.2" r="5" data-nm="浔峰岗" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="2130.8" cy="1594.95" r="5" data-nm="海傍" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1336.5" cy="1064.2" r="5" data-nm="海珠广场" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<line x1="1660.5" y1="853.9" x2="1661.4" y2="798.3" data-nm="燕塘" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1660.5" y1="853.9" x2="1661.4" y2="798.3" data-nm="燕塘" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<circle cx="1660.95" cy="797.4" r="5" data-nm="燕塘" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1356" cy="1282.05" r="5" data-nm="燕岗" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <line x1="1660.5" y1="1040.8" x2="1660.5" y2="1064.2" data-nm="珠江新城" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
 <line x1="1660.5" y1="1040.8" x2="1660.5" y2="1064.2" data-nm="珠江新城" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
@@ -591,8 +588,7 @@
 <line x1="2324.2" y1="389.2" x2="2335.5" y2="389.2" data-nm="镇龙" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
 <line x1="2324.2" y1="389.2" x2="2335.5" y2="389.2" data-nm="镇龙" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1228.5" cy="1010.2" r="5" data-nm="陈家祠" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<line x1="1498.5" y1="254.2" x2="1498.5" y2="307.5" data-nm="高增" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1498.5" y1="254.2" x2="1498.5" y2="307.5" data-nm="高增" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<circle cx="1498.5" cy="254.2" r="5" data-nm="高增" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="2146.5" cy="1037.2" r="5" data-nm="鱼珠" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1962" cy="924.8" r="5" data-nm="黄村" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1174.5" cy="1064.2" r="5" data-nm="黄沙" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
@@ -626,19 +622,18 @@
 <text x="1359" y="713.5" font-size="10.5" font-weight="600" fill="#1a1a1a">白云文化广场</text>
 <text x="1128" y="984.5" font-size="10.5" font-weight="600" fill="#1a1a1a">中山八</text>
 <text x="1733.5" y="1180.8" font-size="10.5" font-weight="600" fill="#1a1a1a">赤岗</text>
-<text x="1672.95" y="830.1" font-size="10.5" font-weight="600" fill="#1a1a1a">燕塘</text>
 <text x="2435.5" y="1041.2" font-size="10.5" font-weight="600" fill="#1a1a1a">夏园</text>
 <text x="1324.17" y="869.97" font-size="10.5" font-weight="600" fill="#1a1a1a">广州火车站</text>
 <text x="1191.2" y="1203.5" font-size="10.5" font-weight="600" fill="#1a1a1a">沙涌</text>
 <text x="1367" y="1269.55" font-size="10.5" font-weight="600" fill="#1a1a1a">燕岗</text>
 <text x="2165.5" y="1041.2" font-size="10.5" font-weight="600" fill="#1a1a1a">鱼珠</text>
-<text x="1606.33" y="873.2" font-size="10.5" font-weight="600" fill="#1a1a1a">广州东站</text>
 <text x="1404.77" y="1616.77" font-size="10.5" font-weight="600" fill="#1a1a1a">广州南站</text>
 <text x="1433" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">江泰路</text>
 <text x="1075.12" y="1302.17" font-size="10.5" font-weight="600" fill="#1a1a1a">西塱</text>
 <text x="1167.5" y="945.95" font-size="10.5" font-weight="600" fill="#1a1a1a">彩虹桥</text>
 <text x="1361" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">昌岗</text>
 <text x="1477.5" y="565.7" font-size="10.5" font-weight="600" fill="#1a1a1a">嘉禾望岗</text>
+<text x="1639.4" y="840.2" font-size="10.5" font-weight="600" fill="#1a1a1a">广州东站</text>
 <text x="1574.5" y="835.7" font-size="10.5" font-weight="600" fill="#1a1a1a">沙河</text>
 <text x="2141.8" y="1582.45" font-size="10.5" font-weight="600" fill="#1a1a1a">海傍</text>
 <text x="1129.67" y="1161.43" font-size="10.5" font-weight="600" fill="#1a1a1a">芳村</text>
@@ -656,11 +651,12 @@
 <text x="1488" y="907.7" font-size="10.5" font-weight="600" fill="#1a1a1a">区庄</text>
 <text x="1705" y="773.9" font-size="10.5" font-weight="600" fill="#1a1a1a">天河客运站</text>
 <text x="1239.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">文化公园</text>
-<text x="1620.95" y="925.9" font-size="10.5" font-weight="600" fill="#1a1a1a">林和西</text>
 <text x="1279.4" y="1199.2" font-size="10.5" font-weight="600" fill="#1a1a1a">沙园</text>
 <text x="2296.85" y="375.7" font-size="10.5" font-weight="600" fill="#1a1a1a">镇龙</text>
 <text x="1779.5" y="839.1" font-size="10.5" font-weight="600" fill="#1a1a1a">华师</text>
 <text x="1071.25" y="1055.25" font-size="10.5" font-weight="600" fill="#1a1a1a">如意坊</text>
+<text x="1647.75" y="892.35" font-size="10.5" font-weight="600" fill="#1a1a1a">林和西</text>
+<text x="1671.95" y="784.9" font-size="10.5" font-weight="600" fill="#1a1a1a">燕塘</text>
 <text x="1212.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">陈家祠</text>
 <text x="1510.5" y="1050.5" font-size="10.5" font-weight="600" fill="#1a1a1a">东湖</text>
 <text x="1500.5" y="1284.2" font-size="10.5" font-weight="600" fill="#1a1a1a">五凤</text>
@@ -675,7 +671,6 @@
 <text x="1077.5" y="744.2" font-size="10.5" font-weight="600" fill="#1a1a1a">浔峰岗</text>
 <text x="1315.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">海珠广场</text>
 <text x="2190" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">苏元</text>
-<text x="1510.5" y="284.85" font-size="10.5" font-weight="600" fill="#1a1a1a">高增</text>
 <text x="2238.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大沙东</text>
 <text x="2190" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">水西</text>
 <text x="1968.75" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂南</text>
@@ -687,6 +682,7 @@
 <text x="2244" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">萝岗</text>
 <text x="2238.75" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">裕丰围</text>
 <text x="1974" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂</text>
+<text x="1488" y="241.7" font-size="10.5" font-weight="600" fill="#1a1a1a">高增</text>
 <text x="1866" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">员村</text>
 <text x="1650" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大塘</text>
 <text x="1971.85" y="1249.7" font-size="10.5" font-weight="600" fill="#1a1a1a">官洲</text>

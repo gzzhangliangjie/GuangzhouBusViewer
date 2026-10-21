@@ -471,6 +471,8 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
         if not cand:
             continue
         _, lb = min(cand)
+        # lcy 是循环泄漏变量(最后一个遍历标签的y), 必须按选中标签重算(2026-10-21 林和西挪钉触发错配)
+        lcy = (lb['box'][1] + lb['box'][3]) / 2.0
         ax, ay = min(((x, y) for (x, y, r) in circles),
                      key=lambda p: math.hypot(p[0] - lb['x'], p[1] - lcy))
         _term_circles.append((ax, ay))
