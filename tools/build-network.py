@@ -273,15 +273,34 @@ st_labels = []
 zoom_labels = []        # (名, x, y, 违规数) 缩放层(实在放不下)
 zoom_boxes = []
 ST_FONT = 7.5
-RINGS_TIGHT = [2.5, 6.0, 11.0, 17.0]
+RINGS_TIGHT = [4.0, 8.0, 13.0, 19.0]
+ST_GAP = 3.0             # 标签盒-本站标记最小净距(用户: 太近贴在一起, 2026-10-22)
 
 
 def st_w(nm):
     return sum(ST_FONT if ord(ch) > 0x2E80 else 4.2 for ch in nm)
 
 
+def mk_gap(rect, mk):
+    """标签盒到标记边缘净距(圆=点距-r, 胶囊=盒到hull边净距-半宽)。"""
+    x, y, w, h = rect
+    if mk['kind'] == 'capsule':
+        edges = poly_edges(mk['hull']) if len(mk['hull']) > 2 else [tuple(mk['hull'])]
+        return min(rect_seg_dist(rect, a, b) for a, b in edges) - CAP_W / 2
+    ox, oy = mk['center']
+    qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
+    return dist((ox, oy), (qx, qy)) - mk['r']
+
+
 def st_clear(rect, own_mk):
     x, y, w, h = rect
+    if mk_gap(rect, own_mk) < ST_GAP:          # 本站: 不贴不叠(太近=贴在一起, 用户纠偏)
+        return False
+    cx_, cy_ = x + w / 2, y + h / 2            # 归属无歧义: 标签中心离本站最近
+    od = dist((cx_, cy_), own_mk['center'])
+    for other in markers:
+        if other is not own_mk and dist((cx_, cy_), other['center']) < od - 1.0:
+            return False
     for nm2, x2, y2, w2, h2 in placed_boxes:
         if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
             return False
@@ -319,18 +338,24 @@ for _name in ORDER:
 
 
 def place_one(mk):
-    """统一放置: 卡片方位拉近(钳13px)→紧环8向→缩放层(最少违规+互避让)。"""
+    """统一放置: 卡片方位拉近(按盒边净距钳制)→环4/8/13/19八向→缩放层(最少违规+互避让)。"""
     nm = mk['name']
     w, h = st_w(nm), 8.5
     mx, my = mk['center']
     cands = []
-    if nm in card_label:                       # 卡片标准方位, 拉近钳制(旧位按10.5字号留距, 小字要贴圆)
+    if nm in card_label:                       # 卡片标准方位, 拉近但保盒边净距(宽站名按中心钳会怼进圆)
         cx, cy = card_label[nm]
-        ox, oy = cx - mx, (cy - 3.75) - my     # 标签中心相对标记中心
+        ox, oy = cx - mx, (cy - 1.75) - my     # 标签中心相对标记中心(基线+1.75=字形高半值修正)
         L = (ox * ox + oy * oy) ** 0.5
         if L > 1:
-            k = min(1.0, 13.0 / L)
-            cands.append((mx + ox * k, my + oy * k + 3.75))
+            k = min(1.0, 14.0 / L)
+            px, py = mx + ox * k, my + oy * k
+            rect = (px - w / 2, py - h / 2, w, h)
+            g0 = mk_gap(rect, mk)
+            if g0 < ST_GAP + 0.5 and L > 0:    # 太近则沿方位外推到净距达标
+                px += ox / L * (ST_GAP + 0.5 - g0)
+                py += oy / L * (ST_GAP + 0.5 - g0)
+            cands.append((px, py + 1.75))
     for ring in RINGS_TIGHT:
         for dx, dy in DIRS:
             ax, ay = marker_anchor(mk, dx, dy)
@@ -339,7 +364,7 @@ def place_one(mk):
     for cx, cy in cands:
         rect = (cx - w / 2, cy - h / 2, w, h)
         if st_clear(rect, mk):
-            labels.append((nm, cx, cy + 3.25))
+            labels.append((nm, cx, cy + 1.75))
             placed_boxes.append((nm,) + rect)
             return True
     # 缩放层: 放宽净距, 取最少违规位(互避让), 白描边光环保可读
@@ -375,7 +400,7 @@ def place_one(mk):
         if best is None or viol < best[0]:
             best = (viol, cx, cy)
     assert best, nm
-    zoom_labels.append((nm, best[1], best[2] + 3.25, best[0]))
+    zoom_labels.append((nm, best[1], best[2] + 1.75, best[0]))
     zoom_boxes.append((nm, best[1] - w / 2, best[2] - h / 2, w, h))
     return True
 
@@ -459,6 +484,24 @@ for name in ORDER:
         deg[a] = deg.get(a, 0) + 1; deg[b] = deg.get(b, 0) + 1
         adj.setdefault(a, []).append(b); adj.setdefault(b, []).append(a)
     ends = [p for p, d in deg.items() if d == 1]
+    # 统一策略(2026-10-22用户令): 徽标优先放终点走廊延长线上, 中轴对齐(全部终点按序, 近reach优先)
+    for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
+        others = adj[p]
+        base = others[0] if others else (gx, gy)
+        dx, dy = p[0] - base[0], p[1] - base[1]
+        n = (dx * dx + dy * dy) ** 0.5 or 1.0
+        ux, uy = dx / n, dy / n
+        for reach in (max(bw, bh) / 2 + 10.0, max(bw, bh) / 2 + 34.0,
+                      max(bw, bh) / 2 + 60.0, max(bw, bh) / 2 + 90.0):
+            rect = (p[0] + ux * reach - bw / 2, p[1] + uy * reach - bh / 2, bw, bh)
+            if badge_rect_ok(rect, badges):
+                badges.append((name, rect[0], rect[1], bw, bh))
+                done = True
+                break
+        if done:
+            break
+    if done:
+        continue
     cand = sorted(ends or deg, key=lambda p: -dist(p, (gx, gy)))[:6]
     for p in cand:
         others = adj[p]
