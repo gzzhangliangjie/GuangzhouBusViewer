@@ -385,13 +385,20 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
     _terms_pos = [epos[tn] for tn in list(order[:1]) + list(order[-1:]) +
                   ([border[-1]] if branch else []) if tn in epos]
     if not loop and _terms_pos:
+        # 只吸真游离端(端点度=1): 关节端(度≥2, 如镇龙45°斜段端接水平stub)绝不能拽走,
+        # 否则stub成孤儿段(G13游离端+G16乱关节双红, 2026-10-21镇龙教训)
+        _eps = [(_s[0], _s[1]) for _s in _all_segs] + [(_s[2], _s[3]) for _s in _all_segs]
+
+        def _deg(px, py):
+            return sum(1 for (qx, qy) in _eps if math.hypot(qx - px, qy - py) <= 0.6)
+
         for _si, _s in enumerate(_all_segs):
             _ends = ((_s[0], _s[1]), (_s[2], _s[3]))
             for _k, (_px, _py) in enumerate(_ends):
                 for _tx, _ty in _terms_pos:
                     _d = math.hypot(_px - _tx, _py - _ty)
                     _d_other = math.hypot(_ends[1 - _k][0] - _tx, _ends[1 - _k][1] - _ty)
-                    if 1.5 < _d <= 12.0 and _d_other > 12.0:
+                    if 1.5 < _d <= 12.0 and _d_other > 12.0 and _deg(_px, _py) == 1:
                         _q = list(_s)
                         _q[_k * 2], _q[_k * 2 + 1] = _tx, _ty
                         _all_segs[_si] = tuple(_q)
