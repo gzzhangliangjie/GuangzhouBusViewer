@@ -557,6 +557,19 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             fold.append('(%g,%g)' % (px, py))
     add('G16', '无之字折角', not fold, '; '.join(fold[:4]) or '全过')
 
+    # G17 长非标斜段(2026-10-21 固化, 用户点名"石碁南折角太明显"):
+    # 角度距{0,45,90}° >4° 且长度 >40px = 红。官图短过渡段(≤30px, 26.6°/63.4°缓坡缓和)合法;
+    # 长孤非标斜段(3号线曾128px@23.7°)读作画错的明显折角。正确画法=标准45°折角(拐点可落两站间空档)。
+    bad_odd = []
+    for x1, y1, x2, y2 in segs:
+        L2 = math.hypot(x2 - x1, y2 - y1)
+        if L2 < 1e-6:
+            continue
+        a2 = math.degrees(math.atan2(abs(y2 - y1), abs(x2 - x1)))
+        if min(abs(a2), abs(a2 - 45), abs(a2 - 90)) > 4.0 and L2 > 40.0:
+            bad_odd.append('%.1f°/%.0fpx@(%g,%g)' % (a2, L2, x1, y1))
+    add('G17', '无长非标斜段(>40px且离0/45/90超4°)', not bad_odd, '; '.join(bad_odd[:4]) or '全过')
+
     return R
 
 
