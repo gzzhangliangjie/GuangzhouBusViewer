@@ -592,7 +592,9 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
                 junc = True
         labels.append({'nm': nm, 'ax': ax, 'ay': ay, 'en': en, 'bw': bw, 'bh': bh,
                        'horiz': abs(ux) > abs(uy),  # 规则9: 45°为界(<45°上下, >45°左右)
-                       'diag': 0.74 < abs(ux) and 0.74 < abs(uy),  # 正45°±3°才法向
+                       'diag': 0.64 < abs(ux) < 0.77 and 0.64 < abs(uy) < 0.77,
+                       # 正45°±6°才法向。旧条件 0.74<|ux| and 0.74<|uy| 单位向量不可能
+                       # 两分量同>0.74(模长>1.05)=恒假, 法向布局从未生效
                        'term': (not no_term) and nm in (stations[0], stations[-1]), 'ux': ux, 'uy': uy, 'junc': junc})
     TERM = set() if no_term else {stations[0], stations[-1]}
 
@@ -688,24 +690,42 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
 
     placed = []
 
+    def ambiguous(lb, bx0, by0, bx1, by1):
+        """无争议约束(2026-10-21): 候选位中心若离别人家圆不到自家圆的0.85倍以内
+        (余量比>0.85)则视为可混淆位, 尽量避开; 兜底轮不再查(总得落地)"""
+        cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
+        own = math.hypot(cx - lb['ax'], cy - lb['ay'])
+        other = min((math.hypot(cx - p['ax'], cy - p['ay']) for p in labels if p is not lb),
+                    default=1e9)
+        return own > 0.85 * other
+
     def place(lb):
         for strict in (True, False):
-            for desc, bx0, by0, bx1, by1 in candidates(lb):
+            feas = []  # 兜底轮用: 可行候选按 (无争议优先, 原序) 取
+            for ci, (desc, bx0, by0, bx1, by1) in enumerate(candidates(lb)):
                 r = push(desc, bx0, by0, bx1, by1, lb['ax'], lb['ay'])
                 if r is None:
                     continue
-                bx0, by0, bx1, by1 = r
+                bx0, bx1 = r[0], r[2]
+                by0, by1 = r[1], r[3]
                 if clearance(bx0, by0, bx1, by1) < G - 1.5:
                     continue
                 clash = any(not (bx0 > p['bx1'] or p['bx0'] > bx1 or by0 > p['by1'] or p['by0'] > by1)
                             for p in placed)
                 if clash:
                     continue
+                feas.append((1 if ambiguous(lb, bx0, by0, bx1, by1) else 0, ci, desc, bx0, by0, bx1, by1))
                 if strict:
                     cover = any(bx0 - 4 < p['ax'] < bx1 + 4 and by0 - 4 < p['ay'] < by1 + 4
                                 for p in labels if p is not lb)
-                    if cover:
+                    if cover or ambiguous(lb, bx0, by0, bx1, by1):
                         continue
+                lb.update(desc=desc, bx0=bx0, by0=by0, bx1=bx1, by1=by1)
+                placed.append(lb)
+                return
+            if not strict and feas:
+                feas.sort(key=lambda t: (t[0], t[1]))
+                _, _, desc, bx0, by0, bx1, by1 = feas[0]
                 lb.update(desc=desc, bx0=bx0, by0=by0, bx1=bx1, by1=by1)
                 placed.append(lb)
                 return

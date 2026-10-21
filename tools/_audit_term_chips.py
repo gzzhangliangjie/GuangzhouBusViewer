@@ -13,6 +13,7 @@ from verify_card import load  # noqa: E402  实测标签盒口径=门禁
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def audit(path):
+    audit.amb = []
     c = load(path)
     circles = [(x, y) for (x, y, r) in c['circles']]
     labels = [(lb['nm'], lb['x'], (lb['box'][1] + lb['box'][3]) / 2) for lb in c['labels']]
@@ -21,6 +22,23 @@ def audit(path):
         if bdx.get('mode') == 'chip':
             x0, y0, x1, y1 = bdx['box']
             chips.append(((x0 + x1) / 2, (y0 + y1) / 2))
+    # 混淆度量: 每个标签最近的圆必须是自己名字的圆(邻站混淆=地铁图大坑)
+    pos = {}
+    import xml.etree.ElementTree as ET2
+    ns2 = '{http://www.w3.org/2000/svg}'
+    for g in c['root'].iter(ns2 + 'g'):
+        if g.get('id') == '站圆':
+            for el in g.iter(ns2 + 'circle'):
+                if el.get('data-nm'):
+                    pos[el.get('data-nm')] = (float(el.get('cx')), float(el.get('cy')))
+    amb = []
+    for lb in c['labels']:
+        if lb['nm'] not in pos:
+            continue
+        ox, oy = pos[lb['nm']]
+        bx, by = min(circles, key=lambda p: math.hypot(p[0] - lb['x'], p[1] - (lb['box'][1] + lb['box'][3]) / 2))
+        if (round(bx, 1), round(by, 1)) != (round(ox, 1), round(oy, 1)):
+            amb.append(lb['nm'])
     rows = []
     for ccx, ccy in chips:
         bl, bd = None, 1e9
@@ -60,7 +78,7 @@ for path in sorted(glob.glob(os.path.join(ROOT, 'assets/lines/line-*.svg'))):
     rows = audit(path)
     bad = [r for r in rows if r[-2].startswith('违例')]
     total_bad += len(bad)
-    print('== %s: chip%d 违例%d' % (ln, len(rows), len(bad)))
+    print('== %s: chip%d 违例%d 混淆%d %s' % (ln, len(rows), len(bad), len(audit.amb), ' '.join(audit.amb) if audit.amb else ''))
     for r in rows:
         if r[-2] != 'OK':
             print('   %-8s %s %s %s %s' % r)

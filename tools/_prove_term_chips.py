@@ -10,7 +10,7 @@ from verify_card_pixel import render
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
-CARDS = ['1', '4', '5', '6', '7', '8', '9', '12', '13', '14', '18', '21', '22', '广佛线']
+CARDS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '18', '21', '22', 'APM线', '广佛线']
 
 tmp = tempfile.mkdtemp()
 total_changed = 0

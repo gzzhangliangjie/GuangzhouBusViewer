@@ -14,7 +14,7 @@ from verify_card import run_gates
 
 
 def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_segs=None, branch=None, pad=None,
-          stations=None, en_extra=None, outpath=None):
+          stations=None, en_extra=None, outpath=None, data_multi=False):
     src = open(os.path.join(ROOT, 'assets/gz-tim-2026.svg'), encoding='utf-8').read()
 
     # ===== 样式表(类->stroke, 记录display:none) =====
@@ -373,6 +373,10 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
     bg = ET.SubElement(svg, '{%s}rect' % NS)
     bg.set('x', str(x0)); bg.set('y', str(y0))
     bg.set('width', str(x1-x0)); bg.set('height', str(y1-y0)); bg.set('fill', '#ffffff')
+    if data_multi:  # 多链卡(3号线主+支/12号线双段): 门禁按链口径(G3双连通,G8多chip,V1链序)
+        svg.set('data-multi', '1')
+        cs = chains or []
+        svg.set('data-chains', '|'.join(','.join(ch) for ch in cs))
 
     ST = 'fill:none;stroke:%s;stroke-width:7;stroke-linecap:round' % color
     gc = ET.SubElement(svg, '{%s}g' % NS); gc.set('id', '走廊')
