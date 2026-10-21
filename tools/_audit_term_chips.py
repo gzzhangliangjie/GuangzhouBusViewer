@@ -41,11 +41,25 @@ def audit(path):
             amb.append(lb['nm'])
     rows = []
     for ccx, ccy in chips:
+        # 配对=门禁G8同款双口径邻接(竖排x窗/横排y窗±60, |gap-3|最小), 防密集区误配
+        box_of = {(lb[0], round(lb[1],1), round(lb[2],1)): None for lb in labels}
         bl, bd = None, 1e9
-        for lb in labels:
-            d = math.hypot(lb[1] - ccx, lb[2] - ccy)
-            if d < bd:
-                bd, bl = d, lb
+        for lb in c['labels']:
+            lcy = (lb['box'][1] + lb['box'][3]) / 2
+            if abs(lb['x'] - ccx) <= 60:
+                g1 = ccy + 6.75 - lb['box'][3]
+                g2 = lb['box'][1] - (ccy - 6.75)
+                if 0 < g1 < 15 or 0 < g2 < 15:
+                    d = math.hypot(lb['x'] - ccx, lcy - ccy)
+                    if d < bd:
+                        bd, bl = d, (lb['nm'], lb['x'], lcy)
+            if abs(lcy - ccy) <= 60:
+                g1 = ccx + 6.75 - lb['box'][2]
+                g2 = lb['box'][0] - (ccx - 6.75)
+                if 0 < g1 < 15 or 0 < g2 < 15:
+                    d = math.hypot(lb['x'] - ccx, lcy - ccy)
+                    if d < bd:
+                        bd, bl = d, (lb['nm'], lb['x'], lcy)
         if bl is None or bd > 90:
             rows.append(('?%.0f,%.0f' % (ccx, ccy), '?', '?', '无标签 d=%.0f' % bd, ''))
             continue
