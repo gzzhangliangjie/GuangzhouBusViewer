@@ -41,6 +41,7 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
 
 SPREAD_CIRC = 9.0        # 同名实例最大两两距离阈值: 内=共享圆, 外=胶囊包络
 BADGE_SCALE = 0.7        # 徽标整体缩放(用户: 全部调小+2/22号线曾盖线, 2026-10-22)
+FORCE_CAPSULE = {'镇龙'}  # 钉距<=9仍按胶囊: 几何锁死站的显式豁免(2026-10-22)
 CAP_W = 10.0             # 胶囊白色带宽(=直径)
 CAP_RING = 2.0           # 胶囊黑描边宽
 CIRC_R_MULTI = 5.0       # 多线共享圆半径
@@ -172,7 +173,7 @@ for nm in sorted(instances):
     audit['stations'] += 1
     if not multi:
         audit['single'] += 1
-    if spread > SPREAD_CIRC:
+    if spread > SPREAD_CIRC or nm in FORCE_CAPSULE:  # 强制胶囊: 镇龙=两平行45°斜线垂距7.9px锁死(直线+垂直胶囊唯一解)
         h = hull(pts)
         cx = sum(p[0] for p in pts) / len(pts); cy = sum(p[1] for p in pts) / len(pts)
         markers.append(dict(name=nm, lines=lines, kind='capsule', hull=h, center=(cx, cy), spread=spread))
