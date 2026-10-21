@@ -53,7 +53,8 @@
       fit();
       $('#lines-caption').innerHTML =
         `<span class="cap-chip" style="background:${lines[curLine].color}"></span>` +
-        `${file.split('/').pop()} · ${imgW}×${imgH} · 官图提取卡`;
+        `${file.split('/').pop()} · ${imgW}×${imgH} · ` +
+        (lines[curLine].kind === 'network' ? '全网合成图(换乘站唯一)' : '官图提取卡');
     };
     im.src = encodeURI(file) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
     [...$('#line-segs').children].forEach(c =>
@@ -75,7 +76,7 @@
       b.addEventListener('click', () => showFile(file));
       segs.appendChild(b);
     };
-    mk(line.card, '主卡');
+    mk(line.card, line.kind === 'network' ? '全图' : '主卡');
     line.segs.forEach(s => mk(s.file, `来源 ${s.tag}`));
     showFile(line.card);
   }
@@ -84,7 +85,7 @@
     if (built) return;
     built = true;
     lines = (window.LINES_VIEW && window.LINES_VIEW.lines) || [];
-    $('#lines-count').textContent = `${lines.length} 条线`;
+    $('#lines-count').textContent = `${lines.filter(l => l.kind !== 'network').length} 条线`;
     const ul = $('#lines-list');
     lines.forEach((line, i) => {
       const li = document.createElement('li');

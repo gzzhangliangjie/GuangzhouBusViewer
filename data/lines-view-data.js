@@ -2,6 +2,13 @@
 window.LINES_VIEW = {
  "lines": [
   {
+   "name": "全网",
+   "color": "#1a1a1a",
+   "card": "assets/lines/network-全网.svg",
+   "segs": [],
+   "kind": "network"
+  },
+  {
    "name": "1号线",
    "color": "#f3d300",
    "card": "assets/lines/line-1号线.svg",

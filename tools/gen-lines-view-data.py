@@ -42,6 +42,16 @@ for name, g in groups.items():
     assert g['card'], f'{name} 只有分段卡没有主卡: {g}'
 
 lines = []
+# 全网合成图置顶(tools/build-network.py 生成, 同名站唯一标记)
+net = os.path.join(LINES_DIR, 'network-全网.svg')
+assert os.path.exists(net), '缺 assets/lines/network-全网.svg, 先跑 python tools/build-network.py'
+lines.append({
+    'name': '全网',
+    'color': '#1a1a1a',
+    'card': 'assets/lines/network-全网.svg',
+    'segs': [],
+    'kind': 'network',
+})
 for name in ORDER:
     g = groups.pop(name)
     lines.append({
