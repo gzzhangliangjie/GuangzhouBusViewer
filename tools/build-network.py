@@ -41,6 +41,7 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
 
 SPREAD_CIRC = 9.0        # 同名实例最大两两距离阈值: 内=共享圆, 外=胶囊包络
 BADGE_SCALE = 0.7        # 徽标整体缩放(用户: 全部调小+2/22号线曾盖线, 2026-10-22)
+BADGE_SCALE_BY = {'APM线': 0.5}  # 单线再缩: APM原生102x43全图最宽, 0.7仍71px(用户: 再缩小点, 2026-10-22)
 FORCE_CAPSULE = {'镇龙'}  # 钉距<=9仍按胶囊: 几何锁死站的显式豁免(2026-10-22)
 CAP_W = 10.0             # 胶囊白色带宽(=直径)
 CAP_RING = 2.0           # 胶囊黑描边宽
@@ -69,19 +70,36 @@ def seg_point_dist(p, a, b):
 
 
 def rect_seg_dist(rect, a, b):
-    """rect=(x,y,w,h). 线段与矩形净距: 相交=0, 否则端点到矩形/角到线段取小。"""
+    """rect=(x,y,w,h). 线段与矩形净距: 相交=0(含穿过: 两端在外中间穿越也必须判0——
+    2026-10-22 2号线徽标被22号线斜线贯穿bug根因: 旧版仅两端都在内才判0),
+    否则端点到矩形/角到线段取小。"""
     rx, ry, rw, rh = rect
     cx0, cy0, cx1, cy1 = rx, ry, rx + rw, ry + rh
+
     def pt_rect(p):
         qx = min(max(p[0], cx0), cx1); qy = min(max(p[1], cy0), cy1)
         return dist(p, (qx, qy))
-    if pt_rect(a) == 0 and pt_rect(b) == 0:
-        # 线段整体在矩形外相离或穿入; 端点在矩形内即相交
+
+    def seg_rect_inter():
+        t0, t1 = 0.0, 1.0
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        for d, lo, hi in ((dx, cx0 - a[0], cx1 - a[0]), (dy, cy0 - a[1], cy1 - a[1])):
+            if abs(d) < 1e-12:
+                if lo > 0 or hi < 0:
+                    return False
+            else:
+                ta, tb = lo / d, hi / d
+                if ta > tb:
+                    ta, tb = tb, ta
+                t0, t1 = max(t0, ta), min(t1, tb)
+                if t0 > t1:
+                    return False
+        return True
+
+    if pt_rect(a) == 0 or pt_rect(b) == 0 or seg_rect_inter():
         return 0.0
     corners = [(cx0, cy0), (cx1, cy0), (cx1, cy1), (cx0, cy1)]
-    # 线段与四边是否相交(用端点在异侧近似足够: 端点到矩形距离已含)
-    d = min(pt_rect(a), pt_rect(b), min(seg_point_dist(c, a, b) for c in corners))
-    return d
+    return min(pt_rect(a), pt_rect(b), min(seg_point_dist(c, a, b) for c in corners))
 
 
 def hull(points):
@@ -319,11 +337,12 @@ def badge_rect_ok(rect, placed_badges):
 badges = []             # (线名, 左上x, 左上y, w, h)
 badge_fail = []
 BADGE_AT = {
-    # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_ok
-    'APM线': [(1580, 790), (1570, 800), (1590, 780)],  # 155px内仅此3位合法: APM两侧被1号线双横线/18号线斜线夹死
+    # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_why
+    'APM线': [(1580, 790)],  # 兜底位; 贴本体校正会在其走廊±120px网格搜最近合法位(2026-10-22)
 }
 for name in ORDER:
-    bw, bh = badge_size[name][0] * BADGE_SCALE, badge_size[name][1] * BADGE_SCALE
+    _sc = BADGE_SCALE_BY.get(name, BADGE_SCALE)
+    bw, bh = badge_size[name][0] * _sc, badge_size[name][1] * _sc
     done = False
     for cx, cy in BADGE_AT.get(name, []):
         rect = (cx - bw / 2, cy - bh / 2, bw, bh)
@@ -365,11 +384,46 @@ for name in ORDER:
     if not done:
         badge_fail.append(name)
         print('  !! 徽标 %s 未找到合法位' % name)
-# 落位审计: 每枚复检(应全过; 2号线/22号线曾盖线的防线)
+# 贴本体校正: 离本体>90px的徽标在本体走廊包围盒外扩120px内网格搜最近合法位(用户: APM偏离太远, 2026-10-22)
+for _i in range(len(badges)):
+    _nm, _bx, _by, _bw, _bh = badges[_i]
+    _own = [c for c in corridors if c[0] == _nm]
+    if not _own:
+        continue
+
+    def _own_d(rect):
+        return min(rect_seg_dist(rect, (c[1], c[2]), (c[3], c[4])) for c in _own)
+
+    if _own_d((_bx, _by, _bw, _bh)) <= 90.0:
+        continue
+    _xs = [v for c in _own for v in (c[1], c[3])]
+    _ys = [v for c in _own for v in (c[2], c[4])]
+    best = None
+    for cx in range(int(min(_xs)) - 120, int(max(_xs)) + 120, 6):
+        for cy in range(int(min(_ys)) - 120, int(max(_ys)) + 120, 6):
+            rect = (cx - _bw / 2, cy - _bh / 2, _bw, _bh)
+            od = _own_d(rect)
+            if od > 90.0 or od < 6.5:
+                continue
+            if badge_rect_why(rect, [b for j, b in enumerate(badges) if j != _i]) is not None:
+                continue
+            if best is None or od < best[0]:
+                best = (od, rect)
+    if best:
+        badges[_i] = (_nm, best[1][0], best[1][1], _bw, _bh)
+        print('  徽标 %s 贴本体迁址: 离本体 %.0fpx' % (_nm, best[0]))
+    else:
+        print('  !! 徽标 %s 本体±120px内无合法位' % _nm)
+# 落位审计: 每枚复检(应全过; 2号线/22号线曾盖线的防线) + 离本体距离(过远=偏离本体)
 for _nm, _bx, _by, _bw, _bh in badges:
     _why = badge_rect_why((_bx, _by, _bw, _bh), [b for b in badges if b[0] != _nm])
     if _why:
         print('  !! 徽标 %s 复检撞: %s' % (_nm, _why))
+    _own = [c for c in corridors if c[0] == _nm]
+    if _own:
+        _d = min(rect_seg_dist((_bx, _by, _bw, _bh), (c[1], c[2]), (c[3], c[4])) for c in _own)
+        if _d > 90.0:
+            print('  !! 徽标 %s 偏离本体 %.0fpx' % (_nm, _d))
 
 # ---------- 画布 ----------
 xs = [v for c in corridors for v in (c[1], c[3])]
@@ -453,7 +507,7 @@ out.append('</g>')
 out.append('<g id="线路徽标">')
 for nm, bx, by, bw, bh in badges:
     out.append('<g data-badge="header" transform="translate(%s %s) scale(%s)">%s</g>'
-               % (fmt(bx), fmt(by), fmt(BADGE_SCALE), badge_inner[nm]))
+               % (fmt(bx), fmt(by), fmt(BADGE_SCALE_BY.get(nm, BADGE_SCALE)), badge_inner[nm]))
 out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">')
 for nm, tx, ty, _bx, _by, _w, _h, _mk in labels:

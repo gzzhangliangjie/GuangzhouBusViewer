@@ -593,7 +593,7 @@
 </g>
 <g id="线路徽标">
 <g data-badge="header" transform="translate(1141.5 1265.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#FDD835" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">1</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 1</text></g>
-<g data-badge="header" transform="translate(1335.5 1541.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
+<g data-badge="header" transform="translate(1371.5 1635.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
 <g data-badge="header" transform="translate(1470.5 41.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#ECA154" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">3</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 3</text></g>
 <g data-badge="header" transform="translate(2586.5 1805.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#43A047" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">4</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 4</text></g>
 <g data-badge="header" transform="translate(2521.96 1155.61) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#E53935" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">5</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 5</text></g>
@@ -610,81 +610,81 @@
 <g data-badge="header" transform="translate(2748.5 347.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1A237E" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">21</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 21</text></g>
 <g data-badge="header" transform="translate(1866.5 1607.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#DD2C00" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">22</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 22</text></g>
 <g data-badge="header" transform="translate(890 1589.15) scale(0.7)"><rect x="0" y="0" width="73.0" height="43.0" rx="9.0" fill="#C0CA33" /><text x="36.5" y="21.2" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="15" font-weight="600" fill="#614F2E">广佛线</text><text x="36.5" y="32.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#614F2E">Guangfo Line</text></g>
-<g data-badge="header" transform="translate(1544.23 774.95) scale(0.7)"><rect x="0" y="0" width="102.2" height="43.0" rx="9.0" fill="#00B0FF" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">APM</text><text x="74.2" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">线</text><text x="74.2" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line</text></g>
+<g data-badge="header" transform="translate(1670.45 1100.25) scale(0.5)"><rect x="0" y="0" width="102.2" height="43.0" rx="9.0" fill="#00B0FF" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">APM</text><text x="74.2" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">线</text><text x="74.2" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line</text></g>
 </g>
 <g id="站名标注" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif">
+<text x="1409.5" y="697" font-size="10.5" font-weight="600" fill="#1a1a1a">白云文化广场</text>
 <text x="1474.8" y="1318" font-size="10.5" font-weight="600" fill="#1a1a1a">东晓南</text>
 <text x="1607.5" y="952.7" font-size="10.5" font-weight="600" fill="#1a1a1a">体育西路</text>
-<text x="1359" y="713.5" font-size="10.5" font-weight="600" fill="#1a1a1a">白云文化广场</text>
-<text x="1733.5" y="1180.8" font-size="10.5" font-weight="600" fill="#1a1a1a">赤岗</text>
-<text x="1415" y="1597" font-size="10.5" font-weight="600" fill="#1a1a1a">广州南站</text>
 <text x="1607.5" y="1084.7" font-size="10.5" font-weight="600" fill="#1a1a1a">珠江新城</text>
+<text x="1128" y="982.2" font-size="10.5" font-weight="600" fill="#1a1a1a">中山八</text>
+<text x="1733.5" y="1180.8" font-size="10.5" font-weight="600" fill="#1a1a1a">赤岗</text>
+<text x="1185.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">黄沙</text>
+<text x="1606.4" y="876.8" font-size="10.5" font-weight="600" fill="#1a1a1a">广州东站</text>
+<text x="1415" y="1597" font-size="10.5" font-weight="600" fill="#1a1a1a">广州南站</text>
+<text x="1433" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">江泰路</text>
+<text x="1510.5" y="564.23" font-size="10.5" font-weight="600" fill="#1a1a1a">嘉禾望岗</text>
 <text x="2435.5" y="1041.2" font-size="10.5" font-weight="600" fill="#1a1a1a">夏园</text>
+<text x="1131.5" y="1020.3" font-size="10.5" font-weight="600" fill="#1a1a1a">如意坊</text>
+<text x="1132" y="889.7" font-size="10.5" font-weight="600" fill="#1a1a1a">彩虹桥</text>
+<text x="1239.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">文化公园</text>
+<text x="1282.7" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">新市墟</text>
+<text x="1361" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">昌岗</text>
+<text x="1520.5" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">杨箕</text>
 <text x="1191.2" y="1203.5" font-size="10.5" font-weight="600" fill="#1a1a1a">沙涌</text>
 <text x="1367" y="1269.55" font-size="10.5" font-weight="600" fill="#1a1a1a">燕岗</text>
 <text x="1804.5" y="1676.63" font-size="10.5" font-weight="600" fill="#1a1a1a">番禺广场</text>
-<text x="2165.5" y="1041.2" font-size="10.5" font-weight="600" fill="#1a1a1a">鱼珠</text>
-<text x="1433" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">江泰路</text>
+<text x="1779.5" y="1132.7" font-size="10.5" font-weight="600" fill="#1a1a1a">磨碟沙</text>
 <text x="1075.12" y="1301.6" font-size="10.5" font-weight="600" fill="#1a1a1a">西塱</text>
-<text x="1100.25" y="982.2" font-size="10.5" font-weight="600" fill="#1a1a1a">中山八</text>
-<text x="1477.5" y="564.23" font-size="10.5" font-weight="600" fill="#1a1a1a">嘉禾望岗</text>
-<text x="1131.5" y="1020.3" font-size="10.5" font-weight="600" fill="#1a1a1a">如意坊</text>
+<text x="2165.5" y="1041.2" font-size="10.5" font-weight="600" fill="#1a1a1a">鱼珠</text>
+<text x="1272" y="867.3" font-size="10.5" font-weight="600" fill="#1a1a1a">广州火车站</text>
 <text x="1574.5" y="835.7" font-size="10.5" font-weight="600" fill="#1a1a1a">沙河</text>
+<text x="1456" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">东山口</text>
+<text x="1453" y="1363.7" font-size="10.5" font-weight="600" fill="#1a1a1a">南洲</text>
+<text x="1410.3" y="1537.8" font-size="10.5" font-weight="600" fill="#1a1a1a">石壁</text>
+<text x="1185.5" y="826.7" font-size="10.5" font-weight="600" fill="#1a1a1a">西村</text>
+<text x="1808.5" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">赤沙</text>
+<text x="1500.5" y="1300.7" font-size="10.5" font-weight="600" fill="#1a1a1a">五凤</text>
+<text x="1509.5" y="907.7" font-size="10.5" font-weight="600" fill="#1a1a1a">区庄</text>
+<text x="1077.5" y="943.7" font-size="10.5" font-weight="600" fill="#1a1a1a">坦尾</text>
+<text x="1628.5" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">客村</text>
 <text x="2141.8" y="1582.45" font-size="10.5" font-weight="600" fill="#1a1a1a">海傍</text>
 <text x="1930" y="912.3" font-size="10.5" font-weight="600" fill="#1a1a1a">黄村</text>
-<text x="1164" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">黄沙</text>
-<text x="1715.5" y="1510.7" font-size="10.5" font-weight="600" fill="#1a1a1a">南村万博</text>
-<text x="1453" y="1363.7" font-size="10.5" font-weight="600" fill="#1a1a1a">南洲</text>
-<text x="1931.5" y="1389.3" font-size="10.5" font-weight="600" fill="#1a1a1a">大学城南</text>
-<text x="1639.4" y="876.8" font-size="10.5" font-weight="600" fill="#1a1a1a">广州东站</text>
-<text x="1132" y="889.7" font-size="10.5" font-weight="600" fill="#1a1a1a">彩虹桥</text>
-<text x="1282.7" y="690.2" font-size="10.5" font-weight="600" fill="#1a1a1a">新市墟</text>
-<text x="1361" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">昌岗</text>
-<text x="1410.3" y="1537.8" font-size="10.5" font-weight="600" fill="#1a1a1a">石壁</text>
-<text x="1779.5" y="1149.2" font-size="10.5" font-weight="600" fill="#1a1a1a">磨碟沙</text>
-<text x="1808.5" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">赤沙</text>
-<text x="1488" y="907.7" font-size="10.5" font-weight="600" fill="#1a1a1a">区庄</text>
-<text x="1705" y="773.9" font-size="10.5" font-weight="600" fill="#1a1a1a">天河客运站</text>
-<text x="1239.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">文化公园</text>
-<text x="1079.2" y="1126.5" font-size="10.5" font-weight="600" fill="#1a1a1a">芳村</text>
 <text x="1779.5" y="839.1" font-size="10.5" font-weight="600" fill="#1a1a1a">华师</text>
-<text x="1647.75" y="892.35" font-size="10.5" font-weight="600" fill="#1a1a1a">林和西</text>
-<text x="1247.3" y="1199.1" font-size="10.5" font-weight="600" fill="#1a1a1a">沙园</text>
-<text x="2306.2" y="366.4" font-size="10.5" font-weight="600" fill="#1a1a1a">镇龙</text>
-<text x="1591.5" y="1055.35" font-size="10.5" font-weight="600" fill="#1a1a1a">五羊邨</text>
-<text x="1310.25" y="867.3" font-size="10.5" font-weight="600" fill="#1a1a1a">广州火车站</text>
-<text x="1671.95" y="784.9" font-size="10.5" font-weight="600" fill="#1a1a1a">燕塘</text>
-<text x="1212.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">陈家祠</text>
-<text x="1500.5" y="1284.2" font-size="10.5" font-weight="600" fill="#1a1a1a">五凤</text>
-<text x="1542" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">杨箕</text>
+<text x="1715.5" y="1510.7" font-size="10.5" font-weight="600" fill="#1a1a1a">南村万博</text>
+<text x="1931.5" y="1389.3" font-size="10.5" font-weight="600" fill="#1a1a1a">大学城南</text>
+<text x="1705" y="773.9" font-size="10.5" font-weight="600" fill="#1a1a1a">天河客运站</text>
+<text x="1674.5" y="892.35" font-size="10.5" font-weight="600" fill="#1a1a1a">林和西</text>
+<text x="2211.5" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">苏元</text>
+<text x="1239.5" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">陈家祠</text>
 <text x="1510.5" y="1055.25" font-size="10.5" font-weight="600" fill="#1a1a1a">东湖</text>
-<text x="1823.5" y="1014.2" font-size="10.5" font-weight="600" fill="#1a1a1a">天河公园</text>
-<text x="1650" y="1195.7" font-size="10.5" font-weight="600" fill="#1a1a1a">客村</text>
-<text x="1618" y="1104.2" font-size="10.5" font-weight="600" fill="#1a1a1a">广州塔</text>
-<text x="1056" y="943.7" font-size="10.5" font-weight="600" fill="#1a1a1a">坦尾</text>
+<text x="1563.75" y="1090.35" font-size="10.5" font-weight="600" fill="#1a1a1a">五羊邨</text>
+<text x="2211.5" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">水西</text>
+<text x="1247.3" y="1199.1" font-size="10.5" font-weight="600" fill="#1a1a1a">沙园</text>
+<text x="1671.95" y="784.9" font-size="10.5" font-weight="600" fill="#1a1a1a">燕塘</text>
+<text x="1079.2" y="1126.5" font-size="10.5" font-weight="600" fill="#1a1a1a">芳村</text>
+<text x="2265.5" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">萝岗</text>
 <text x="1736.5" y="1265.4" font-size="10.5" font-weight="600" fill="#1a1a1a">龙潭</text>
-<text x="1164" y="826.7" font-size="10.5" font-weight="600" fill="#1a1a1a">西村</text>
-<text x="1482.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">东山口</text>
+<text x="1347.5" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">公园前</text>
+<text x="1887.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">员村</text>
+<text x="1671.5" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大塘</text>
+<text x="2265.5" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大沙东</text>
+<text x="1823.5" y="1014.2" font-size="10.5" font-weight="600" fill="#1a1a1a">天河公园</text>
+<text x="1618" y="1104.2" font-size="10.5" font-weight="600" fill="#1a1a1a">广州塔</text>
+<text x="1671.5" y="1537.7" font-size="10.5" font-weight="600" fill="#1a1a1a">汉溪长隆</text>
+<text x="1347.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">海珠广场</text>
+<text x="1887.5" y="1132.7" font-size="10.5" font-weight="600" fill="#1a1a1a">琶洲</text>
+<text x="1185.5" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">聚龙</text>
+<text x="2265.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">裕丰围</text>
+<text x="1995.5" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂</text>
+<text x="1995.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂南</text>
+<text x="2306.2" y="366.4" font-size="10.5" font-weight="600" fill="#1a1a1a">镇龙</text>
+<text x="1993.35" y="1338.2" font-size="10.5" font-weight="600" fill="#1a1a1a">大学城北</text>
+<text x="1995.5" y="1149.2" font-size="10.5" font-weight="600" fill="#1a1a1a">万胜围</text>
+<text x="1671.5" y="1347.15" font-size="10.5" font-weight="600" fill="#1a1a1a">沥滘</text>
 <text x="1077.5" y="744.2" font-size="10.5" font-weight="600" fill="#1a1a1a">浔峰岗</text>
-<text x="1315.5" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">海珠广场</text>
-<text x="2190" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">苏元</text>
-<text x="2238.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大沙东</text>
-<text x="2190" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">水西</text>
-<text x="1968.75" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂南</text>
-<text x="1320.75" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">公园前</text>
-<text x="1961.35" y="1321.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大学城北</text>
-<text x="1639.5" y="1537.7" font-size="10.5" font-weight="600" fill="#1a1a1a">汉溪长隆</text>
-<text x="1866" y="1132.7" font-size="10.5" font-weight="600" fill="#1a1a1a">琶洲</text>
-<text x="1164" y="673.7" font-size="10.5" font-weight="600" fill="#1a1a1a">聚龙</text>
-<text x="2244" y="727.7" font-size="10.5" font-weight="600" fill="#1a1a1a">萝岗</text>
-<text x="2238.75" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">裕丰围</text>
-<text x="1974" y="997.7" font-size="10.5" font-weight="600" fill="#1a1a1a">车陂</text>
-<text x="1488" y="241.7" font-size="10.5" font-weight="600" fill="#1a1a1a">高增</text>
-<text x="1866" y="1051.7" font-size="10.5" font-weight="600" fill="#1a1a1a">员村</text>
-<text x="1650" y="1267.7" font-size="10.5" font-weight="600" fill="#1a1a1a">大塘</text>
-<text x="1971.85" y="1249.7" font-size="10.5" font-weight="600" fill="#1a1a1a">官洲</text>
-<text x="1968.75" y="1132.7" font-size="10.5" font-weight="600" fill="#1a1a1a">万胜围</text>
-<text x="1650" y="1330.65" font-size="10.5" font-weight="600" fill="#1a1a1a">沥滘</text>
+<text x="1509.5" y="258.2" font-size="10.5" font-weight="600" fill="#1a1a1a">高增</text>
+<text x="1993.35" y="1266.2" font-size="10.5" font-weight="600" fill="#1a1a1a">官洲</text>
 </g>
 <g id="图例">
 <text x="716.5" y="1945.25" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="19" font-weight="700" fill="#1a1a1a">广州地铁线网全图</text>
