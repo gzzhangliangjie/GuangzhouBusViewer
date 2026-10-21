@@ -13,7 +13,13 @@
   let scale = 1, tx = 0, ty = 0, fitScale = 1, imgW = 0, imgH = 0;
 
   function apply() {
-    img().style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    const t = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    img().style.transform = t;
+    const f = $('#lines-img-full');
+    if (f && !f.hidden) {
+      f.style.transform = t;
+      f.style.opacity = scale >= 1.5 ? 1 : 0;  // LOD: 缩放≥150%叠加显示全部站名
+    }
     $('#lines-zoom-pct').textContent = Math.round(scale * 100) + '%';
   }
 
@@ -47,14 +53,27 @@
   function showFile(file) {
     curFile = file;
     const im = img();
+    const f = $('#lines-img-full');
+    const isNet = lines[curLine] && lines[curLine].kind === 'network';
+    if (f) {
+      if (isNet) {
+        f.hidden = false;
+        f.style.opacity = 0;
+        f.src = encodeURI(file).replace(/\.svg$/, '-全名.svg') + '?v=' + Date.now();
+      } else {
+        f.hidden = true;
+        f.removeAttribute('src');
+      }
+    }
     im.style.transform = 'none';
     im.onload = () => {
       imgW = im.naturalWidth; imgH = im.naturalHeight;
+      if (f && !f.hidden) { f.style.width = imgW + 'px'; f.style.height = imgH + 'px'; }
       fit();
       $('#lines-caption').innerHTML =
         `<span class="cap-chip" style="background:${lines[curLine].color}"></span>` +
         `${file.split('/').pop()} · ${imgW}×${imgH} · ` +
-        (lines[curLine].kind === 'network' ? '全网合成图(换乘站唯一)' : '官图提取卡');
+        (isNet ? '全网合成图(换乘站唯一) · 全部站名, 缩放≥150%显示密集区' : '官图提取卡');
     };
     im.src = encodeURI(file) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
   }

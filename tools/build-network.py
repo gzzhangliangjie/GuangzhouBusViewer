@@ -299,6 +299,85 @@ for mk in sorted(transfers, key=lambda m: (option_count(m), m['name'])):
     if not done:
         failed.append(mk['name'])
 
+# ---------- 全网站名补齐(小字号, 卡片标准位优先, 8向兜底, 放不下进缩放层; 2026-10-22用户令) ----------
+ST_FONT = 7.5
+
+
+def st_w(nm):
+    return sum(ST_FONT if ord(ch) > 0x2E80 else 4.2 for ch in nm)
+
+
+def st_clear(rect, own_mk):
+    x, y, w, h = rect
+    for nm2, x2, y2, w2, h2 in placed_boxes:
+        if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
+            return False
+    for nm2, ax, ay, bx, by, _c in corridors:
+        if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 1.0:
+            return False
+    for other in markers:
+        if other is own_mk:
+            continue
+        if other['kind'] == 'capsule':
+            edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
+            for a, b in edges:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 1.0:
+                    return False
+        else:
+            ox, oy = other['center']
+            qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
+            if dist((ox, oy), (qx, qy)) < other['r'] + 1.0:
+                return False
+    return True
+
+
+card_label = {}   # 站名 -> (x, y基线) 取自各卡站名标注(单线标准位置)
+for _name in ORDER:
+    _p = os.path.join(LINES_DIR, 'line-%s.svg' % _name)
+    try:
+        _src = open(_p, encoding='utf-8').read()
+    except OSError:
+        continue
+    _g = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _src, re.S)
+    if not _g:
+        continue
+    for _t in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="10.5"[^>]*>([^<]+)</text>', _g.group(1)):
+        card_label.setdefault(_t.group(3).strip(), (float(_t.group(1)), float(_t.group(2))))
+
+st_labels = []    # (名, cx, 基线y)
+zoom_labels = []  # (名, x, y) 缩放层(实在放不下)
+_labeled = set(nm for nm, *_ in labels)
+for mk in sorted(markers, key=lambda m: m['name']):
+    nm = mk['name']
+    if nm in _labeled:
+        continue
+    w, h = st_w(nm), 9.0
+    done = False
+    if nm in card_label:                       # 1) 卡片标准位
+        cx, cy = card_label[nm]
+        rect = (cx - w / 2, cy - 7.5, w, h)
+        if st_clear(rect, mk):
+            st_labels.append((nm, cx, cy))
+            placed_boxes.append((nm,) + rect)
+            done = True
+    if not done:                               # 2) 8向环兜底
+        for ring in RINGS:
+            for dx, dy in DIRS:
+                ax, ay = marker_anchor(mk, dx, dy)
+                rect = place_box(w, h, ax + dx * ring, ay + dy * ring, dx, dy)
+                if st_clear(rect, mk):
+                    st_labels.append((nm, rect[0] + w / 2, rect[1] + 7.5))
+                    placed_boxes.append((nm,) + rect)
+                    done = True
+                    break
+            if done:
+                break
+    if not done:                               # 3) 缩放层
+        zoom_labels.append((nm,) + card_label.get(nm, (mk['center'][0], mk['center'][1] - 9)))
+print('  站名: 换乘%d + 全线%d + 缩放层%d = %d/%d' %
+      (len(labels), len(st_labels), len(zoom_labels),
+       len(labels) + len(st_labels) + len(zoom_labels), len(markers)))
+
 # ---------- 各线徽标(复用主卡header徽标, 端点外推摆位) ----------
 allx = [v for c in corridors for v in (c[1], c[3])]
 ally = [v for c in corridors for v in (c[2], c[4])]
@@ -514,6 +593,15 @@ for nm, tx, ty, _bx, _by, _w, _h, _mk in labels:
     out.append('<text x="%s" y="%s" font-size="%s" font-weight="600" fill="%s">%s</text>' %
                (fmt(tx), fmt(ty), fmt(FONT_ZH), INK, nm))
 out.append('</g>')
+out.append('<g id="站名标注-全线" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
+           'font-size="7.5" fill="#1a1a1a">')
+for nm, cx, cy in st_labels:
+    out.append('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(cx), fmt(cy), nm))
+out.append('</g>')
+zoom_group = ('<g id="站名标注-缩放层" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
+              'font-size="7.5" fill="#1a1a1a">' +
+              ''.join('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(x), fmt(y), nm)
+                      for nm, x, y in zoom_labels) + '</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
 out.append('<text x="%s" y="%s" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" font-size="19" font-weight="700" fill="%s">%s</text>' %
@@ -577,6 +665,12 @@ if errs:
 old = open(OUT_SVG, encoding='utf-8').read() if os.path.exists(OUT_SVG) else None
 with open(OUT_SVG, 'w', encoding='utf-8') as f:
     f.write(svg)
+# 全名变体: 同一svg插入缩放层组(查看器缩放>=150%时叠加显示, 2026-10-22)
+OUT_SVG_FULL = os.path.join(LINES_DIR, 'network-全网-全名.svg')
+svg_full = svg.replace('<g id="图例">', zoom_group + '<g id="图例">')
+assert zoom_group in svg_full, '缩放层插入失败'
+with open(OUT_SVG_FULL, 'w', encoding='utf-8') as f:
+    f.write(svg_full)
 print('OK 站%d(换乘%d 共享圆%d 胶囊%d 单线%d) 走廊%d 标签%d -> %s' %
       (audit['stations'], len(transfers), audit['shared_circle'], audit['capsule'], audit['single'],
        len(corridors), len(labels), OUT_SVG))
