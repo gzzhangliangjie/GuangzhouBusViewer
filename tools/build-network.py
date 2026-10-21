@@ -270,8 +270,6 @@ placed_boxes = []
 failed = []
 transfers = [m for m in markers if len(m['lines']) > 1]
 st_labels = []
-zoom_labels = []        # (名, x, y, 违规数) 缩放层(实在放不下)
-zoom_boxes = []
 ST_FONT = 7.5
 RINGS_TIGHT = [4.0, 8.0, 13.0, 19.0]
 ST_GAP = 3.0             # 标签盒-本站标记最小净距(用户: 太近贴在一起, 2026-10-22)
@@ -337,72 +335,66 @@ for _name in ORDER:
         card_label.setdefault(_t.group(3).strip(), (float(_t.group(1)), float(_t.group(2))))
 
 
-def place_one(mk):
-    """统一放置: 卡片方位拉近(按盒边净距钳制)→环4/8/13/19八向→缩放层(最少违规+互避让)。"""
-    nm = mk['name']
-    w, h = st_w(nm), 8.5
+APM_DENSE = {'天河南', '黄埔大道', '妇儿中心', '花城大道', '大剧院', '体育中心南'}  # APM中段: 三平行竖线夹缝
+ST_FONT2 = 6.0   # 二档小字: 7.5px放不下时继续缩小(用户定稿, 2026-10-22), 不搞缩放层
+
+
+def st_w2(nm):
+    return sum(ST_FONT2 if ord(ch) > 0x2E80 else 3.4 for ch in nm)
+
+
+def _cands_for(mk, nm, w, hh, fs):
     mx, my = mk['center']
     cands = []
-    if nm in card_label:                       # 卡片标准方位, 拉近但保盒边净距(宽站名按中心钳会怼进圆)
+    if nm in APM_DENSE and fs == ST_FONT2:
+        cands.append((mx + 8.0 + w / 2, my))    # 东侧梯子位(缩小后与18号线净距~18px, 1:1放下)
+    if nm in term_dir:                           # 卡片规范: 终点文字在走廊延长线上(含斜线)
+        ux, uy = term_dir[nm]
+        ext = (w * abs(ux) + hh * abs(uy)) / 2
+        r0 = (mk['r'] if mk['kind'] != 'capsule' else CAP_W / 2 + CAP_RING)
+        for g_ in (5.0, 9.0, 14.0):
+            cands.append((mx + ux * (r0 + g_ + ext), my + uy * (r0 + g_ + ext)))
+    if nm in card_label:                         # 卡片标准方位(保盒边净距钳制)
         cx, cy = card_label[nm]
-        ox, oy = cx - mx, (cy - 1.75) - my     # 标签中心相对标记中心(基线+1.75=字形高半值修正)
+        ox, oy = cx - mx, (cy - 1.75) - my
         L = (ox * ox + oy * oy) ** 0.5
         if L > 1:
             k = min(1.0, 14.0 / L)
             px, py = mx + ox * k, my + oy * k
-            rect = (px - w / 2, py - h / 2, w, h)
+            rect = (px - w / 2, py - hh / 2, w, hh)
             g0 = mk_gap(rect, mk)
-            if g0 < ST_GAP + 0.5 and L > 0:    # 太近则沿方位外推到净距达标
+            if g0 < ST_GAP + 0.5:
                 px += ox / L * (ST_GAP + 0.5 - g0)
                 py += oy / L * (ST_GAP + 0.5 - g0)
-            cands.append((px, py + 1.75))
+            cands.append((px, py))
     for ring in RINGS_TIGHT:
         for dx, dy in DIRS:
             ax, ay = marker_anchor(mk, dx, dy)
-            r2 = place_box(w, h, ax + dx * ring, ay + dy * ring, dx, dy)
-            cands.append((r2[0] + w / 2, r2[1] + h / 2))
-    for cx, cy in cands:
-        rect = (cx - w / 2, cy - h / 2, w, h)
-        if st_clear(rect, mk):
-            labels.append((nm, cx, cy + 1.75))
-            placed_boxes.append((nm,) + rect)
-            return True
-    # 缩放层: 放宽净距, 取最少违规位(互避让), 白描边光环保可读
-    best = None
-    for cx, cy in cands:
-        rect = (cx - w / 2, cy - h / 2, w, h)
-        rx_, ry_ = rect[0], rect[1]
-        viol = 0
-        for nm2, ax, ay, bx, by, _c in corridors:
-            if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 0.5:
-                viol += 1
-        for nm2, x2, y2, w2, h2 in placed_boxes + zoom_boxes:
-            if not (rx_ + w + 0.5 < x2 or x2 + w2 + 0.5 < rx_ or ry_ + h + 0.5 < y2 or y2 + h2 + 0.5 < ry_):
-                viol += 2
-                break
-        for other in markers:
-            if other is mk:
-                continue
-            if other['kind'] == 'capsule':
-                edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
-                if any(rect_seg_dist(rect, a, b) < CAP_W / 2 + 0.5 for a, b in edges):
-                    viol += 2
-                    break
-                continue
-            ox_, oy_ = other['center']
-            qx = min(max(ox_, rx_), rx_ + w); qy = min(max(oy_, ry_), ry_ + h)
-            if dist((ox_, oy_), (qx, qy)) < other['r'] + 0.5:
-                viol += 2
-                break
-        if viol == 0:
-            best = (0, cx, cy)
-            break
-        if best is None or viol < best[0]:
-            best = (viol, cx, cy)
-    assert best, nm
-    zoom_labels.append((nm, best[1], best[2] + 1.75, best[0]))
-    zoom_boxes.append((nm, best[1] - w / 2, best[2] - h / 2, w, h))
-    return True
+            r2 = place_box(w, hh, ax + dx * ring, ay + dy * ring, dx, dy)
+            cands.append((r2[0] + w / 2, r2[1] + hh / 2))
+    return cands
+
+
+def place_one(mk):
+    """APM密集段=东带自适应微字; 其余7.5px→6px二档(缩小到放得下, 无缩放层)。"""
+    nm = mk['name']
+    if nm in APM_DENSE:                          # 东带(x1666.6-1683, 3号线V/APM/18号线V之间)
+        fs = max(3.5, min(5.0, 16.0 / max(1, len(nm))))  # 按字长自适应: 3字5px/4字4px/5字3.5px
+        hh = fs + 1.5
+        labels.append((nm, 1674.5, mk['center'][1] + hh / 2 - 0.8 * fs, fs))
+        placed_boxes.append((nm, 1674.5 - fs * len(nm) / 2, mk['center'][1] - hh / 2,
+                             fs * len(nm), hh))
+        return True
+    for fs, hh in ((ST_FONT, 8.5), (ST_FONT2, 7.0)):
+        w = st_w(nm) if fs == ST_FONT else st_w2(nm)
+        for cx, cy in _cands_for(mk, nm, w, hh, fs):
+            rect = (cx - w / 2, cy - hh / 2, w, hh)
+            if st_clear(rect, mk):
+                labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs))
+                placed_boxes.append((nm,) + rect)
+                return True
+    failed.append(nm)
+    return False
 
 
 # 受限优先: 换乘站可选位少先放, 其余按名序
@@ -417,10 +409,28 @@ def opt_n(mk):
     return n
 
 
+# 终点外向方向(站名->单位向量): 终点站名按卡片规范放走廊延长线上, 徽标三点一线跟随(2026-10-22)
+term_dir = {}
+for _ln in ORDER:
+    _segs = [(c[1], c[2], c[3], c[4]) for c in corridors if c[0] == _ln]
+    _deg, _adj = {}, {}
+    for ax, ay, bx, by in _segs:
+        a, b = (round(ax, 1), round(ay, 1)), (round(bx, 1), round(by, 1))
+        _deg[a] = _deg.get(a, 0) + 1; _deg[b] = _deg.get(b, 0) + 1
+        _adj.setdefault(a, []).append(b); _adj.setdefault(b, []).append(a)
+    for p, d in _deg.items():
+        if d == 1:
+            tm = min(markers, key=lambda m: dist(m['center'], p))
+            if dist(tm['center'], p) < 30 and tm['name'] not in term_dir and _adj[p]:
+                o = _adj[p][0]
+                dd = (p[0] - o[0], p[1] - o[1])
+                nn = (dd[0] ** 2 + dd[1] ** 2) ** 0.5 or 1.0
+                term_dir[tm['name']] = (dd[0] / nn, dd[1] / nn)
+
 _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
 for mk in _mks:
     place_one(mk)
-print('  站名: 显示%d + 缩放层%d = %d/%d' % (len(labels), len(zoom_labels), len(labels) + len(zoom_labels), len(markers)))
+print('  站名: %d/%d (未放: %s)' % (len(labels), len(markers), ','.join(failed) or '无'))
 
 # ---------- 各线徽标(复用主卡header徽标, 端点外推摆位) ----------
 allx = [v for c in corridors for v in (c[1], c[3])]
@@ -461,7 +471,10 @@ badges = []             # (线名, 左上x, 左上y, w, h)
 badge_fail = []
 BADGE_AT = {
     # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_why
-    'APM线': [(1580, 790)],  # 兜底位; 贴本体校正会在其走廊±120px网格搜最近合法位(2026-10-22)
+    'APM线': [(1580, 790)],  # 兜底位; 贴本体校正会在其终点±150px网格搜最近合法位(2026-10-22)
+    '广佛线': [(935, 1604), (940, 1575), (965, 1630), (900, 1604)],  # 新城东终点旁(东/北/南/西), 卡走廊碎裂自动策略不可靠
+    '10号线': [(1600, 905), (1590, 900)],  # 杨箕东上方夹缝(1号线双H/3号线V/11号线H之间), 终点±150内
+    '12号线': [(2025, 1402), (2025, 1432)],  # 大学城南终点东侧(本线延长线被4号线竖线占用)
 }
 for name in ORDER:
     _sc = BADGE_SCALE_BY.get(name, BADGE_SCALE)
@@ -483,17 +496,43 @@ for name in ORDER:
         a, b = (round(ax, 1), round(ay, 1)), (round(bx, 1), round(by, 1))
         deg[a] = deg.get(a, 0) + 1; deg[b] = deg.get(b, 0) + 1
         adj.setdefault(a, []).append(b); adj.setdefault(b, []).append(a)
-    ends = [p for p, d in deg.items() if d == 1]
-    # 统一策略(2026-10-22用户令): 徽标优先放终点走廊延长线上, 中轴对齐(全部终点按序, 近reach优先)
+    # 端点必须邻近站圆(真终点), 剔除走廊碎裂假端点(广佛线曾因0.1-2.3px裂隙端点掉mid-line)
+    ends = [p for p, d in deg.items()
+            if d == 1 and min(dist(m['center'], p) for m in markers) < 30]
+    # 统一策略v3(2026-10-22用户: 按单线卡规范三点一线): 徽标沿终点走廊延长线越过站名远端
+    # (圆→文字→徽标共线, 含斜线); 站名不在延长线/无方向时回退主轴吸附(横端同y/竖端同x)
+    lab_by_nm = {nm2: (cx, cy - 2.0) for nm2, cx, cy in labels}
     for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
         others = adj[p]
         base = others[0] if others else (gx, gy)
         dx, dy = p[0] - base[0], p[1] - base[1]
         n = (dx * dx + dy * dy) ** 0.5 or 1.0
         ux, uy = dx / n, dy / n
-        for reach in (max(bw, bh) / 2 + 10.0, max(bw, bh) / 2 + 34.0,
-                      max(bw, bh) / 2 + 60.0, max(bw, bh) / 2 + 90.0):
-            rect = (p[0] + ux * reach - bw / 2, p[1] + uy * reach - bh / 2, bw, bh)
+        tm = min(markers, key=lambda m: dist(m['center'], p))
+        tnm = tm['name']
+        tcx, tcy = lab_by_nm.get(tnm, tm['center'])
+        tw = st_w(tnm)
+        mode3 = False                               # 三点一线仅当站名确在延长线上(垂距<9且外向)
+        if tnm in term_dir and tnm in lab_by_nm:
+            ex, ey = term_dir[tnm]
+            vx, vy = tcx - tm['center'][0], tcy - tm['center'][1]
+            if (vx * ex + vy * ey) > 5 and abs(-vx * ey + vy * ex) < 9:
+                mode3 = True
+        for gap in (7.0, 16.0, 28.0, 44.0, 70.0, 100.0):
+            if mode3:                                       # 三点一线沿延长线
+                ext_l = (tw * abs(ex) + 8.5 * abs(ey)) / 2
+                ext_b = (bw * abs(ex) + bh * abs(ey)) / 2
+                cx2 = tcx + ex * (ext_l + ext_b + gap)
+                cy2 = tcy + ey * (ext_l + ext_b + gap)
+            elif abs(ux) >= abs(uy):                       # 回退: 横主轴同y并排
+                sgn = 1.0 if ux > 0 else -1.0
+                cx2 = tcx + sgn * (tw / 2 + bw / 2 + gap)
+                cy2 = tcy
+            else:                                          # 回退: 纵主轴同x上下
+                sgn = 1.0 if uy > 0 else -1.0
+                cx2 = tcx
+                cy2 = tcy + sgn * (4.25 + bh / 2 + gap)
+            rect = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
             if badge_rect_ok(rect, badges):
                 badges.append((name, rect[0], rect[1], bw, bh))
                 done = True
@@ -537,11 +576,22 @@ for _i in range(len(badges)):
 
     if _own_d((_bx, _by, _bw, _bh)) <= 90.0:
         continue
-    _xs = [v for c in _own for v in (c[1], c[3])]
-    _ys = [v for c in _own for v in (c[2], c[4])]
+    # 搜索域: 非环线限定终点±150px(徽标必须在终点旁, 广佛线曾掉mid-line), 环线全线bbox
+    _segs2 = [(c[1], c[2], c[3], c[4]) for c in _own]
+    _deg2 = {}
+    for ax, ay, bx, by in _segs2:
+        a, b = (round(ax, 1), round(ay, 1)), (round(bx, 1), round(by, 1))
+        _deg2[a] = _deg2.get(a, 0) + 1; _deg2[b] = _deg2.get(b, 0) + 1
+    _endps = [q for q, d in _deg2.items() if d == 1]
+    if _endps:
+        _xs = [v for q in _endps for v in (q[0] - 150, q[0] + 150)]
+        _ys = [v for q in _endps for v in (q[1] - 150, q[1] + 150)]
+    else:
+        _xs = [v for c in _own for v in (c[1], c[3])]
+        _ys = [v for c in _own for v in (c[2], c[4])]
     best = None
-    for cx in range(int(min(_xs)) - 120, int(max(_xs)) + 120, 6):
-        for cy in range(int(min(_ys)) - 120, int(max(_ys)) + 120, 6):
+    for cx in range(int(min(_xs)), int(max(_xs)) + 1, 6):
+        for cy in range(int(min(_ys)), int(max(_ys)) + 1, 6):
             rect = (cx - _bw / 2, cy - _bh / 2, _bw, _bh)
             od = _own_d(rect)
             if od > 90.0 or od < 6.5:
@@ -652,15 +702,11 @@ for nm, bx, by, bw, bh in badges:
                % (fmt(bx), fmt(by), fmt(BADGE_SCALE_BY.get(nm, BADGE_SCALE)), badge_inner[nm]))
 out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
-           'font-size="7.5" font-weight="700" fill="%s">' % INK)
-for nm, cx, cy in labels:
-    out.append('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(cx), fmt(cy), nm))
+           'font-weight="700" fill="%s">' % INK)
+for nm, cx, cy, fs in labels:
+    out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
+               % (fmt(cx), fmt(cy), fmt(fs), nm))
 out.append('</g>')
-zoom_group = ('<g id="站名标注-缩放层" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
-              'font-size="7.5" fill="#1a1a1a" style="paint-order:stroke" stroke="#FFFFFF" stroke-width="2.2" '
-              'stroke-linejoin="round">' +
-              ''.join('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(x), fmt(y), nm)
-                      for nm, x, y, _v in zoom_labels) + '</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
 out.append('<text x="%s" y="%s" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" font-size="19" font-weight="700" fill="%s">%s</text>' %
@@ -724,12 +770,6 @@ if errs:
 old = open(OUT_SVG, encoding='utf-8').read() if os.path.exists(OUT_SVG) else None
 with open(OUT_SVG, 'w', encoding='utf-8') as f:
     f.write(svg)
-# 全名变体: 同一svg插入缩放层组(查看器缩放>=150%时叠加显示, 2026-10-22)
-OUT_SVG_FULL = os.path.join(LINES_DIR, 'network-全网-全名.svg')
-svg_full = svg.replace('<g id="图例">', zoom_group + '<g id="图例">')
-assert zoom_group in svg_full, '缩放层插入失败'
-with open(OUT_SVG_FULL, 'w', encoding='utf-8') as f:
-    f.write(svg_full)
 print('OK 站%d(换乘%d 共享圆%d 胶囊%d 单线%d) 走廊%d 标签%d -> %s' %
       (audit['stations'], len(transfers), audit['shared_circle'], audit['capsule'], audit['single'],
        len(corridors), len(labels), OUT_SVG))
