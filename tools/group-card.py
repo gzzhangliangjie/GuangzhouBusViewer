@@ -379,6 +379,25 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         svg.set('data-chains', '|'.join(','.join(ch) for ch in cs))
 
     ST = 'fill:none;stroke:%s;stroke-width:7;stroke-linecap:round' % color
+    # 终点贴圆(2026-10-21 香雪教训): 终点圆12px内的出头走廊端吸附到圆心, 线终于圆点
+    # 不留出头小揪; G13 门禁按≤1.5px验收。只吸「对侧端远离终点圆(>12px)」的真出头端——
+    # 环线削角关节两端都贴圆(龙潭教训: 吸了会把长段掰斜), 环线整体跳过
+    _terms_pos = [epos[tn] for tn in list(order[:1]) + list(order[-1:]) +
+                  ([border[-1]] if branch else []) if tn in epos]
+    if not loop and _terms_pos:
+        for _si, _s in enumerate(_all_segs):
+            _ends = ((_s[0], _s[1]), (_s[2], _s[3]))
+            for _k, (_px, _py) in enumerate(_ends):
+                for _tx, _ty in _terms_pos:
+                    _d = math.hypot(_px - _tx, _py - _ty)
+                    _d_other = math.hypot(_ends[1 - _k][0] - _tx, _ends[1 - _k][1] - _ty)
+                    if 1.5 < _d <= 12.0 and _d_other > 12.0:
+                        _q = list(_s)
+                        _q[_k * 2], _q[_k * 2 + 1] = _tx, _ty
+                        _all_segs[_si] = tuple(_q)
+                        print('  终点贴圆吸附: (%.1f,%.1f)->(%.1f,%.1f)' % (_px, _py, _tx, _ty))
+                        break
+
     gc = ET.SubElement(svg, '{%s}g' % NS); gc.set('id', '走廊')
     for s in _all_segs:
         ln = ET.SubElement(gc, '{%s}line' % NS)

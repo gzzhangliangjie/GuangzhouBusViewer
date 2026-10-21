@@ -437,6 +437,51 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
                         '横' if conn_axis == 'h' else '竖', '横' if ext_axis == 'h' else '竖'))
         add('G12', '终点延长线方位', not bad_term, '; '.join(bad_term) or '全过')
 
+    # G13 终点贴圆(2026-10-21 固化): 终点圆12px内的走廊游离端必须贴到圆心(≤1.5px)。
+    # 香雪6px/番禺广场6px出头小揪教训; 中段微缝(非终点圆附近)不在此列
+    def key(p):
+        return (round(p[0] * 2) / 2, round(p[1] * 2) / 2)
+
+    deg = {}
+    for s in segs:
+        for p in ((s[0], s[1]), (s[2], s[3])):
+            deg[key(p)] = deg.get(key(p), 0) + 1
+    _term_circles = []
+    for bd_ in badges:
+        if bd_.get('mode') != 'chip':
+            continue
+        bx0, by0, bx1, by1 = bd_['box']
+        ccx, ccy = (bx0 + bx1) / 2.0, (by0 + by1) / 2.0
+        cand = []
+        for lb in labels:
+            lcy = (lb['box'][1] + lb['box'][3]) / 2.0
+            if abs(lb['x'] - ccx) <= 60:
+                g1 = by0 - lb['box'][3]
+                g2 = lb['box'][1] - by1
+                if 0 < g1 < 15 or 0 < g2 < 15:
+                    cand.append((abs(g1 - 3.0) + abs(g2 - 3.0), lb))
+            if abs(lcy - ccy) <= 60:
+                g1 = bx0 - lb['box'][2]
+                g2 = lb['box'][0] - bx1
+                if 0 < g1 < 15 or 0 < g2 < 15:
+                    cand.append((abs(g1 - 3.0) + abs(g2 - 3.0), lb))
+        if not cand:
+            continue
+        _, lb = min(cand)
+        ax, ay = min(((x, y) for (x, y, r) in circles),
+                     key=lambda p: math.hypot(p[0] - lb['x'], p[1] - lcy))
+        _term_circles.append((ax, ay))
+    bad_stub = []
+    for p, n in deg.items():
+        if n != 1:
+            continue
+        for tx, ty in _term_circles:
+            d = math.hypot(p[0] - tx, p[1] - ty)
+            if 1.5 < d <= 12.0:
+                bad_stub.append('端(%0.f,%0.f) 离终点圆%.1fpx' % (p[0], p[1], d))
+                break
+    add('G13', '终点贴圆(≤1.5px)', not bad_stub, '; '.join(bad_stub[:4]) or '全过')
+
     return R
 
 
