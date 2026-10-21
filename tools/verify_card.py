@@ -360,6 +360,82 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             bad_gap = '堆叠%d处(间距<3px)' % len(stacked)
     add('G10', '站距规整(≤max(2.5×中位,110))', not bad_gap, bad_gap or '中位%.0f 最大%.0f' % (sorted(gaps)[len(gaps)//2] if gaps else 0, max(gaps) if gaps else 0))
 
+    def split_en_text(en, zh):
+        if not en or ' ' not in en or text_half_width(en, zh=False) <= 1.5 * text_half_width(zh):
+            return [en] if en else []
+        best, bd = None, 1e18
+        ws = en.split(' ')
+        for i in range(1, len(ws)):
+            a, b = ' '.join(ws[:i]), ' '.join(ws[i:])
+            d = abs(text_half_width(a, zh=False) - text_half_width(b, zh=False))
+            if best is None or d < best[0]:
+                best = (d, a, b)
+        return [best[1], best[2]]
+
+    # G11 标签贴圆距离(2026-10-21 固化): 标签中心到自圆距离 ≤ G + 盒半宽/1 + 18(推进上限)。
+    # 盒宽按拆行后最宽行算——旧bw用整条EN, 广州东站52px/华师50px离圆过远(用户点名)
+    far_lbl = []
+    for lb in labels:
+        own = min(((x, y) for (x, y, r) in circles),
+                  key=lambda p: math.hypot(p[0] - lb['x'], p[1] - (lb['box'][1] + lb['box'][3]) / 2))
+        dist = math.hypot(lb['x'] - own[0], (lb['box'][1] + lb['box'][3]) / 2 - own[1])
+        en_lines = split_en_text(lb.get('en', ''), lb['nm'])
+        en_hw = max([text_half_width(t, zh=False) for t in en_lines] + [0.0])
+        bw_eff = 2 * max(text_half_width(lb['nm']), en_hw)
+        if dist > 10.0 + bw_eff / 2 + 18.0:
+            far_lbl.append('%s 距圆%.0fpx(上限%.0f)' % (lb['nm'], dist, 10.0 + bw_eff / 2 + 18.0))
+    add('G11', '标签贴圆(≤10+盒宽/2+18)', not far_lbl, '; '.join(far_lbl) or '全过')
+
+    # G12 终点文字延长线方位(2026-10-21 固化): 终点标签偏移主轴 = 走廊外向主轴
+    # (嘉禾望岗/二沙岛版式; data-multi 特例卡按用户定稿豁免)。对角(比值<1.2)不计
+    if multi:
+        add('G12', '终点延长线方位', True, 'data-multi 特例卡豁免')
+    else:
+        bad_term = []
+        for bd_ in badges:
+            if bd_.get('mode') != 'chip':
+                continue
+            bx0, by0, bx1, by1 = bd_['box']
+            ccx, ccy = (bx0 + bx1) / 2.0, (by0 + by1) / 2.0
+            cand = []
+            for lb in labels:
+                lcy = (lb['box'][1] + lb['box'][3]) / 2.0
+                if abs(lb['x'] - ccx) <= 60:
+                    g1 = by0 - lb['box'][3]
+                    g2 = lb['box'][1] - by1
+                    if 0 < g1 < 15 or 0 < g2 < 15:
+                        cand.append((abs(g1 - 3.0) + abs(g2 - 3.0), lb))
+                if abs(lcy - ccy) <= 60:
+                    g1 = bx0 - lb['box'][2]
+                    g2 = lb['box'][0] - bx1
+                    if 0 < g1 < 15 or 0 < g2 < 15:
+                        cand.append((abs(g1 - 3.0) + abs(g2 - 3.0), lb))
+            if not cand:
+                continue  # 配对失败已由G8报
+            _, lb = min(cand)
+            ax, ay = min(((x, y) for (x, y, r) in circles),
+                         key=lambda p: math.hypot(p[0] - lb['x'], p[1] - (lb['box'][1] + lb['box'][3]) / 2))
+            vx = vy = 0.0
+            near = sorted(segs, key=lambda s: seg_pt_dist(*s, ax, ay))[:2]
+            for s in near:
+                d1 = math.hypot(s[0] - ax, s[1] - ay)
+                d2 = math.hypot(s[2] - ax, s[3] - ay)
+                fx, fy = (s[2], s[3]) if d1 < d2 else (s[0], s[1])
+                L2 = math.hypot(fx - ax, fy - ay) or 1.0
+                vx += (ax - fx) / L2
+                vy += (ay - fy) / L2
+            L2 = math.hypot(vx, vy) or 1.0
+            uox, uoy = vx / L2, vy / L2
+            lcx, lcy = lb['x'], (lb['box'][1] + lb['box'][3]) / 2.0
+            odx, ody = lcx - ax, lcy - ay
+            r2 = max(abs(uox), abs(uoy)) / max(1e-6, min(abs(uox), abs(uoy)))
+            if r2 >= 1.2:
+                conn_axis = 'h' if abs(odx) > abs(ody) else 'v'
+                ext_axis = 'h' if abs(uox) > abs(uoy) else 'v'
+                if conn_axis != ext_axis:
+                    bad_term.append('%s 文字方位%s 延长线%s' % (lb['nm'],
+                        '横' if conn_axis == 'h' else '竖', '横' if ext_axis == 'h' else '竖'))
+        add('G12', '终点延长线方位', not bad_term, '; '.join(bad_term) or '全过')
 
     return R
 

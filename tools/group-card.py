@@ -393,7 +393,8 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         c.set('cx', '%.1f' % cx); c.set('cy', '%.1f' % cy); c.set('r', '4.5')
         c.set('data-nm', nm); c.set('style', 'fill:#FFFFFF;stroke:%s;stroke-width:2' % color)
 
-    pl = B.place_labels(emit, _all_xy, _all_segs, EN)
+    _terms = {order[0], order[-1]} | ({border[-1]} if branch else set())
+    pl = B.place_labels(emit, _all_xy, _all_segs, EN, terms=_terms)
     plmap = {lb['nm']: lb for lb in pl}
 
     gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
@@ -455,14 +456,20 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
                 te2.text = sp[1]
 
     out = os.path.join(ROOT, outpath) if outpath else os.path.join(ROOT, 'assets/lines/line-%s.svg' % line_zh)
-    ET.ElementTree(svg).write(out, encoding='unicode', xml_declaration=False)
+    draft = out.replace('.svg', '_draft.svg')  # 门禁全过才落盘(与build_card同款), 失败保留旧卡
+    ET.ElementTree(svg).write(draft, encoding='unicode', xml_declaration=False)
 
-    R = run_gates(out, expect_n=N + (len(branch['stations'])-1 if branch else 0), chains=chains, pins=set((overrides or {}).keys()))
+    R = run_gates(draft, expect_n=N + (len(branch['stations'])-1 if branch else 0), chains=chains, pins=set((overrides or {}).keys()))
     npass = sum(o for _, _, o, _ in R)
     print('  门禁: %d/%d' % (npass, len(R)))
     for no, nm, o, dt in R:
         if not o:
             print('  %s %s' % (no, dt[:110]))
+    if npass == len(R):
+        os.replace(draft, out)
+    else:
+        os.remove(draft)
+        print('  !! 门禁未过, 保留旧卡 %s' % out)
 
     vb = [float(v) for v in svg.get('viewBox').split()]
     W, H = round(vb[2]), round(vb[3])  # 原始尺寸渲染(用户明令, 禁400px缩略)

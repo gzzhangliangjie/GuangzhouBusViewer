@@ -550,7 +550,9 @@ def order_circles_along(segs, circles):
     return out, (reps[path[0]], reps[path[-1]], acc)
 
 
-def place_labels(stations, circles_xy, segs, EN, no_term=False):
+def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None):
+    import os as _os
+    _PLACE_TRACE = _os.environ.get('PLACE_TRACE', '')
     """六规则+规则8 放置(源自 l2-labels.py v2, 参数化)。返回 [(nm, box)]"""
     G = 10.0
     ZH_H, EN_H, GAP2 = 11.0, 6.0, 1.5
@@ -574,7 +576,9 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
     labels = []
     for nm, (ax, ay) in zip(stations, circles_xy):
         en = EN.get(nm, '')
-        bw = max(2 * text_half_width(nm), 2 * text_half_width(en, zh=False))
+        en_lines = split_en(en, nm) if en else None  # 拆行后盒宽按最宽行算, 否则整条EN把中文推离圆点(广州东站52px教训)
+        en_hw = max((text_half_width(t, zh=False) for t in (en_lines or ([en] if en else []))), default=0.0)
+        bw = max(2 * text_half_width(nm), 2 * en_hw)
         bh = ZH_H + GAP2 + (EN_H + (6.5 if split_en(en, nm) else 0) if en else 0)  # 拆行第二行预留
         best, bd, bdir = None, 1e18, (1, 0)
         for s in segs:
@@ -597,6 +601,7 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
                        # 两分量同>0.74(模长>1.05)=恒假, 法向布局从未生效
                        'term': (not no_term) and nm in (stations[0], stations[-1]), 'ux': ux, 'uy': uy, 'junc': junc})
     TERM = set() if no_term else {stations[0], stations[-1]}
+    TERM |= set(terms or [])  # 支线终点(天河客运站教训: 不进终点集=掉八向兜底乱放)
 
     def candidates(lb):
         ax, ay, bw, bh = lb['ax'], lb['ay'], lb['bw'], lb['bh']
@@ -700,21 +705,30 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False):
         return own > 0.85 * other
 
     def place(lb):
+        _trace = _PLACE_TRACE and lb['nm'] in _PLACE_TRACE
+        if _trace:
+            print('TRACE %s term=%s horiz=%s diag=%d bh=%.1f bw=%.1f' % (lb['nm'], lb['term'], lb['horiz'], lb['diag'], lb['bh'], lb['bw']))
         for strict in (True, False):
             feas = []  # 兜底轮用: 可行候选按 (无争议优先, 原序) 取
             for ci, (desc, bx0, by0, bx1, by1) in enumerate(candidates(lb)):
                 r = push(desc, bx0, by0, bx1, by1, lb['ax'], lb['ay'])
                 if r is None:
+                    if _trace: print('  [%s] %s push=None' % ('S' if strict else 'L', desc))
                     continue
                 bx0, bx1 = r[0], r[2]
                 by0, by1 = r[1], r[3]
-                if clearance(bx0, by0, bx1, by1) < G - 1.5:
+                cl = clearance(bx0, by0, bx1, by1)
+                if cl < G - 1.5:
+                    if _trace: print('  [%s] %s clear=%.1f' % ('S' if strict else 'L', desc, cl))
                     continue
                 clash = any(not (bx0 > p['bx1'] or p['bx0'] > bx1 or by0 > p['by1'] or p['by0'] > by1)
                             for p in placed)
                 if clash:
+                    if _trace: print('  [%s] %s clash' % ('S' if strict else 'L', desc))
                     continue
-                feas.append((1 if ambiguous(lb, bx0, by0, bx1, by1) else 0, ci, desc, bx0, by0, bx1, by1))
+                _amb = 1 if ambiguous(lb, bx0, by0, bx1, by1) else 0
+                feas.append((_amb, ci, desc, bx0, by0, bx1, by1))
+                if _trace: print('  [%s] %s feas ambig=%d' % ('S' if strict else 'L', desc, _amb))
                 if strict:
                     cover = any(bx0 - 4 < p['ax'] < bx1 + 4 and by0 - 4 < p['ay'] < by1 + 4
                                 for p in labels if p is not lb)
