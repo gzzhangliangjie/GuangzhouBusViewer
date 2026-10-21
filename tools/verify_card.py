@@ -71,8 +71,11 @@ def load(path):
                      float(el.get('x2')), float(el.get('y2'))))
 
     circles = []
+    pos_by_nm = {}
     for el in groups.get('站圆', {}).iter('{%s}circle' % NS):
         circles.append((float(el.get('cx')), float(el.get('cy')), float(el.get('r', '0'))))
+        if el.get('data-nm'):
+            pos_by_nm[el.get('data-nm')] = (float(el.get('cx')), float(el.get('cy')))
 
     # zh(10.5)/en(5.5) 配对: 同 x、en 基线在 zh 下方 12 内
     raw = []
@@ -491,6 +494,41 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             if d < 8.0:
                 collapse.append('第%d/%d圆相距%.1fpx' % (i + 1, j + 1, d))
     add('G14', '站圆不塌缩(≥8px)', not collapse, '; '.join(collapse[:4]) or '全过')
+
+    # G15 密集线交替(2026-10-21 固化): 最小站距<30px的线, 相邻站标签必须异侧
+    # (APM全线等分24px, 全挤一侧=体育中心南被推离圆点54px教训); 用户拍板左右各放几个
+    gaps = [math.hypot(circles[i + 1][0] - circles[i][0], circles[i + 1][1] - circles[i][1])
+            for i in range(len(circles) - 1)]
+    _uniform_dense = gaps and min(gaps) < 30.0 and sorted(gaps)[len(gaps) // 2] < 30.0
+    if _uniform_dense:
+        _ns = '{http://www.w3.org/2000/svg}'
+        pos_by_nm = {}
+        for g in c['root'].iter(_ns + 'g'):
+            if g.get('id') == '站圆':
+                for el in g.iter(_ns + 'circle'):
+                    if el.get('data-nm'):
+                        pos_by_nm[el.get('data-nm')] = (float(el.get('cx')), float(el.get('cy')))
+        order = list(pos_by_nm.keys())  # 站圆文档序=站序
+
+        def _side(nm):
+            p = pos_by_nm.get(nm)
+            lb = next((l for l in labels if l['nm'] == nm), None)
+            if not p or not lb:
+                return '?'
+            dx = lb['x'] - p[0]
+            return '左' if dx < -2 else ('右' if dx > 2 else '中')
+        bad_alt = []
+        for i in range(len(order) - 1):
+            a, b = order[i], order[i + 1]
+            sa, sb = _side(a), _side(b)
+            if sa != sb and {sa, sb} <= {'左', '右'}:
+                continue
+            if sa == '中' or sb == '中':
+                continue  # 轴向(终点延长)不参与交替
+            bad_alt.append('%s-%s 同侧%s' % (a, b, sa))
+        add('G15', '密集线左右交替', not bad_alt, '; '.join(bad_alt[:4]) or '全过')
+    else:
+        add('G15', '密集线左右交替', True, '非均匀密集线豁免(中位站距≥30)')
 
     return R
 

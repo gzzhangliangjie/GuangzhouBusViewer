@@ -14,7 +14,7 @@ from verify_card import run_gates
 
 
 def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_segs=None, branch=None, pad=None,
-          stations=None, en_extra=None, outpath=None, data_multi=False):
+          stations=None, en_extra=None, outpath=None, data_multi=False, side_pref=None):
     src = open(os.path.join(ROOT, 'assets/gz-tim-2026.svg'), encoding='utf-8').read()
 
     # ===== 样式表(类->stroke, 记录display:none) =====
@@ -413,7 +413,7 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         c.set('data-nm', nm); c.set('style', 'fill:#FFFFFF;stroke:%s;stroke-width:2' % color)
 
     _terms = {order[0], order[-1]} | ({border[-1]} if branch else set())
-    pl = B.place_labels(emit, _all_xy, _all_segs, EN, terms=_terms)
+    pl = B.place_labels(emit, _all_xy, _all_segs, EN, terms=_terms, side_pref=side_pref)
     plmap = {lb['nm']: lb for lb in pl}
 
     gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')

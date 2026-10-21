@@ -182,7 +182,10 @@ CFG = {
       '赤沙北': (1795.5, 1208.2), '赤沙': (1840.5, 1208.2), '北山': (1903.5, 1208.2),
       '官洲': (1980.2, 1262.25), '大学城北': (1980.2, 1334.25), '大学城南': (1984.5, 1401.8),
   }),
-  'APM线': dict(gid='APM_3_', color='#00B0FF', pad=dict(l=150, r=120, t=110, b=110), overrides={
+  'APM线': dict(gid='APM_3_', color='#00B0FF', pad=dict(l=150, r=120, t=110, b=110), side_pref={
+      '海心沙': '右', '大剧院': '左', '花城大道': '右', '妇儿中心': '左',
+      '黄埔大道': '右', '天河南': '左', '体育中心南': '右',
+    }, overrides={
       '广州塔': (1667.25, 1093.5), '海心沙': (1682.38, 1074.49), '大剧院': (1687.5, 1051.14),
       '花城大道': (1687.5, 1026.59), '妇儿中心': (1687.5, 1002.04), '黄埔大道': (1687.5, 977.49),
       '天河南': (1687.5, 952.94), '体育中心南': (1683.09, 929.42), '林和西': (1668.4, 910.1),
@@ -308,7 +311,7 @@ if __name__ == '__main__':
         ok = build(lz, c['gid'], c['color'], overrides=c.get('overrides'),
                    loop=c.get('loop', False), chains=c.get('chains') or _chains_for(lz),
                    custom_segs=c.get('custom_segs'), branch=c.get('branch'), pad=c.get('pad'),
-                   data_multi=c.get('data_multi', False),
+                   data_multi=c.get('data_multi', False), side_pref=c.get('side_pref'),
                    stations=c.get('stations'), en_extra=c.get('en_extra'), outpath=c.get('outpath'))
         ok_all = ok_all and ok
     sys.exit(0 if ok_all else 1)

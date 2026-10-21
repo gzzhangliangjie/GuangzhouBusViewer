@@ -550,7 +550,7 @@ def order_circles_along(segs, circles):
     return out, (reps[path[0]], reps[path[-1]], acc)
 
 
-def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None):
+def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None, side_pref=None):
     import os as _os
     _PLACE_TRACE = _os.environ.get('PLACE_TRACE', '')
     """六规则+规则8 放置(源自 l2-labels.py v2, 参数化)。返回 [(nm, box)]"""
@@ -594,7 +594,8 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None):
             if any(abs(s[2] - s[0]) > abs(s[3] - s[1]) for s in adjsegs) and \
                any(abs(s[2] - s[0]) <= abs(s[3] - s[1]) for s in adjsegs):
                 junc = True
-        labels.append({'nm': nm, 'ax': ax, 'ay': ay, 'en': en, 'bw': bw, 'bh': bh,
+        _pref = (side_pref or {}).get(nm)
+        labels.append({'nm': nm, 'ax': ax, 'ay': ay, 'en': en, 'bw': bw, 'bh': bh, 'pref': _pref,
                        'horiz': abs(ux) > abs(uy),  # 规则9: 45°为界(<45°上下, >45°左右)
                        'diag': 0.64 < abs(ux) < 0.77 and 0.64 < abs(uy) < 0.77,
                        # 正45°±6°才法向。旧条件 0.74<|ux| and 0.74<|uy| 单位向量不可能
@@ -663,6 +664,11 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None):
                     ('右', ax + G, ay - bh / 2, ax + G + bw, ay + bh / 2),
                     ('上', ax - bw / 2, ay - G - bh, ax + bw / 2, ay - G),
                     ('下', ax - bw / 2, ay + G, ax + bw / 2, ay + G + bh)]
+        pref = lb.get('pref')
+        if pref == '右':
+            out = sorted(out, key=lambda t: 0 if t[0] == '右' else (1 if t[0] == '左' else 2))
+        elif pref == '左':
+            out = sorted(out, key=lambda t: 0 if t[0] == '左' else (1 if t[0] == '右' else 2))
         return out
 
     def push(desc, bx0, by0, bx1, by1, ax, ay):
@@ -732,7 +738,8 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None):
                 if strict:
                     cover = any(bx0 - 4 < p['ax'] < bx1 + 4 and by0 - 4 < p['ay'] < by1 + 4
                                 for p in labels if p is not lb)
-                    if cover or ambiguous(lb, bx0, by0, bx1, by1):
+                    # 侧偏好站(密集线左右交替)豁免余量拒绝: 交替即消歧
+                    if cover or (not lb.get('pref') and ambiguous(lb, bx0, by0, bx1, by1)):
                         continue
                 lb.update(desc=desc, bx0=bx0, by0=by0, bx1=bx1, by1=by1)
                 placed.append(lb)
