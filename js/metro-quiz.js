@@ -47,7 +47,9 @@ const MetroQuiz = (() => {
     $('#bus-view').hidden = name !== 'bus';
     $('#metro-view').hidden = name !== 'metro';
     $('#roads-view').hidden = name !== 'roads';
+    $('#lines-view').hidden = name !== 'lines';
     if (name === 'roads' && window.RoadsView) RoadsView.show();
+    if (name === 'lines' && window.LinesView) LinesView.show();
     if (name === 'metro') {
       if (!game) showSetup();
       else if (game.renderer && game.renderer.invalidate) game.renderer.invalidate();

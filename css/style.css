@@ -303,3 +303,60 @@ body {
 .road-meta { font-size: 11px; color: #6e7681; flex: none; }
 .roads-main { flex: 1; position: relative; min-width: 0; }
 #roads-map { position: absolute; inset: 0; }
+
+/* ---------- 线路图查看 ---------- */
+.lines-layout { display: flex; width: 100%; }
+.lines-side {
+  width: 260px; min-width: 220px; display: flex; flex-direction: column;
+  border-right: 1px solid #232a33; background: #12171c;
+}
+.lines-side-head {
+  padding: 12px 12px 8px; font-size: 13px; font-weight: 600; color: #e6edf3;
+}
+.lines-side-head span { color: #8b949e; font-weight: 400; font-size: 11.5px; }
+.lines-list { flex: 1; overflow-y: auto; list-style: none; margin: 0; padding: 4px 6px; }
+.lines-list li {
+  display: flex; align-items: center; gap: 8px; padding: 7px 8px;
+  border-radius: 6px; cursor: pointer; font-size: 13px; color: #c9d1d9;
+}
+.lines-list li:hover { background: #1a2027; }
+.lines-list li.active { background: #1c2b3a; color: #fff; }
+.lines-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18); }
+.lines-name { flex: 1; }
+.lines-meta { font-size: 11px; color: #6e7681; flex: none; }
+.lines-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.lines-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; border-bottom: 1px solid #232a33; background: #12171c;
+}
+.line-segs { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-chip {
+  background: #1a2027; border: 1px solid #2f3742; color: #c9d1d9;
+  padding: 3px 10px; border-radius: 999px; cursor: pointer; font-size: 12px;
+}
+.seg-chip:hover { border-color: #4a9eff; }
+.seg-chip.active { background: #23425e; border-color: #4a9eff; color: #fff; }
+.lines-zoom { display: flex; align-items: center; gap: 6px; flex: none; }
+.lines-zoom button {
+  background: #1a2027; border: 1px solid #2f3742; color: #c9d1d9;
+  width: 26px; height: 24px; border-radius: 6px; cursor: pointer; font-size: 13px;
+  line-height: 1;
+}
+.lines-zoom button:hover { border-color: #4a9eff; }
+.lines-zoom button#lines-zoom-fit, .lines-zoom button#lines-zoom-1x { width: auto; padding: 0 8px; font-size: 12px; }
+#lines-zoom-pct { font-size: 12px; color: #8b949e; min-width: 42px; text-align: center; }
+.lines-stage {
+  flex: 1; min-height: 0; overflow: hidden; position: relative;
+  background: #f2f4f6; cursor: grab; touch-action: none;
+}
+.lines-stage:active { cursor: grabbing; }
+#lines-img {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  box-shadow: 0 2px 14px rgba(0,0,0,.25); user-select: none;
+}
+.lines-caption {
+  padding: 6px 12px; font-size: 11.5px; color: #8b949e;
+  border-top: 1px solid #232a33; background: #12171c;
+  display: flex; align-items: center; gap: 6px;
+}
+.cap-chip { width: 10px; height: 10px; border-radius: 3px; flex: none; }

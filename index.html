@@ -16,6 +16,7 @@
       <button data-mode="bus" class="active">公交路线</button>
       <button data-mode="metro">地铁拼图</button>
       <button data-mode="roads">道路查看</button>
+      <button data-mode="lines">线路图</button>
     </div>
     <span class="nav-note">数据 © OpenStreetMap 贡献者</span>
   </nav>
@@ -73,6 +74,29 @@
     <div class="roads-main">
       <div id="roads-map"></div>
       <div class="map-caption">底图 © 高德地图 · 道路数据 © OpenStreetMap 贡献者</div>
+    </div>
+  </div>
+
+  <div id="lines-view" class="mode-view lines-layout" hidden>
+    <aside class="lines-side">
+      <div class="lines-side-head">提取线路卡 <span id="lines-count"></span></div>
+      <ul id="lines-list" class="lines-list"></ul>
+    </aside>
+    <div class="lines-main">
+      <div class="lines-toolbar">
+        <div id="line-segs" class="line-segs"></div>
+        <div class="lines-zoom">
+          <button id="lines-zoom-out" title="缩小">−</button>
+          <span id="lines-zoom-pct">100%</span>
+          <button id="lines-zoom-in" title="放大">+</button>
+          <button id="lines-zoom-fit" title="适应窗口">适应</button>
+          <button id="lines-zoom-1x" title="原始尺寸">1:1</button>
+        </div>
+      </div>
+      <div id="lines-stage" class="lines-stage">
+        <img id="lines-img" alt="线路卡" draggable="false" />
+      </div>
+      <div id="lines-caption" class="lines-caption"></div>
     </div>
   </div>
 
@@ -177,6 +201,8 @@
   <script src="js/overpass.js"></script>
     <script src="js/amap-line.js"></script>
     <script src="js/roads.js"></script>
+    <script src="data/lines-view-data.js"></script>
+    <script src="js/lines-view.js"></script>
   <script src="js/map-layer.js"></script>
   <script src="js/app.js"></script>
   <script src="data/metro-data.js"></script>
