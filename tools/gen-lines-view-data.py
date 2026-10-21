@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-"""扫描 assets/lines/ 提取卡，生成 data/lines-view-data.js（线路图查看页的数据真源）。
+"""扫描 assets/lines/ 主卡，生成 data/lines-view-data.js（线路图查看页的数据真源）。
 
-主卡 = line-<线名>.svg；分段/来源卡 = line-<线名>-NN.svg。
+主卡 = line-<线名>.svg（line-color-* 共色采样碎片不算）；全网合成图 network-全网.svg 置顶。
+历史 line-<线名>-NN.svg 来源卡已删（2026-10-21 用户定稿：中间结果不再展示）。
 线色取 data/_line-colors.json，缺省回退 #607d8b。
 幂等：重跑覆盖。用法: python tools/gen-lines-view-data.py
 """
@@ -22,24 +23,18 @@ with open(os.path.join(ROOT, 'data', '_line-colors.json'), encoding='utf-8') as 
     for e in json.load(f):
         colors[e['zh']] = e['color']
 
-pat = re.compile(r'^line-(.+?)(?:-(\d+))?\.svg$')
 groups = {}
 for fn in os.listdir(LINES_DIR):
     if fn.startswith('line-color-'):
         continue  # 共色采样碎片，非线卡
-    m = pat.match(fn)
+    m = re.match(r'^line-(.+)\.svg$', fn)
     if not m:
         continue
-    name, seg = m.group(1), m.group(2)
-    groups.setdefault(name, {'card': None, 'segs': []})
-    if seg is None:
-        assert groups[name]['card'] is None, f'{name} 出现多个主卡'
-        groups[name]['card'] = fn
-    else:
-        groups[name]['segs'].append(seg)
+    name = m.group(1)
+    assert name not in groups, f'{name} 出现多个主卡'
+    groups[name] = fn
 
-for name, g in groups.items():
-    assert g['card'], f'{name} 只有分段卡没有主卡: {g}'
+assert set(groups) == set(ORDER), f'主卡与 ORDER 不一致: 多={sorted(set(groups) - set(ORDER))} 少={sorted(set(ORDER) - set(groups))}'
 
 lines = []
 # 全网合成图置顶(tools/build-network.py 生成, 同名站唯一标记)
@@ -49,22 +44,17 @@ lines.append({
     'name': '全网',
     'color': '#1a1a1a',
     'card': 'assets/lines/network-全网.svg',
-    'segs': [],
     'kind': 'network',
 })
 for name in ORDER:
-    g = groups.pop(name)
     lines.append({
         'name': name,
         'color': colors.get(name, '#607d8b'),
-        'card': 'assets/lines/' + g['card'],
-        'segs': [{'file': f'assets/lines/line-{name}-{s}.svg', 'tag': s}
-                 for s in sorted(g['segs'], key=int)],
+        'card': 'assets/lines/' + groups[name],
     })
-assert not groups, f'ORDER 之外还有线: {sorted(groups)}'
 
 with open(OUT, 'w', encoding='utf-8') as f:
     f.write('// 由 tools/gen-lines-view-data.py 生成，勿手改；重跑该工具再生成。\n')
     f.write('window.LINES_VIEW = ' + json.dumps({'lines': lines}, ensure_ascii=False, indent=1) + ';\n')
 
-print(f'OK {len(lines)} 线, 分段卡 {sum(len(l["segs"]) for l in lines)} 张 -> {OUT}')
+print(f'OK {len(lines) - 1} 线 + 全网 -> {OUT}')

@@ -57,27 +57,12 @@
         (lines[curLine].kind === 'network' ? '全网合成图(换乘站唯一)' : '官图提取卡');
     };
     im.src = encodeURI(file) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
-    [...$('#line-segs').children].forEach(c =>
-      c.classList.toggle('active', c.dataset.file === file));
   }
 
   function selectLine(i) {
     curLine = i;
     const line = lines[i];
     [...$('#lines-list').children].forEach((c, k) => c.classList.toggle('active', k === i));
-    // 分段行：主卡 + 来源卡
-    const segs = $('#line-segs');
-    segs.innerHTML = '';
-    const mk = (file, label) => {
-      const b = document.createElement('button');
-      b.className = 'seg-chip';
-      b.dataset.file = file;
-      b.textContent = label;
-      b.addEventListener('click', () => showFile(file));
-      segs.appendChild(b);
-    };
-    mk(line.card, line.kind === 'network' ? '全图' : '主卡');
-    line.segs.forEach(s => mk(s.file, `来源 ${s.tag}`));
     showFile(line.card);
   }
 
@@ -90,8 +75,7 @@
     lines.forEach((line, i) => {
       const li = document.createElement('li');
       li.innerHTML = `<span class="line-dot" style="background:${line.color}"></span>` +
-        `<span class="line-name">${line.name}</span>` +
-        (line.segs.length ? `<span class="line-meta">+${line.segs.length}卡</span>` : '');
+        `<span class="line-name">${line.name}</span>`;
       li.addEventListener('click', () => selectLine(i));
       ul.appendChild(li);
     });
