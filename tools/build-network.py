@@ -378,19 +378,18 @@ def _cands_for(mk, nm, w, hh, fs):
 def place_one(mk):
     """APM密集段=东带自适应微字; 其余7.5px→6px二档(缩小到放得下, 无缩放层)。"""
     nm = mk['name']
-    if nm in APM_DENSE:                          # 东带(x1666.6-1683, 3号线V/APM/18号线V之间)
-        fs = max(3.5, min(5.0, 16.0 / max(1, len(nm))))  # 按字长自适应: 3字5px/4字4px/5字3.5px
-        hh = fs + 1.5
-        labels.append((nm, 1674.5, mk['center'][1] + hh / 2 - 0.8 * fs, fs))
-        placed_boxes.append((nm, 1674.5 - fs * len(nm) / 2, mk['center'][1] - hh / 2,
-                             fs * len(nm), hh))
+    if nm in APM_DENSE:                          # 东带(x1666.6-1683): CJK竖排堆叠(竖线配竖字,
+        fs = min(7.0, 23.5 / len(nm))            # 站距24px): 3字7px/4字5.9px/5字4.7px, 宽=1字位
+        hh = fs * len(nm)
+        labels.append((nm, 1674.5, mk['center'][1] - hh / 2 + 0.85 * fs, fs, True))
+        placed_boxes.append((nm, 1674.5 - fs / 2, mk['center'][1] - hh / 2, fs, hh))
         return True
     for fs, hh in ((ST_FONT, 8.5), (ST_FONT2, 7.0)):
         w = st_w(nm) if fs == ST_FONT else st_w2(nm)
         for cx, cy in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
             if st_clear(rect, mk):
-                labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs))
+                labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
                 return True
     failed.append(nm)
@@ -501,7 +500,7 @@ for name in ORDER:
             if d == 1 and min(dist(m['center'], p) for m in markers) < 30]
     # 统一策略v3(2026-10-22用户: 按单线卡规范三点一线): 徽标沿终点走廊延长线越过站名远端
     # (圆→文字→徽标共线, 含斜线); 站名不在延长线/无方向时回退主轴吸附(横端同y/竖端同x)
-    lab_by_nm = {nm2: (cx, cy - 2.0) for nm2, cx, cy in labels}
+    lab_by_nm = {lb[0]: (lb[1], lb[2] - 2.0) for lb in labels}
     for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
         others = adj[p]
         base = others[0] if others else (gx, gy)
@@ -703,9 +702,16 @@ for nm, bx, by, bw, bh in badges:
 out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
            'font-weight="700" fill="%s">' % INK)
-for nm, cx, cy, fs in labels:
-    out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
-               % (fmt(cx), fmt(cy), fmt(fs), nm))
+for nm, cx, cy, fs, stacked in labels:
+    if stacked:                                 # CJK竖排: 每字一tspan同x顺dy
+        inner = ''.join('<tspan x="%s"%s>%s</tspan>' %
+                        (fmt(cx), (' dy="%s"' % fmt(fs)) if k else '', ch)
+                        for k, ch in enumerate(nm))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), inner))
+    else:
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), nm))
 out.append('</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
