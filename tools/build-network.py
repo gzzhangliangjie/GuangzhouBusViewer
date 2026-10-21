@@ -440,14 +440,16 @@ ally = [v for c in corridors for v in (c[2], c[4])]
 gx, gy = sum(allx) / len(allx), sum(ally) / len(ally)
 
 
-def badge_rect_why(rect, placed_badges):
+def badge_rect_why(rect, placed_badges, ignore_corridor=False):
+    """ignore_corridor=True: 延长线上的徽标可盖走廊(有底色, 规范允许)"""
     x, y, w, h = rect
     for nm2, x2, y2, w2, h2 in placed_badges:
         if not (x + w + 6 < x2 or x2 + w2 + 6 < x or y + h + 6 < y2 or y2 + h2 + 6 < y):
             return '撞徽标%s' % nm2
-    for nm2, ax, ay, bx, by, _c in corridors:
-        if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 3.0:
-            return '撞走廊%s@(%g,%g)' % (nm2, ax, ay)
+    if not ignore_corridor:
+        for nm2, ax, ay, bx, by, _c in corridors:
+            if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 3.0:
+                return '撞走廊%s@(%g,%g)' % (nm2, ax, ay)
     for other in markers:
         if other['kind'] == 'capsule':
             edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
@@ -465,22 +467,17 @@ def badge_rect_why(rect, placed_badges):
     return None
 
 
-def badge_rect_ok(rect, placed_badges):
-    return badge_rect_why(rect, placed_badges) is None
+def badge_rect_ok(rect, placed_badges, ignore_corridor=False):
+    return badge_rect_why(rect, placed_badges, ignore_corridor) is None
 
 
 badges = []             # (线名, 左上x, 左上y, w, h)
 badge_fail = []
 BADGE_AT = {
-    # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_why
-    '7号线': [(1016, 1573)],
-    '广佛线': [(949, 1604)],
-    '1号线': [(1064, 1310), (1072, 1318)],
-    '2号线': [(1380, 1635), (1375, 1645)],
-    '10号线': [(1062, 1225), (1055, 1235), (1070, 1215)],
-    '12号线': [(2040, 1455), (2035, 1440)],
-    '22号线': [(1940, 1672)],
+    # 手动锚点仅用于引擎确实无法放置的站(引擎已支持延长线盖走廊, 2026-10-22用户令回归规范)
     'APM线': [(1620, 1100)],
+    '12号线': [(2035, 1440)],
+    '2号线': [(1405, 1620), (1395, 1625)],  # 广州南站胶囊正下方居中(用户定稿)
 }
 for name in ORDER:
     _sc = BADGE_SCALE_BY.get(name, BADGE_SCALE)
@@ -488,7 +485,7 @@ for name in ORDER:
     done = False
     for cx, cy in BADGE_AT.get(name, []):
         rect = (cx - bw / 2, cy - bh / 2, bw, bh)
-        why = badge_rect_why(rect, badges)
+        why = badge_rect_why(rect, badges, ignore_corridor=True)
         if why is None:
             badges.append((name, rect[0], rect[1], bw, bh))
             done = True
@@ -539,7 +536,7 @@ for name in ORDER:
                 cx2 = tcx
                 cy2 = tcy + sgn * (4.25 + bh / 2 + gap)
             rect = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
-            if badge_rect_ok(rect, badges):
+            if badge_rect_ok(rect, badges, ignore_corridor=True):  # 规范: 延长线徽标可盖走廊(有底色)
                 badges.append((name, rect[0], rect[1], bw, bh))
                 done = True
                 break
@@ -616,7 +613,7 @@ for _i in range(len(badges)):
         print('  !! 徽标 %s 本体±120px内无合法位' % _nm)
 # 落位审计: 每枚复检(应全过; 2号线/22号线曾盖线的防线) + 离本体距离(过远=偏离本体)
 for _nm, _bx, _by, _bw, _bh in badges:
-    _why = badge_rect_why((_bx, _by, _bw, _bh), [b for b in badges if b[0] != _nm])
+    _why = badge_rect_why((_bx, _by, _bw, _bh), [b for b in badges if b[0] != _nm], ignore_corridor=True)
     if _why:
         print('  !! 徽标 %s 复检撞: %s' % (_nm, _why))
     _own = [c for c in corridors if c[0] == _nm]
