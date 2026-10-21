@@ -570,6 +570,29 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             bad_odd.append('%.1f°/%.0fpx@(%g,%g)' % (a2, L2, x1, y1))
     add('G17', '无长非标斜段(>40px且离0/45/90超4°)', not bad_odd, '; '.join(bad_odd[:4]) or '全过')
 
+    # G18 无硬拐(2026-10-21 固化, 用户点名"别的地方有这样的折角么"):
+    # 全网画法铁律=轴向段接45°段必须带短过渡(90°转角=13px 45°切角; 轴向→长斜线=20px 26.6°/63.4°缓坡)。
+    # 轴向|45° 关节两侧都>16px(即无切角/缓坡缓冲)=硬拐即红。审计基线: 修前全网仅3号线(2076.7,1649)一处。
+    bad_hard = []
+    for (jx, jy), refs in by_pt.items():
+        if len(refs) != 2:
+            continue
+        if any(seg_pt_dist(sg[0], sg[1], sg[2], sg[3], jx, jy) < 0.6
+               for k, sg in enumerate(segs) if k not in (refs[0][0], refs[1][0])):
+            continue
+        (k1, e1), (k2_, e2) = refs
+        a, b = segs[k1], segs[k2_]
+        u = _unit(a[0], a[1], a[2], a[3]) if e1 == 1 else _unit(a[2], a[3], a[0], a[1])
+        v = _unit(b[0], b[1], b[2], b[3]) if e2 == 0 else _unit(b[2], b[3], b[0], b[1])
+        au = math.degrees(math.atan2(abs(u[1]), abs(u[0])))
+        av = math.degrees(math.atan2(abs(v[1]), abs(v[0])))
+        _axis = lambda t: t < 2.5 or t > 87.5
+        _diag = lambda t: 42.5 < t < 47.5
+        if (_axis(au) and _diag(av)) or (_diag(au) and _axis(av)):
+            if math.hypot(a[2] - a[0], a[3] - a[1]) > 16 and math.hypot(b[2] - b[0], b[3] - b[1]) > 16:
+                bad_hard.append('(%g,%g)' % (jx, jy))
+    add('G18', '无硬拐(轴向↔45°须切角/缓坡过渡)', not bad_hard, '; '.join(bad_hard[:4]) or '全过')
+
     return R
 
 
