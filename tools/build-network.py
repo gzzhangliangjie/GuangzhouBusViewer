@@ -384,10 +384,13 @@ def place_one(mk):
         labels.append((nm, 1674.5, mk['center'][1] - hh / 2 + 0.85 * fs, fs, True))
         placed_boxes.append((nm, 1674.5 - fs / 2, mk['center'][1] - hh / 2, fs, hh))
         return True
+    _DBG = ('黄埔新港', '美的大道', '新城东', '西塱', '新沙', '杨箕东', '广州东站')
     for fs, hh in ((ST_FONT, 8.5), (ST_FONT2, 7.0)):
         w = st_w(nm) if fs == ST_FONT else st_w2(nm)
         for cx, cy in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
+            if nm in _DBG:
+                print('   DBG %s cand(%.1f,%.1f)' % (nm, cx, cy))
             if st_clear(rect, mk):
                 labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
@@ -471,9 +474,13 @@ badge_fail = []
 BADGE_AT = {
     # 手动锚点(徽标中心), 自动搜索离本体太远时定点覆盖; 按序尝试, 仍须过 badge_rect_why
     'APM线': [(1580, 790)],  # 兜底位; 贴本体校正会在其终点±150px网格搜最近合法位(2026-10-22)
-    '广佛线': [(935, 1604), (940, 1575), (965, 1630), (900, 1604)],  # 新城东终点旁(东/北/南/西), 卡走廊碎裂自动策略不可靠
-    '10号线': [(1600, 905), (1590, 900)],  # 杨箕东上方夹缝(1号线双H/3号线V/11号线H之间), 终点±150内
-    '12号线': [(2025, 1402), (2025, 1432)],  # 大学城南终点东侧(本线延长线被4号线竖线占用)
+    '广佛线': [(968, 1610), (975, 1612)],   # 新城东延长线上(圆882→文903→徽968近共线, 避7号线徽标)
+    '10号线': [(1615, 905), (1600, 905)],  # 杨箕东上方夹缝
+    '1号线': [(1213, 1305)],  # 西塱终点旁E(花围/东沙标签带上方夹缝, 132px内)
+    '12号线': [(2040, 1455), (2035, 1440)],  # 大学城南终点东南(延长线被4号线V占, 7号线斜线外)
+    '22号线': [(1940, 1672)],  # 番禺广场终点东南(3号线H下方/18号线斜线左上夹缝)  # 芳村终点东北夹缝 / 番禺广场东南(两终点皆枢纽)
+    '2号线': [(1325, 1652), (1350, 1640)],   # 广州南站终点西南 / 嘉禾望岗延长线北
+    'APM线': [(1620, 1100)],  # 广州塔终点西侧(3号线V外)
 }
 for name in ORDER:
     _sc = BADGE_SCALE_BY.get(name, BADGE_SCALE)
@@ -582,6 +589,9 @@ for _i in range(len(badges)):
         a, b = (round(ax, 1), round(ay, 1)), (round(bx, 1), round(by, 1))
         _deg2[a] = _deg2.get(a, 0) + 1; _deg2[b] = _deg2.get(b, 0) + 1
     _endps = [q for q, d in _deg2.items() if d == 1]
+    _cs = ((_bx + _bw / 2), (_by + _bh / 2))
+    if _endps and min(dist(_cs, q) for q in _endps) < 160:
+        continue  # 终点徽标(策略性远端)不迁: 2/10号线曾被贴本体搬到mid-line(2026-10-22)
     if _endps:
         _xs = [v for q in _endps for v in (q[0] - 150, q[0] + 150)]
         _ys = [v for q in _endps for v in (q[1] - 150, q[1] + 150)]
