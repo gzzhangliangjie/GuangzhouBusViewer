@@ -265,42 +265,15 @@ def clearances_ok(rect, mk, placed):
     return True
 
 
-labels = []              # (名, x, y) 文本锚(左上)
+labels = []              # (名, cx, 基线y) 全部站名统一7.5px加粗(2026-10-22用户: 大小间距全线一致)
 placed_boxes = []
 failed = []
 transfers = [m for m in markers if len(m['lines']) > 1]
-# 受限优先: 静态障碍下可选方向少的先放
-def option_count(mk):
-    w, h = label_box(mk['name'], 0, 0)
-    n = 0
-    for ring in RINGS:
-        for dx, dy in DIRS:
-            ax, ay = marker_anchor(mk, dx, dy)
-            px, py = ax + dx * ring, ay + dy * ring
-            if clearances_ok(place_box(w, h, px, py, dx, dy), mk, []):
-                n += 1
-    return n
-
-for mk in sorted(transfers, key=lambda m: (option_count(m), m['name'])):
-    w, h = label_box(mk['name'], 0, 0)
-    done = False
-    for ring in RINGS:
-        for dx, dy in DIRS:
-            ax, ay = marker_anchor(mk, dx, dy)
-            px, py = ax + dx * ring, ay + dy * ring
-            rect = place_box(w, h, px, py, dx, dy)
-            if clearances_ok(rect, mk, placed_boxes):
-                labels.append((mk['name'], rect[0] + 1, rect[1] + h - 2.5, rect[0], rect[1], w, h, mk))
-                placed_boxes.append((mk['name'], rect[0], rect[1], w, h))
-                done = True
-                break
-        if done:
-            break
-    if not done:
-        failed.append(mk['name'])
-
-# ---------- 全网站名补齐(小字号, 卡片标准位优先, 8向兜底, 放不下进缩放层; 2026-10-22用户令) ----------
+st_labels = []
+zoom_labels = []        # (名, x, y, 违规数) 缩放层(实在放不下)
+zoom_boxes = []
 ST_FONT = 7.5
+RINGS_TIGHT = [2.5, 6.0, 11.0, 17.0]
 
 
 def st_w(nm):
@@ -331,7 +304,7 @@ def st_clear(rect, own_mk):
     return True
 
 
-card_label = {}   # 站名 -> (x, y基线) 取自各卡站名标注(单线标准位置)
+card_label = {}   # 站名 -> (x, y基线) 取自各卡站名标注(标准方位参考)
 for _name in ORDER:
     _p = os.path.join(LINES_DIR, 'line-%s.svg' % _name)
     try:
@@ -341,42 +314,88 @@ for _name in ORDER:
     _g = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _src, re.S)
     if not _g:
         continue
-    for _t in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="10.5"[^>]*>([^<]+)</text>', _g.group(1)):
+    for _t in re.finditer(r'<text x="([\d.-]+)" y="([\d.-]+)"[^>]*font-size="10.5"[^>]*>([^<]+)</text>', _g.group(1)):
         card_label.setdefault(_t.group(3).strip(), (float(_t.group(1)), float(_t.group(2))))
 
-st_labels = []    # (名, cx, 基线y)
-zoom_labels = []  # (名, x, y) 缩放层(实在放不下)
-_labeled = set(nm for nm, *_ in labels)
-for mk in sorted(markers, key=lambda m: m['name']):
+
+def place_one(mk):
+    """统一放置: 卡片方位拉近(钳13px)→紧环8向→缩放层(最少违规+互避让)。"""
     nm = mk['name']
-    if nm in _labeled:
-        continue
-    w, h = st_w(nm), 9.0
-    done = False
-    if nm in card_label:                       # 1) 卡片标准位
+    w, h = st_w(nm), 8.5
+    mx, my = mk['center']
+    cands = []
+    if nm in card_label:                       # 卡片标准方位, 拉近钳制(旧位按10.5字号留距, 小字要贴圆)
         cx, cy = card_label[nm]
-        rect = (cx - w / 2, cy - 7.5, w, h)
+        ox, oy = cx - mx, (cy - 3.75) - my     # 标签中心相对标记中心
+        L = (ox * ox + oy * oy) ** 0.5
+        if L > 1:
+            k = min(1.0, 13.0 / L)
+            cands.append((mx + ox * k, my + oy * k + 3.75))
+    for ring in RINGS_TIGHT:
+        for dx, dy in DIRS:
+            ax, ay = marker_anchor(mk, dx, dy)
+            r2 = place_box(w, h, ax + dx * ring, ay + dy * ring, dx, dy)
+            cands.append((r2[0] + w / 2, r2[1] + h / 2))
+    for cx, cy in cands:
+        rect = (cx - w / 2, cy - h / 2, w, h)
         if st_clear(rect, mk):
-            st_labels.append((nm, cx, cy))
+            labels.append((nm, cx, cy + 3.25))
             placed_boxes.append((nm,) + rect)
-            done = True
-    if not done:                               # 2) 8向环兜底
-        for ring in RINGS:
-            for dx, dy in DIRS:
-                ax, ay = marker_anchor(mk, dx, dy)
-                rect = place_box(w, h, ax + dx * ring, ay + dy * ring, dx, dy)
-                if st_clear(rect, mk):
-                    st_labels.append((nm, rect[0] + w / 2, rect[1] + 7.5))
-                    placed_boxes.append((nm,) + rect)
-                    done = True
-                    break
-            if done:
+            return True
+    # 缩放层: 放宽净距, 取最少违规位(互避让), 白描边光环保可读
+    best = None
+    for cx, cy in cands:
+        rect = (cx - w / 2, cy - h / 2, w, h)
+        rx_, ry_ = rect[0], rect[1]
+        viol = 0
+        for nm2, ax, ay, bx, by, _c in corridors:
+            if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 0.5:
+                viol += 1
+        for nm2, x2, y2, w2, h2 in placed_boxes + zoom_boxes:
+            if not (rx_ + w + 0.5 < x2 or x2 + w2 + 0.5 < rx_ or ry_ + h + 0.5 < y2 or y2 + h2 + 0.5 < ry_):
+                viol += 2
                 break
-    if not done:                               # 3) 缩放层
-        zoom_labels.append((nm,) + card_label.get(nm, (mk['center'][0], mk['center'][1] - 9)))
-print('  站名: 换乘%d + 全线%d + 缩放层%d = %d/%d' %
-      (len(labels), len(st_labels), len(zoom_labels),
-       len(labels) + len(st_labels) + len(zoom_labels), len(markers)))
+        for other in markers:
+            if other is mk:
+                continue
+            if other['kind'] == 'capsule':
+                edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
+                if any(rect_seg_dist(rect, a, b) < CAP_W / 2 + 0.5 for a, b in edges):
+                    viol += 2
+                    break
+                continue
+            ox_, oy_ = other['center']
+            qx = min(max(ox_, rx_), rx_ + w); qy = min(max(oy_, ry_), ry_ + h)
+            if dist((ox_, oy_), (qx, qy)) < other['r'] + 0.5:
+                viol += 2
+                break
+        if viol == 0:
+            best = (0, cx, cy)
+            break
+        if best is None or viol < best[0]:
+            best = (viol, cx, cy)
+    assert best, nm
+    zoom_labels.append((nm, best[1], best[2] + 3.25, best[0]))
+    zoom_boxes.append((nm, best[1] - w / 2, best[2] - h / 2, w, h))
+    return True
+
+
+# 受限优先: 换乘站可选位少先放, 其余按名序
+def opt_n(mk):
+    w, h = st_w(mk['name']), 8.5
+    n = 0
+    for ring in RINGS_TIGHT:
+        for dx, dy in DIRS:
+            ax, ay = marker_anchor(mk, dx, dy)
+            if st_clear(place_box(w, h, ax + dx * ring, ay + dy * ring, dx, dy), mk):
+                n += 1
+    return n
+
+
+_mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
+for mk in _mks:
+    place_one(mk)
+print('  站名: 显示%d + 缩放层%d = %d/%d' % (len(labels), len(zoom_labels), len(labels) + len(zoom_labels), len(markers)))
 
 # ---------- 各线徽标(复用主卡header徽标, 端点外推摆位) ----------
 allx = [v for c in corridors for v in (c[1], c[3])]
@@ -508,7 +527,8 @@ for _nm, _bx, _by, _bw, _bh in badges:
 xs = [v for c in corridors for v in (c[1], c[3])]
 ys = [v for c in corridors for v in (c[2], c[4])]
 for lb in labels:
-    xs += [lb[3], lb[3] + lb[5]]; ys += [lb[4], lb[4] + lb[6]]
+    _w_ = st_w(lb[0])
+    xs += [lb[1] - _w_ / 2, lb[1] + _w_ / 2]; ys += [lb[2] - 8.5, lb[2]]
 for _nm, bx, by, bw, bh in badges:
     xs += [bx, bx + bw]; ys += [by, by + bh]
 for mk in markers:
@@ -588,20 +608,16 @@ for nm, bx, by, bw, bh in badges:
     out.append('<g data-badge="header" transform="translate(%s %s) scale(%s)">%s</g>'
                % (fmt(bx), fmt(by), fmt(BADGE_SCALE_BY.get(nm, BADGE_SCALE)), badge_inner[nm]))
 out.append('</g>')
-out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">')
-for nm, tx, ty, _bx, _by, _w, _h, _mk in labels:
-    out.append('<text x="%s" y="%s" font-size="%s" font-weight="600" fill="%s">%s</text>' %
-               (fmt(tx), fmt(ty), fmt(FONT_ZH), INK, nm))
-out.append('</g>')
-out.append('<g id="站名标注-全线" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
-           'font-size="7.5" fill="#1a1a1a">')
-for nm, cx, cy in st_labels:
+out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
+           'font-size="7.5" font-weight="700" fill="%s">' % INK)
+for nm, cx, cy in labels:
     out.append('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(cx), fmt(cy), nm))
 out.append('</g>')
 zoom_group = ('<g id="站名标注-缩放层" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
-              'font-size="7.5" fill="#1a1a1a">' +
+              'font-size="7.5" fill="#1a1a1a" style="paint-order:stroke" stroke="#FFFFFF" stroke-width="2.2" '
+              'stroke-linejoin="round">' +
               ''.join('<text x="%s" y="%s" text-anchor="middle">%s</text>' % (fmt(x), fmt(y), nm)
-                      for nm, x, y in zoom_labels) + '</g>')
+                      for nm, x, y, _v in zoom_labels) + '</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
 out.append('<text x="%s" y="%s" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" font-size="19" font-weight="700" fill="%s">%s</text>' %
