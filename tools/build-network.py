@@ -507,41 +507,25 @@ for name in ORDER:
     # 端点必须邻近站圆(真终点), 剔除走廊碎裂假端点(广佛线曾因0.1-2.3px裂隙端点掉mid-line)
     ends = [p for p, d in deg.items()
             if d == 1 and min(dist(m['center'], p) for m in markers) < 30]
-    # 统一策略v3(2026-10-22用户: 按单线卡规范三点一线): 徽标沿终点走廊延长线越过站名远端
-    # (圆→文字→徽标共线, 含斜线); 站名不在延长线/无方向时回退主轴吸附(横端同y/竖端同x)
-    lab_by_nm = {lb[0]: (lb[1], lb[2] - 2.0) for lb in labels}
+    # 纯规范策略(2026-10-22用户终审定稿): 徽标中心=终点圆心+走廊方向×(r+gap+徽标半伸长), 三点一线
+    # 不依赖文字位置/无回退链/ignore_corridor(有底色); 仅撞徽标/撞标签时试另一终点
     for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
         others = adj[p]
-        base = others[0] if others else (gx, gy)
+        if not others:
+            continue
+        base = others[0]
         dx, dy = p[0] - base[0], p[1] - base[1]
         n = (dx * dx + dy * dy) ** 0.5 or 1.0
         ux, uy = dx / n, dy / n
         tm = min(markers, key=lambda m: dist(m['center'], p))
-        tnm = tm['name']
-        tcx, tcy = lab_by_nm.get(tnm, tm['center'])
-        tw = st_w(tnm)
-        mode3 = False                               # 三点一线仅当站名确在延长线上(垂距<9且外向)
-        if tnm in term_dir and tnm in lab_by_nm:
-            ex, ey = term_dir[tnm]
-            vx, vy = tcx - tm['center'][0], tcy - tm['center'][1]
-            if (vx * ex + vy * ey) > 5 and abs(-vx * ey + vy * ex) < 9:
-                mode3 = True
-        for gap in (7.0, 16.0, 28.0, 44.0, 70.0, 100.0):
-            if mode3:                                       # 三点一线沿延长线
-                ext_l = (tw * abs(ex) + 8.5 * abs(ey)) / 2
-                ext_b = (bw * abs(ex) + bh * abs(ey)) / 2
-                cx2 = tcx + ex * (ext_l + ext_b + gap)
-                cy2 = tcy + ey * (ext_l + ext_b + gap)
-            elif abs(ux) >= abs(uy):                       # 回退: 横主轴同y并排
-                sgn = 1.0 if ux > 0 else -1.0
-                cx2 = tcx + sgn * (tw / 2 + bw / 2 + gap)
-                cy2 = tcy
-            else:                                          # 回退: 纵主轴同x上下
-                sgn = 1.0 if uy > 0 else -1.0
-                cx2 = tcx
-                cy2 = tcy + sgn * (4.25 + bh / 2 + gap)
+        r0 = tm['r'] if tm['kind'] != 'capsule' else CAP_W / 2 + CAP_RING
+        ext_b = (bw * abs(ux) + bh * abs(uy)) / 2          # 徽标沿方向的半伸长
+        for gap in (7.0, 12.0, 20.0, 32.0, 50.0, 72.0, 100.0):
+            d = r0 + gap + ext_b
+            cx2 = tm['center'][0] + ux * d
+            cy2 = tm['center'][1] + uy * d
             rect = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
-            if badge_rect_ok(rect, badges, ignore_corridor=True):  # 规范: 延长线徽标可盖走廊(有底色)
+            if badge_rect_ok(rect, badges, ignore_corridor=True):
                 badges.append((name, rect[0], rect[1], bw, bh))
                 done = True
                 break
@@ -549,6 +533,7 @@ for name in ORDER:
             break
     if done:
         continue
+    # 兜底: 终点延长线全部被徽标/标签占时, 贴本体网格(终点±150)
     cand = sorted(ends or deg, key=lambda p: -dist(p, (gx, gy)))[:6]
     for p in cand:
         others = adj[p]
