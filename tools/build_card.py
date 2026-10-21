@@ -619,8 +619,13 @@ def place_labels(stations, circles_xy, segs, EN, no_term=False, terms=None, side
             return out
         if lb['nm'] in TERM:
             # 终点文字=路线延长线上居中(嘉禾望岗/二沙岛验收版式): 延长线候选一律最先,
-            # 外向=最近两段外向均值(贴轴|u|<0.25吸附, 45°不再被规则9阈值吞掉)
-            nn = sorted(segs, key=lambda s: seg_pt_dist(s, ax, ay))[:2]
+            # 外向=本链邻段外向均值(贴轴|u|<0.25吸附, 45°不再被规则9阈值吞掉)。
+            # 只取端点贴着终点钉的段——支线终点旁的主线段会污染方向均值
+            # (天河客运站被主线竖线平均出0.28横向分量, 终点文字右偏7.6px不居中教训)
+            _adj = [s for s in segs
+                    if min(math.hypot(s[0] - ax, s[1] - ay), math.hypot(s[2] - ax, s[3] - ay)) <= 2.5]
+            nn = (sorted(_adj, key=lambda s: seg_pt_dist(s, ax, ay))[:2]
+                  if _adj else sorted(segs, key=lambda s: seg_pt_dist(s, ax, ay))[:2])
             vx = vy = 0.0
             for s in nn:
                 d1 = math.hypot(s[0] - ax, s[1] - ay)

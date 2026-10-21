@@ -13,7 +13,7 @@ _spec.loader.exec_module(group_card)
 build, _chains_for = group_card.build, group_card._chains_for
 
 CFG = {
-  '3号线': dict(gid='_x33_', color='#ECA154', data_multi=True, custom_segs=[
+  '3号线': dict(gid='_x33_', color='#ECA154', data_multi=True, side_pref={'梅花园': '右'}, custom_segs=[
         (1498.45, 92.25, 1498.45, 578.25),
         (1507.50, 594.00, 1651.50, 738.00),
         (1498.45, 576.00, 1507.50, 594.09),

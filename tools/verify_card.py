@@ -419,7 +419,11 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
             ax, ay = min(((x, y) for (x, y, r) in circles),
                          key=lambda p: math.hypot(p[0] - lb['x'], p[1] - (lb['box'][1] + lb['box'][3]) / 2))
             vx = vy = 0.0
-            near = sorted(segs, key=lambda s: seg_pt_dist(*s, ax, ay))[:2]
+            # 与 place_labels 同规则: 只取端点贴着终点钉的本链段(支线终点旁的主线段会污染方向均值)
+            _adj = [s for s in segs
+                    if min(math.hypot(s[0] - ax, s[1] - ay), math.hypot(s[2] - ax, s[3] - ay)) <= 2.5]
+            near = (sorted(_adj, key=lambda s: seg_pt_dist(*s, ax, ay))[:2]
+                    if _adj else sorted(segs, key=lambda s: seg_pt_dist(*s, ax, ay))[:2])
             for s in near:
                 d1 = math.hypot(s[0] - ax, s[1] - ay)
                 d2 = math.hypot(s[2] - ax, s[3] - ay)
