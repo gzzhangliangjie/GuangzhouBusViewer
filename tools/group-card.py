@@ -396,15 +396,23 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
     _bw, _bh, _bs = B.badge_full_size(_REF)
     gb.append(B.make_badge_official(_REF, color, x1 - 16 - _bw, y0 + 36, _bs, 'full'))
     if not loop:
-        # 终点数字块(2026-10-20 全线统一): 与终点文字同x居中, 净距3px(门禁口径=末行基线+2.5),
-        # 在文字块背离圆点一侧; by1=末行基线(place_labels已为拆行英文预留+6.5)
+        # 终点数字块(2026-10-21 方位统一): 徽标在 终点圆->终点文字 连线延长线上、背离圆点
+        # 一侧, 与文字块居中(横向连线同y横排/竖向连线同x竖排), 净距3px(竖向口径=末行基线+2.5)
         _chh = B.badges_data()[_REF]['chip']['h'] / 2
+        _chw = B.badges_data()[_REF]['chip']['w'] / 2
+        _chip_boxes = []
         def _chip_xy(tn):
             lb = plmap[tn]
             tx, ty = epos[tn]
-            cx = (lb['bx0'] + lb['bx1']) / 2
-            cy = lb['by1'] + 5.5 + _chh \
-                if (lb['by0'] + lb['by1']) / 2 > ty else lb['by0'] - 3.0 - _chh
+            lcx, lcy = (lb['bx0'] + lb['bx1']) / 2, (lb['by0'] + lb['by1']) / 2
+            if abs(lcx - tx) > abs(lcy - ty):  # 横向连线: 徽标横排(同y居中)
+                cx = lb['bx1'] + 3.0 + _chw if lcx > tx else lb['bx0'] - 3.0 - _chw
+                cy = lcy
+            else:  # 竖向连线: 与终点文字同x居中(净距3=末行基线+2.5口径)
+                cx = lcx
+                cy = lb['by1'] + 5.5 + _chh \
+                    if lcy > ty else lb['by0'] - 3.0 - _chh
+            _chip_boxes.append((cx - _chw, cy - _chh, cx + _chw, cy + _chh))
             return cx, cy
         for tn in (order[0], order[-1]):
             cx, cy = _chip_xy(tn)
@@ -412,6 +420,16 @@ def build(line_zh, gid, color, loop=False, overrides=None, chains=None, custom_s
         if branch:
             cx, cy = _chip_xy(border[-1])
             gb.append(B.make_badge_official(_REF, color, cx, cy, 1.0, 'chip'))
+        if _chip_boxes:  # 数字块可越过既定pad(横向终点贴卡缘), 卡框随盒外扩
+            nx0, ny0 = min(b[0] for b in _chip_boxes) - 12, min(b[1] for b in _chip_boxes) - 12
+            nx1, ny1 = max(b[2] for b in _chip_boxes) + 12, max(b[3] for b in _chip_boxes) + 12
+            if nx0 < x0 or ny0 < y0 or nx1 > x1 or ny1 > y1:
+                x0, y0 = min(x0, nx0), min(y0, ny0)
+                x1, y1 = max(x1, nx1), max(y1, ny1)
+                svg.set('viewBox', '%.1f %.1f %.1f %.1f' % (x0, y0, x1-x0, y1-y0))
+                svg.set('width', str(round(x1-x0))); svg.set('height', str(round(y1-y0)))
+                bg.set('x', str(x0)); bg.set('y', str(y0))
+                bg.set('width', str(x1-x0)); bg.set('height', str(y1-y0))
     gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')
     gl.set('font-family', "'Microsoft YaHei', 'PingFang SC', sans-serif")
     for lb in pl:

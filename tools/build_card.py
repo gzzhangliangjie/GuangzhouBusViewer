@@ -1658,7 +1658,8 @@ def build_line(linename, src, groups, lines, S, pins):
                     ss = list(segs[si3])
                     ss[k3*2], ss[k3*2+1] = tx, ty
                     segs[si3] = tuple(ss)
-        # 徽标: 射线上越过文字远端
+        # 徽标: 射线上越过文字远端(三点一线)。框内候选优先; 全出框时取最近候选
+        # 并把卡框向外扩(终点在卡缘的横向线, 滘口/高增曾因此掉环搜兜底变竖排)
         placed_ok = False
         min_ext = 40.0
         if tlb is not None:
@@ -1667,19 +1668,24 @@ def build_line(linename, src, groups, lines, S, pins):
                       for cy in (tlb['by0'], tlb['by1']))
             min_ext = max(min_ext, far + badges_data()[L['ref']]['chip']['w'] / 2 + 6)
         import itertools as _it
+        _own = (tlb['bx0'], tlb['by0'], tlb['bx1'], tlb['by1']) if tlb else None
+        others = [lbb for lbb in lb_boxes if lbb != _own]
+        cand = []
         for extra in sorted(set(round(min_ext) + d for d in (0, 12, 26, 42, 60, 80))):
             bx = tx + ux*extra
             by = ty + uy*extra
             bb = badge_box(bx, by)
-            if bb[0] < x0+5 or bb[2] > x1m-5 or bb[1] < y0+5 or bb[3] > y1m-5:
-                continue
-            _own = (tlb['bx0'], tlb['by0'], tlb['bx1'], tlb['by1']) if tlb else None
-            others = [lbb for lbb in lb_boxes if lbb != _own]
             if any(rect_hit(bb, lbb) for lbb in others):
                 continue
+            inside = not (bb[0] < x0+5 or bb[2] > x1m-5 or bb[1] < y0+5 or bb[3] > y1m-5)
+            cand.append((0 if inside else 1, extra, bx, by))
+            if inside:
+                break
+        if cand:
+            cand.sort(key=lambda c: (c[0], c[1]))
+            _, extra, bx, by = cand[0]
             _gb_add(make_badge_official(L['ref'], color, bx, by, 1.0, 'chip'))
             placed_ok = True
-            break
         if not placed_ok:
             for dist in (48, 58, 70, 85, 100):
                 for ang in range(0, 360, 30):
@@ -1714,9 +1720,11 @@ def build_line(linename, src, groups, lines, S, pins):
         bm = max(lb['by1'] + (6.5 if split_en(lb['en'], lb['nm']) else 0) for lb in placed)
         if placed_ok and 'bb' in dir():
             pass
-        # 徽标远缘计入(官方徽标 data-box 即缩放后实际包围盒)
+        # 徽标远缘计入(官方徽标 data-box 即缩放后实际包围盒), 四边都收(终点chip可外扩卡框)
         for (bx0, by0, bx1, by1) in gb_boxes:
+            lm = min(lm, bx0)
             rm = max(rm, bx1)
+            tm = min(tm, by0)
             bm = max(bm, by1)
         if lm - 12 < x0:
             x0 = lm - 12
@@ -1730,6 +1738,8 @@ def build_line(linename, src, groups, lines, S, pins):
         svg.set('width', str(round(x1m - x0)))
         bg.set('x', str(x0))
         bg.set('width', str(x1m - x0))
+        bg.set('y', str(y0))
+        bg.set('height', str(y1m - y0))
 
     gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')
     gl.set('font-family', "'Microsoft YaHei', 'PingFang SC', sans-serif")

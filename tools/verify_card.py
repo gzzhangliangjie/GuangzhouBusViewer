@@ -263,23 +263,35 @@ def run_gates(path, expect_n=None, chains=None, pins=None):
                 continue
             bx0, by0, bx1, by1 = bd['box']
             ccx = (bx0 + bx1) / 2.0
-            cand = []
+            ccy = (by0 + by1) / 2.0
+            # 配对双口径(2026-10-21): 竖排=数字块与文字同x居中上下邻接; 横排=同y居中左右邻接
+            cand = []  # (mode, gap, label)
             for lb in labels:
-                if abs(lb['x'] - ccx) > 60:
-                    continue
-                gb = by0 - lb['box'][3]   # 数字块在文字块下方
-                ga = lb['box'][1] - by1   # 数字块在文字块上方
-                if 0 < gb < 15:
-                    cand.append((gb, lb))
-                if 0 < ga < 15:
-                    cand.append((ga, lb))
+                lcy = (lb['box'][1] + lb['box'][3]) / 2.0
+                if abs(lb['x'] - ccx) <= 60:
+                    gb = by0 - lb['box'][3]   # 数字块在文字块下方
+                    ga = lb['box'][1] - by1   # 数字块在文字块上方
+                    if 0 < gb < 15:
+                        cand.append(('v', gb, lb))
+                    if 0 < ga < 15:
+                        cand.append(('v', ga, lb))
+                if abs(lcy - ccy) <= 60:
+                    gr = bx0 - lb['box'][2]   # 数字块在文字块右侧
+                    glf = lb['box'][0] - bx1  # 数字块在文字块左侧
+                    if 0 < gr < 15:
+                        cand.append(('h', gr, lb))
+                    if 0 < glf < 15:
+                        cand.append(('h', glf, lb))
             if not cand:
-                bad_al.append('chip@(%.0f,%.0f)无相邻文字' % (ccx, (by0 + by1) / 2))
+                bad_al.append('chip@(%.0f,%.0f)无相邻文字' % (ccx, ccy))
                 continue
-            gap, lb = min(cand, key=lambda t: abs(t[0] - 3.0))
-            dx = abs(ccx - lb['x'])
-            if dx > 3.0:
-                bad_al.append('%s 数字块偏%.1fpx' % (lb['nm'], dx))
+            mode, gap, lb = min(cand, key=lambda t: abs(t[1] - 3.0))
+            if mode == 'v':
+                dax = abs(ccx - lb['x'])
+            else:
+                dax = abs(ccy - (lb['box'][1] + lb['box'][3]) / 2.0)
+            if dax > 3.0:
+                bad_al.append('%s 数字块偏%.1fpx' % (lb['nm'], dax))
             if not (2.0 <= gap <= 8.0):
                 bad_al.append('%s 数字块间距%.1fpx' % (lb['nm'], gap))
     else:

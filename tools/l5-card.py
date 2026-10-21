@@ -117,11 +117,34 @@ for (nm, cx, cy), (px, py) in zip(STS, cxy):
 
 gb = ET.SubElement(svg, '{%s}g' % NS); gb.set('id', '线路徽标')
 gb.append(B.make_badge(COLOR, '5', '号线', 'Line 5', x1-96, y0+36))
-for tn in (STS[0][0], STS[-1][0]):
-    tx, ty = dict((nm, (x, y)) for nm, x, y in STS)[tn]
-    gb.append(B.make_badge(COLOR, '5', '号线', 'Line 5', tx, ty-55, 0.6))
-
 pl = B.place_labels([s[0] for s in STS], cxy, segs, EN)
+plmap = {lb['nm']: lb for lb in pl}
+# 终点数字块(2026-10-21 方位统一): 圆点->文字连线延长线上、背离圆点一侧, 与文字块
+# 居中(横向连线同y横排/竖向连线同x竖排), 净距3px(竖向口径=末行基线+2.5)
+_chh = B.badges_data()['5']['chip']['h'] / 2
+_chw = B.badges_data()['5']['chip']['w'] / 2
+_chip_boxes = []
+_pos = dict((nm, (x, y)) for nm, x, y in STS)
+for tn in (STS[0][0], STS[-1][0]):
+    lb = plmap[tn]
+    tx, ty = _pos[tn]
+    lcx, lcy = (lb['bx0'] + lb['bx1']) / 2, (lb['by0'] + lb['by1']) / 2
+    if abs(lcx - tx) > abs(lcy - ty):  # 横向连线: 徽标横排(同y居中)
+        cx = lb['bx1'] + 3.0 + _chw if lcx > tx else lb['bx0'] - 3.0 - _chw
+        cy = lcy
+    else:  # 竖向连线: 与终点文字同x居中
+        cx = lcx
+        cy = lb['by1'] + 5.5 + _chh if lcy > ty else lb['by0'] - 3.0 - _chh
+    _chip_boxes.append((cx - _chw, cy - _chh, cx + _chw, cy + _chh))
+    gb.append(B.make_badge(COLOR, '5', '号线', 'Line 5', cx, cy, 0.6))
+nb = min(b[0] for b in _chip_boxes) - 12; nk = max(b[2] for b in _chip_boxes) + 12
+nt = min(b[1] for b in _chip_boxes) - 12; nbm = max(b[3] for b in _chip_boxes) + 12
+if nb < x0 or nt < y0 or nk > x1 or nbm > y1:  # 数字块贴卡缘, 卡框随盒外扩
+    x0, y0, x1, y1 = min(x0, nb), min(y0, nt), max(x1, nk), max(y1, nbm)
+    svg.set('viewBox', '%.1f %.1f %.1f %.1f' % (x0, y0, x1-x0, y1-y0))
+    svg.set('width', str(round(x1-x0))); svg.set('height', str(round(y1-y0)))
+    bg.set('x', str(x0)); bg.set('y', str(y0))
+    bg.set('width', str(x1-x0)); bg.set('height', str(y1-y0))
 gl = ET.SubElement(svg, '{%s}g' % NS); gl.set('id', '站名标注')
 gl.set('font-family', "'Microsoft YaHei', 'PingFang SC', sans-serif")
 for lb in pl:
