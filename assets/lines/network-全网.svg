@@ -207,9 +207,9 @@
 <line x1="1980" y1="416.2" x2="2288.25" y2="416.25" style="fill:none;stroke:#6D4C41;stroke-width:7;stroke-linecap:round"/>
 <line x1="2288.25" y1="416.25" x2="2306.25" y2="407.25" style="fill:none;stroke:#6D4C41;stroke-width:7;stroke-linecap:round"/>
 <line x1="2306.25" y1="407.25" x2="2336.4" y2="377.1" style="fill:none;stroke:#6D4C41;stroke-width:7;stroke-linecap:round"/>
-<line x1="1728.5" y1="1010.2" x2="1728.5" y2="1064.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
-<line x1="1728.5" y1="1064.2" x2="1723.5" y2="1082.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
-<line x1="1723.5" y1="1082.2" x2="1759.5" y2="1118.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
+<line x1="1727.5" y1="1010.2" x2="1727.5" y2="1077.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
+<line x1="1727.5" y1="1077.2" x2="1736.5" y2="1095.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
+<line x1="1736.5" y1="1095.2" x2="1759.5" y2="1118.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
 <line x1="1759.5" y1="1118.2" x2="1768.5" y2="1136.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
 <line x1="1768.5" y1="1136.2" x2="1768.5" y2="1559.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
 <line x1="1768.5" y1="1559.2" x2="1777.5" y2="1577.2" style="fill:none;stroke:#3949AB;stroke-width:7;stroke-linecap:round"/>
@@ -290,7 +290,7 @@
 <circle cx="2452.5" cy="1073.2" r="4.5" data-nm="保盈大道" style="fill:#FFFFFF;stroke:#E53935;stroke-width:2"/>
 <circle cx="1930" cy="1649" r="4.5" data-nm="傍江" style="fill:#FFFFFF;stroke:#ECA154;stroke-width:2"/>
 <circle cx="1390.5" cy="1010.2" r="4.5" data-nm="农讲所" style="fill:#FFFFFF;stroke:#FDD835;stroke-width:2"/>
-<circle cx="1728.5" cy="1010.2" r="4.5" data-nm="冼村" style="fill:#FFFFFF;stroke:#3949AB;stroke-width:2"/>
+<circle cx="1727.5" cy="1010.2" r="4.5" data-nm="冼村" style="fill:#FFFFFF;stroke:#3949AB;stroke-width:2"/>
 <circle cx="1228.5" cy="1172.2" r="4.5" data-nm="凤凰新村" style="fill:#FFFFFF;stroke:#00897B;stroke-width:2"/>
 <circle cx="2506.5" cy="362.2" r="4.5" data-nm="凤岗" style="fill:#FFFFFF;stroke:#1A237E;stroke-width:2"/>
 <circle cx="2254.5" cy="848.2" r="4.5" data-nm="加庄" style="fill:#FFFFFF;stroke:#7CB342;stroke-width:2"/>
@@ -817,7 +817,7 @@
 <text x="1831.5" y="727.95" font-size="7.5" text-anchor="middle">龙洞</text>
 <text x="1021.5" y="1267.95" font-size="7.5" text-anchor="middle">龙溪</text>
 <text x="2151.01" y="1639.48" font-size="7.5" text-anchor="middle">低涌</text>
-<text x="1728.5" y="994.2" font-size="7.5" text-anchor="middle">冼村</text>
+<text x="1727.5" y="994.2" font-size="7.5" text-anchor="middle">冼村</text>
 <text x="2087.96" y="1576.76" font-size="7.5" text-anchor="middle">官桥</text>
 <text x="2610.01" y="985.02" font-size="7.5" text-anchor="middle">新塘</text>
 <text x="749" y="1407.95" font-size="7.5" text-anchor="middle">普君北路</text>
