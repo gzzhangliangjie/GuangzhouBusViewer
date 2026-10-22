@@ -321,6 +321,36 @@ def st_clear(rect, own_mk):
     return True
 
 
+def st_clear_noline(rect, own_mk):
+    """APM密集段专用: 豁免走廊碰撞——三平行竖线夹缝无合法位, 用户2026-10-22定稿
+    (稍微重叠可接受), 渲染配白描边光环保压线可读; 其余检查(本站净距/歧义/互斥/撞圆)全保留。"""
+    x, y, w, h = rect
+    if mk_gap(rect, own_mk) < ST_GAP:
+        return False
+    cx_, cy_ = x + w / 2, y + h / 2
+    od = dist((cx_, cy_), own_mk['center'])
+    for other in markers:
+        if other is not own_mk and dist((cx_, cy_), other['center']) < od - 1.0:
+            return False
+    for nm2, x2, y2, w2, h2 in placed_boxes:
+        if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
+            return False
+    for other in markers:
+        if other is own_mk:
+            continue
+        if other['kind'] == 'capsule':
+            edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
+            for a, b in edges:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 1.0:
+                    return False
+        else:
+            ox, oy = other['center']
+            qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
+            if dist((ox, oy), (qx, qy)) < other['r'] + 1.0:
+                return False
+    return True
+
+
 card_label = {}   # 站名 -> (x, y基线) 取自各卡站名标注(标准方位参考)
 for _name in ORDER:
     _p = os.path.join(LINES_DIR, 'line-%s.svg' % _name)
@@ -336,7 +366,12 @@ for _name in ORDER:
 
 
 APM_DENSE = {'天河南', '黄埔大道', '妇儿中心', '花城大道', '大剧院', '体育中心南'}  # APM中段: 三平行竖线夹缝
-ST_FONT2 = 6.0   # 二档小字: 7.5px放不下时继续缩小(用户定稿, 2026-10-22), 不搞缩放层
+ST_FONT2 = 6.0   # 二档小字(向后兼容引用)
+ST_TIERS = [(7.5, 8.5), (6.0, 7.0), (5.0, 6.0), (4.2, 5.0)]   # 逐档缩小到放得下(2026-10-22用户: 竖排诡异改回横排, 有重叠字就小点)
+
+
+def st_wfs(nm, fs):
+    return sum(fs if ord(ch) > 0x2E80 else 0.56 * fs for ch in nm)
 
 
 def st_w2(nm):
@@ -346,8 +381,8 @@ def st_w2(nm):
 def _cands_for(mk, nm, w, hh, fs):
     mx, my = mk['center']
     cands = []
-    if nm in APM_DENSE and fs == ST_FONT2:
-        cands.append((mx + 8.0 + w / 2, my))    # 东侧梯子位(缩小后与18号线净距~18px, 1:1放下)
+    if nm in APM_DENSE and fs <= 6.5:            # 东带横排: APM竖线(x1687.5)右侧专用列, 净距4.5起(竖排已废, 2026-10-22)
+        cands.append((1696.5 + w / 2, my))
     if nm in term_dir:                           # 卡片规范: 终点文字在走廊延长线上(含斜线)
         ux, uy = term_dir[nm]
         ext = (w * abs(ux) + hh * abs(uy)) / 2
@@ -376,17 +411,25 @@ def _cands_for(mk, nm, w, hh, fs):
 
 
 def place_one(mk):
-    """APM密集段=东带自适应微字; 其余7.5px→6px二档(缩小到放得下, 无缩放层)。"""
+    """横排逐档缩小(7.5→6→5→4.2)直到放得下; 竖排已废(2026-10-22用户: 竖向显示诡异)。
+    APM密集段=东带列+豁免走廊碰撞(用户: 稍微重叠可接受), 渲染配白光环。"""
     nm = mk['name']
-    if nm in APM_DENSE:                          # 东带(x1666.6-1683): CJK竖排堆叠(竖线配竖字,
-        fs = min(7.0, 23.5 / len(nm))            # 站距24px): 3字7px/4字5.9px/5字4.7px, 宽=1字位
-        hh = fs * len(nm)
-        labels.append((nm, 1674.5, mk['center'][1] - hh / 2 + 0.85 * fs, fs, True))
-        placed_boxes.append((nm, 1674.5 - fs / 2, mk['center'][1] - hh / 2, fs, hh))
-        return True
+    if nm in APM_DENSE:
+        for fs, hh in ((6.0, 7.0), (5.0, 6.0)):
+            w = st_wfs(nm, fs)
+            for dy2 in (0.0, -9.0, 9.0):        # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
+                cx = 1695.0 + w / 2              # 东带列: APM竖线右缘+净距, 允许压18/1号线走廊
+                cy = mk['center'][1] + dy2
+                rect = (cx - w / 2, cy - hh / 2, w, hh)
+                if st_clear_noline(rect, mk):
+                    labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
+                    placed_boxes.append((nm,) + rect)
+                    return True
+        failed.append(nm)
+        return False
     _DBG = ('黄埔新港', '美的大道', '新城东', '西塱', '新沙', '杨箕东', '广州东站')
-    for fs, hh in ((ST_FONT, 8.5), (ST_FONT2, 7.0)):
-        w = st_w(nm) if fs == ST_FONT else st_w2(nm)
+    for fs, hh in ST_TIERS:
+        w = st_wfs(nm, fs)
         for cx, cy in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
             if nm in _DBG:
@@ -473,6 +516,10 @@ def badge_rect_ok(rect, placed_badges, ignore_corridor=False):
 
 badges = []             # (线名, 左上x, 左上y, w, h)
 badge_fail = []
+# 文字位置查询(斜线终点徽标相对文字居中用): 站名 -> (中心x, 盒中心y, 字号); 盒中心=基线+hh/2-0.8fs, hh=fs+1
+lab_by_nm = {}
+for _lb in labels:
+    lab_by_nm.setdefault(_lb[0], (_lb[1], _lb[2] + (_lb[3] + 1) / 2 - 0.8 * _lb[3], _lb[3]))
 BADGE_AT = {
     # 手动锚点=用户验收终稿位, 不得删除(2026-10-22教训: 删锚后引擎重放全回到错误位)
     '7号线': [(1016, 1573)],
@@ -483,6 +530,7 @@ BADGE_AT = {
     'APM线': [(1620, 1100)],
     '12号线': [(2035, 1440)],
     '2号线': [(1393, 1668), (1393, 1655)],
+    '3号线': [(1498.5, 52.7)],  # 机场北端延长线(用户: 海傍端下面有点挤, 2026-10-22)
 }
 for name in ORDER:
     _sc = BADGE_SCALE_BY.get(name, BADGE_SCALE)
@@ -507,6 +555,54 @@ for name in ORDER:
     # 端点必须邻近站圆(真终点), 剔除走廊碎裂假端点(广佛线曾因0.1-2.3px裂隙端点掉mid-line)
     ends = [p for p, d in deg.items()
             if d == 1 and min(dist(m['center'], p) for m in markers) < 30]
+    # 环线(无真终点, 如11号线): 不走终点公式(会落到任意节点旁压线), 贴本体网格全域搜
+    # 最近合法位(用户: 环线大把位置, 华景路/赤沙-龙潭段旁均可, 2026-10-22)
+    if not ends:
+        _xs2 = [v for c in segs for v in (c[0], c[2])]
+        _ys2 = [v for c in segs for v in (c[1], c[3])]
+        _own_d2 = lambda rect: min(rect_seg_dist(rect, (s[0], s[1]), (s[2], s[3])) for s in segs)
+        best = None
+        for cx in range(int(min(_xs2)) - 40, int(max(_xs2)) + 41, 6):
+            for cy in range(int(min(_ys2)) - 40, int(max(_ys2)) + 41, 6):
+                rect = (cx - bw / 2, cy - bh / 2, bw, bh)
+                od = _own_d2(rect)
+                if od < 6.5 or od > 60.0:
+                    continue
+                if badge_rect_why(rect, badges) is not None:   # 全查含走廊: 环线徽标不得压线
+                    continue
+                if best is None or od < best[0]:
+                    best = (od, rect)
+        if best:
+            badges.append((name, best[1][0], best[1][1], bw, bh))
+            print('  徽标 %s 环线贴本体: 距走廊 %.0fpx' % (name, best[0]))
+            continue
+    # 斜线终点(45°±6°, 0.64<|ux|<0.77): 徽标相对文字居中——文字正上/正下方同x(海傍卡版式),
+    # 不沿斜线斜推(2026-10-22用户: 斜向延长线上的徽标需要放在相对文字居中的位置)
+    for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
+        others = adj[p]
+        if not others:
+            continue
+        base = others[0]
+        dx, dy = p[0] - base[0], p[1] - base[1]
+        n = (dx * dx + dy * dy) ** 0.5 or 1.0
+        ux, uy = dx / n, dy / n
+        if 0.64 < abs(ux) < 0.77:
+            tm = min(markers, key=lambda m: dist(m['center'], p))
+            lb = lab_by_nm.get(tm['name'])
+            if lb:
+                y_lab = lb[1]
+                for gap in (7.0, 12.0, 20.0):
+                    d = (lb[2] + 1) / 2 + gap + bh / 2
+                    cy2 = y_lab + (1 if uy > 0 else -1) * d
+                    rect = (lb[0] - bw / 2, cy2 - bh / 2, bw, bh)
+                    if badge_rect_ok(rect, badges):     # 不ignore走廊: 居中位不得压任何线
+                        badges.append((name, rect[0], rect[1], bw, bh))
+                        done = True
+                        break
+                if done:
+                    break
+    if done:
+        continue
     # 纯规范策略(2026-10-22用户终审定稿): 徽标中心=终点圆心+走廊方向×(r+gap+徽标半伸长), 三点一线
     # 不依赖文字位置/无回退链/ignore_corridor(有底色); 仅撞徽标/撞标签时试另一终点
     for p in sorted(ends or deg, key=lambda q: -dist(q, (gx, gy))):
@@ -616,7 +712,7 @@ for _nm, _bx, _by, _bw, _bh in badges:
 xs = [v for c in corridors for v in (c[1], c[3])]
 ys = [v for c in corridors for v in (c[2], c[4])]
 for lb in labels:
-    _w_ = st_w(lb[0])
+    _w_ = st_wfs(lb[0], lb[3])
     xs += [lb[1] - _w_ / 2, lb[1] + _w_ / 2]; ys += [lb[2] - 8.5, lb[2]]
 for _nm, bx, by, bw, bh in badges:
     xs += [bx, bx + bw]; ys += [by, by + bh]
@@ -700,15 +796,17 @@ out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
            'font-weight="700" fill="%s">' % INK)
 for nm, cx, cy, fs, stacked in labels:
+    halo = nm in APM_DENSE                        # 压线站名: 白描边光环垫底保可读(paint-order:stroke)
+    hstyle = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"' if halo else ''
     if stacked:                                 # CJK竖排: 每字一tspan同x顺dy
         inner = ''.join('<tspan x="%s"%s>%s</tspan>' %
                         (fmt(cx), (' dy="%s"' % fmt(fs)) if k else '', ch)
                         for k, ch in enumerate(nm))
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), inner))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, inner))
     else:
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle">%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), nm))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, nm))
 out.append('</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
