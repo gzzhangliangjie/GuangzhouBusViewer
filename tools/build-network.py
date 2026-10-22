@@ -411,24 +411,30 @@ def _cands_for(mk, nm, w, hh, fs):
 
 
 def place_one(mk):
-    """横排逐档缩小(7.5→6→5→4.2)直到放得下; 竖排已废(2026-10-22用户: 竖向显示诡异)。
-    APM密集段=东带列+豁免走廊碰撞(用户: 稍微重叠可接受), 渲染配白光环。"""
+    """横排逐档缩小直到放得下; 竖排已废(2026-10-22用户: 竖向显示诡异)。
+    APM密集段: 大档(7.5/6)全拒先落东带列兜底(fs6+豁免走廊, 白光环), 不让掉进极小字档;
+    18号线冼村段右移后多数站紧环即可放(用户: 稍微重叠可接受)。"""
     nm = mk['name']
-    if nm in APM_DENSE:
+    for fs, hh in ((7.5, 8.5), (6.0, 7.0)):
+        w = st_wfs(nm, fs)
+        for cx, cy in _cands_for(mk, nm, w, hh, fs):
+            rect = (cx - w / 2, cy - hh / 2, w, hh)
+            if st_clear(rect, mk):
+                labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
+                placed_boxes.append((nm,) + rect)
+                return True
+    if nm in APM_DENSE:                      # 兜底: 东带列(x1695起)+豁免走廊碰撞(fs6起, 不掉4.2极小字)
         for fs, hh in ((6.0, 7.0), (5.0, 6.0)):
             w = st_wfs(nm, fs)
-            for dy2 in (0.0, -9.0, 9.0):        # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
-                cx = 1695.0 + w / 2              # 东带列: APM竖线右缘+净距, 允许压18/1号线走廊
+            for dy2 in (0.0, -9.0, 9.0):     # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
+                cx = 1695.0 + w / 2
                 cy = mk['center'][1] + dy2
                 rect = (cx - w / 2, cy - hh / 2, w, hh)
                 if st_clear_noline(rect, mk):
                     labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                     placed_boxes.append((nm,) + rect)
                     return True
-        failed.append(nm)
-        return False
-    _DBG = ('黄埔新港', '美的大道', '新城东', '西塱', '新沙', '杨箕东', '广州东站')
-    for fs, hh in ST_TIERS:
+    for fs, hh in ((5.0, 6.0), (4.2, 5.0)):  # 非密集段继续小档
         w = st_wfs(nm, fs)
         for cx, cy in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
@@ -470,9 +476,9 @@ for _ln in ORDER:
                 nn = (dd[0] ** 2 + dd[1] ** 2) ** 0.5 or 1.0
                 term_dir[tm['name']] = (dd[0] / nn, dd[1] / nn)
 
-# 终点文字候选豁免: 多线共享圆且终点线走向与并圆线走向冲突的站(林和西=APM斜线终点×3号线竖线),
-# 延长线文字=斜挂竖线旁不对齐, 跳过term_dir让紧环放轴向位(左侧同y, 2026-10-22用户: 文字没有跟圆点对齐)
-NO_TERM_DIR = {'林和西'}
+# 终点文字候选豁免: 多线共享圆且终点线走向与并圆线走向冲突的站, 延长线文字=斜挂旁线不对齐,
+# 跳过term_dir让紧环放轴向位(2026-10-22用户: 文字没有跟圆点对齐/广州塔文字归位)
+NO_TERM_DIR = {'林和西', '广州塔'}  # 林和西=APM斜×3号线竖; 广州塔=APM斜×3号线竖(右下对角→右侧同y)
 for _nm in NO_TERM_DIR:
     term_dir.pop(_nm, None)
 _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
@@ -530,7 +536,7 @@ BADGE_AT = {
     '1号线': [(1064, 1310), (1072, 1318)],
     '10号线': [(1062, 1225), (1055, 1235)],
     '22号线': [(1940, 1672)],
-    'APM线': [(1620, 1100)],
+    'APM线': [(1700, 1120)],  # 广州塔右下空位(用户: 移到右边空位置, 2026-10-22; 旧(1620,1100)广州塔西侧废弃)
     '12号线': [(2035, 1440)],
     '2号线': [(1393, 1668), (1393, 1655)],
     '3号线': [(1498.5, 52.7)],  # 机场北端延长线(用户: 海傍端下面有点挤, 2026-10-22)
@@ -799,7 +805,7 @@ out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
            'font-weight="700" fill="%s">' % INK)
 for nm, cx, cy, fs, stacked in labels:
-    halo = nm in APM_DENSE                        # 压线站名: 白描边光环垫底保可读(paint-order:stroke)
+    halo = nm in APM_DENSE and fs <= 6.5         # 兜底东带列站名(压线): 白描边光环垫底保可读; 通用位站不压线不加
     hstyle = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"' if halo else ''
     if stacked:                                 # CJK竖排: 每字一tspan同x顺dy
         inner = ''.join('<tspan x="%s"%s>%s</tspan>' %
