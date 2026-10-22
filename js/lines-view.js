@@ -44,8 +44,13 @@
   }
 
   // ---- 展示 ----
+  // 查看站点编号: 换用 *.codes.svg 变体(站圆/换乘胶囊 -> 「线路|编号」编号牌), 默认不勾选
+  let showCodes = false;
+
   function showFile(file) {
     curFile = file;
+    const base = file;
+    const eff = showCodes ? file.replace(/\.svg$/, '.codes.svg') : file;
     const im = img();
     im.style.transform = 'none';
     im.onload = () => {
@@ -53,11 +58,20 @@
       fit();
       $('#lines-caption').innerHTML =
         `<span class="cap-chip" style="background:${lines[curLine].color}"></span>` +
-        `${file.split('/').pop()} · ${imgW}×${imgH} · ` +
-        (lines[curLine].kind === 'network' ? '全网合成图(全部站名)' : '官图提取卡');
+        `${eff.split('/').pop()} · ${imgW}×${imgH} · ` +
+        (lines[curLine].kind === 'network' ? '全网合成图(全部站名)' : '官图提取卡') +
+        (eff !== base ? ' · 站点编号' : '');
     };
-      im.src = encodeURI(file) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
+    im.onerror = () => {   // 编号变体缺失时回退原图
+      if (im.src !== encodeURI(base)) im.src = encodeURI(base) + '?v=' + Date.now();
+    };
+    im.src = encodeURI(eff) + '?v=' + Date.now();  // 破进程内图缓存: 同URL改盘后img仍吃旧字节
   }
+
+  $('#lines-codes').addEventListener('change', e => {
+    showCodes = e.target.checked;
+    if (curFile) showFile(curFile);
+  });
 
   function selectLine(i) {
     curLine = i;
