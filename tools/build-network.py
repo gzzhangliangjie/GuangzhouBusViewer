@@ -432,8 +432,6 @@ def place_one(mk):
         w = st_wfs(nm, fs)
         for cx, cy in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
-            if nm in _DBG:
-                print('   DBG %s cand(%.1f,%.1f)' % (nm, cx, cy))
             if st_clear(rect, mk):
                 labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
@@ -472,6 +470,11 @@ for _ln in ORDER:
                 nn = (dd[0] ** 2 + dd[1] ** 2) ** 0.5 or 1.0
                 term_dir[tm['name']] = (dd[0] / nn, dd[1] / nn)
 
+# 终点文字候选豁免: 多线共享圆且终点线走向与并圆线走向冲突的站(林和西=APM斜线终点×3号线竖线),
+# 延长线文字=斜挂竖线旁不对齐, 跳过term_dir让紧环放轴向位(左侧同y, 2026-10-22用户: 文字没有跟圆点对齐)
+NO_TERM_DIR = {'林和西'}
+for _nm in NO_TERM_DIR:
+    term_dir.pop(_nm, None)
 _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
 for mk in _mks:
     place_one(mk)
