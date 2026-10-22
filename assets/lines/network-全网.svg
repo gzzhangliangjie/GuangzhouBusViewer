@@ -36,9 +36,7 @@
 <line x1="1336.5" y1="1185.75" x2="1345.5" y2="1203.75" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
 <line x1="1336.5" y1="756" x2="1345.5" y2="738" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
 <line x1="1498.5" y1="1365.75" x2="1489.5" y2="1347.75" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
-<line x1="1491" y1="1504" x2="1444.75" y2="1550.25" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
-<line x1="1444.75" y1="1550.25" x2="1420" y2="1559" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
-<line x1="1420" y1="1559" x2="1386" y2="1593" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
+<line x1="1491" y1="1504" x2="1402" y2="1593" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
 <line x1="1498.5" y1="1485" x2="1491" y2="1504" style="fill:none;stroke:#1E88E5;stroke-width:7;stroke-linecap:round"/>
 <line x1="1498.45" y1="92.25" x2="1498.45" y2="578.25" style="fill:none;stroke:#ECA154;stroke-width:7;stroke-linecap:round"/>
 <line x1="1507.5" y1="594" x2="1651.5" y2="738" style="fill:none;stroke:#ECA154;stroke-width:7;stroke-linecap:round"/>
@@ -111,11 +109,11 @@
 <line x1="1201.5" y1="1667.25" x2="1219.5" y2="1658.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
 <line x1="1219.5" y1="1658.25" x2="1255.5" y2="1622.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
 <line x1="1273.5" y1="1613.25" x2="1255.5" y2="1622.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
-<line x1="1273.5" y1="1613.25" x2="1372.75" y2="1613.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
-<line x1="1372.75" y1="1613.25" x2="1390.75" y2="1604.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
-<line x1="1390.75" y1="1604.25" x2="1435.75" y2="1559.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
-<line x1="1453.75" y1="1550.25" x2="1435.75" y2="1559.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
-<line x1="1453.75" y1="1550.25" x2="1732.5" y2="1550.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
+<line x1="1273.5" y1="1613.25" x2="1388.75" y2="1613.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
+<line x1="1388.75" y1="1613.25" x2="1406.75" y2="1604.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
+<line x1="1406.75" y1="1604.25" x2="1451.75" y2="1559.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
+<line x1="1469.75" y1="1550.25" x2="1451.75" y2="1559.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
+<line x1="1469.75" y1="1550.25" x2="1732.5" y2="1550.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
 <line x1="1732.5" y1="1550.25" x2="1750.5" y2="1541.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
 <line x1="1750.5" y1="1541.25" x2="1786.5" y2="1505.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
 <line x1="1804.5" y1="1496.25" x2="1786.5" y2="1505.25" style="fill:none;stroke:#7CB342;stroke-width:7;stroke-linecap:round"/>
@@ -331,7 +329,7 @@
 <circle cx="1687.5" cy="1051.1" r="4.5" data-nm="大剧院" style="fill:#FFFFFF;stroke:#00B0FF;stroke-width:2"/>
 <circle cx="1329.8" cy="1343.2" r="4.5" data-nm="大干围" style="fill:#FFFFFF;stroke:#90CAF9;stroke-width:2"/>
 <circle cx="2200.5" cy="1010.2" r="4.5" data-nm="大沙地" style="fill:#FFFFFF;stroke:#E53935;stroke-width:2"/>
-<circle cx="1381.8" cy="1608.8" r="4.5" data-nm="大洲" style="fill:#FFFFFF;stroke:#7CB342;stroke-width:2"/>
+<circle cx="1380" cy="1613.2" r="4.5" data-nm="大洲" style="fill:#FFFFFF;stroke:#7CB342;stroke-width:2"/>
 <circle cx="2488.5" cy="1820.2" r="4.5" data-nm="大涌" style="fill:#FFFFFF;stroke:#43A047;stroke-width:2"/>
 <circle cx="1660.5" cy="1494.2" r="4.5" data-nm="大石" style="fill:#FFFFFF;stroke:#ECA154;stroke-width:2"/>
 <circle cx="2007" cy="879.8" r="4.5" data-nm="大观南路" style="fill:#FFFFFF;stroke:#1A237E;stroke-width:2"/>
@@ -542,8 +540,8 @@
 <circle cx="1660.5" cy="1208.2" r="5" data-nm="客村" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <path d="M1660.2 848.7 L1660.5 857.2 L1660.5 860 Z" data-nm="广州东站" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:14;stroke-linejoin:round;stroke-miterlimit:10"/>
 <path d="M1660.2 848.7 L1660.5 857.2 L1660.5 860 Z" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linejoin:round"/>
-<line x1="1386" y1="1593" x2="1402" y2="1593" data-nm="广州南站" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1386" y1="1593" x2="1402" y2="1593" data-nm="广州南站" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<line x1="1399.5" y1="1593" x2="1418" y2="1593" data-nm="广州南站" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
+<line x1="1399.5" y1="1593" x2="1418" y2="1593" data-nm="广州南站" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1660.5" cy="1100.2" r="5" data-nm="广州塔" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <line x1="1336.5" y1="839.2" x2="1336.5" y2="850" data-nm="广州火车站" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
 <line x1="1336.5" y1="839.2" x2="1336.5" y2="850" data-nm="广州火车站" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
@@ -571,8 +569,8 @@
 <line x1="1858.5" y1="1649" x2="1858.5" y2="1658.2" data-nm="番禺广场" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
 <line x1="1858.5" y1="1649" x2="1858.5" y2="1658.2" data-nm="番禺广场" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1390.5" cy="693" r="5" data-nm="白云文化广场" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
-<line x1="1420" y1="1559" x2="1428" y2="1567" data-nm="石壁" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
-<line x1="1420" y1="1559" x2="1428" y2="1567" data-nm="石壁" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
+<line x1="1443.75" y1="1551.25" x2="1451.8" y2="1559.2" data-nm="石壁" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
+<line x1="1443.75" y1="1551.25" x2="1451.8" y2="1559.2" data-nm="石壁" style="fill:none;stroke:#FFFFFF;stroke-width:10;stroke-linecap:round"/>
 <circle cx="1768.5" cy="1145.2" r="5" data-nm="磨碟沙" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <circle cx="1174.5" cy="686.2" r="5" data-nm="聚龙" style="fill:#FFFFFF;stroke:#1a1a1a;stroke-width:2"/>
 <line x1="1102.5" y1="1140" x2="1120.5" y2="1140" data-nm="芳村" style="fill:none;stroke:#1a1a1a;stroke-width:14;stroke-linecap:round"/>
@@ -598,7 +596,7 @@
 </g>
 <g id="线路徽标">
 <g data-badge="header" transform="translate(1036 1294.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#FDD835" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">1</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 1</text></g>
-<g data-badge="header" transform="translate(1336 1534.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
+<g data-badge="header" transform="translate(1360 1508.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
 <g data-badge="header" transform="translate(1470.5 37.65) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#ECA154" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">3</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 3</text></g>
 <g data-badge="header" transform="translate(2633 1805.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#43A047" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">4</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 4</text></g>
 <g data-badge="header" transform="translate(2512.84 1172.79) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#E53935" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">5</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 5</text></g>
@@ -619,8 +617,8 @@
 <g data-badge="header" transform="translate(1428 767.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#33691E" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">12</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 12</text></g>
 </g>
 <g id="站名标注" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-weight="700" fill="#1a1a1a">
-<text x="1425.83" y="1594" font-size="5" text-anchor="middle">广州南站</text>
 <text x="1418.5" y="694.3" font-size="6" text-anchor="middle">白云文化广场</text>
+<text x="1406.5" y="1564.5" font-size="7.5" text-anchor="middle">广州南站</text>
 <text x="1797.25" y="802.4" font-size="7.5" text-anchor="middle">天河客运站</text>
 <text x="1519.44" y="558.54" font-size="7.5" text-anchor="middle">嘉禾望岗</text>
 <text x="1366.25" y="862.8" font-size="7.5" text-anchor="middle">广州火车站</text>
@@ -670,6 +668,7 @@
 <text x="1049" y="943.7" font-size="7.5" text-anchor="middle">坦尾</text>
 <text x="1851.5" y="1011.95" font-size="7.5" text-anchor="middle">天河公园</text>
 <text x="2143.76" y="1583.77" font-size="7.5" text-anchor="middle">海傍</text>
+<text x="1429.28" y="1541.72" font-size="7.5" text-anchor="middle">石壁</text>
 <text x="2218" y="727.7" font-size="7.5" text-anchor="middle">苏元</text>
 <text x="2272" y="727.7" font-size="7.5" text-anchor="middle">萝岗</text>
 <text x="1714.5" y="1160.3" font-size="7.5" text-anchor="middle">赤岗</text>
@@ -677,7 +676,6 @@
 <text x="1640.75" y="1101.99" font-size="7.5" text-anchor="middle">广州塔</text>
 <text x="1153.25" y="889.7" font-size="7.5" text-anchor="middle">彩虹桥</text>
 <text x="1894" y="1132.7" font-size="7.5" text-anchor="middle">琶洲</text>
-<text x="1405.5" y="1549.5" font-size="7.5" text-anchor="middle">石壁</text>
 <text x="1743.5" y="1510.7" font-size="7.5" text-anchor="middle">南村万博</text>
 <text x="1678" y="1267.7" font-size="7.5" text-anchor="middle">大塘</text>
 <text x="2005.5" y="1316.7" font-size="7.5" text-anchor="middle">大学城北</text>
@@ -741,7 +739,6 @@
 <text x="1983.25" y="120.8" font-size="7.5" text-anchor="middle">从化客运站</text>
 <text x="2533.5" y="1807.95" font-size="7.5" text-anchor="middle">南横</text>
 <text x="2340" y="997.95" font-size="7.5" text-anchor="middle">双沙</text>
-<text x="1381.8" y="1624.55" font-size="7.5" text-anchor="middle">大洲</text>
 <text x="2488.5" y="1807.95" font-size="7.5" text-anchor="middle">大涌</text>
 <text x="705.25" y="1524.99" font-size="7.5" text-anchor="middle">季华园</text>
 <text x="1878.8" y="727.95" font-size="7.5" text-anchor="middle">柯木塱</text>
@@ -765,11 +762,13 @@
 <text x="783" y="1591.95" font-size="7.5" text-anchor="middle">世纪莲</text>
 <text x="1113.8" y="1654.95" font-size="7.5" text-anchor="middle">北滘公园</text>
 <text x="2362.5" y="1051.95" font-size="7.5" text-anchor="middle">南海神庙</text>
+<text x="1380" y="1600.95" font-size="7.5" text-anchor="middle">大洲</text>
 <text x="2079" y="835.95" font-size="7.5" text-anchor="middle">天河智慧城</text>
 <text x="1451.2" y="565.95" font-size="7.5" text-anchor="middle">彭边</text>
 <text x="1939.5" y="997.95" font-size="7.5" text-anchor="middle">棠下</text>
 <text x="1750.5" y="972.05" font-size="7.5" text-anchor="middle">石牌桥</text>
 <text x="2251.75" y="440.2" font-size="7.5" text-anchor="middle">镇龙西</text>
+<text x="1336.5" y="1600.95" font-size="7.5" text-anchor="middle">陈村北</text>
 <text x="1338.81" y="645.32" font-size="7.5" text-anchor="middle">马务</text>
 <text x="1923.8" y="727.95" font-size="7.5" text-anchor="middle">高塘石</text>
 <text x="1401.81" y="582.32" font-size="7.5" text-anchor="middle">鹤龙</text>
@@ -784,7 +783,6 @@
 <text x="1937.2" y="1051.95" font-size="7.5" text-anchor="middle">科韵路</text>
 <text x="1282.5" y="997.95" font-size="7.5" text-anchor="middle">西门口</text>
 <text x="2182.56" y="1183.04" font-size="7.5" text-anchor="middle">长洲</text>
-<text x="1336.5" y="1600.95" font-size="7.5" text-anchor="middle">陈村北</text>
 <text x="1230.55" y="1249.5" font-size="7.5" text-anchor="middle">鹤洞东</text>
 <text x="1317.25" y="802.79" font-size="7.5" text-anchor="middle">三元里</text>
 <text x="1159" y="726.21" font-size="7.5" text-anchor="middle">上步</text>
