@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="668 11.65 2209 1947.6" width="2209" height="1992">
-<rect x="668" y="11.65" width="2209" height="1947.6" fill="#ffffff"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="668 11.65 2209 1934.3" width="2209" height="1978">
+<rect x="668" y="11.65" width="2209" height="1934.3" fill="#ffffff"/>
 <g id="走廊">
 <line x1="1111.5" y1="1280.25" x2="1111.5" y2="1235.2" style="fill:none;stroke:#FDD835;stroke-width:7;stroke-linecap:round"/>
 <line x1="1111.5" y1="1235.2" x2="1111.5" y2="1145.25" style="fill:none;stroke:#FDD835;stroke-width:7;stroke-linecap:round"/>
@@ -596,20 +596,20 @@
 </g>
 <g id="线路徽标">
 <g data-badge="header" transform="translate(1036 1294.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#FDD835" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">1</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 1</text></g>
-<g data-badge="header" transform="translate(1360 1508.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
+<g data-badge="header" transform="translate(1366 1500.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1E88E5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">2</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 2</text></g>
 <g data-badge="header" transform="translate(1470.5 37.65) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#ECA154" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">3</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 3</text></g>
 <g data-badge="header" transform="translate(2633 1805.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#43A047" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">4</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 4</text></g>
 <g data-badge="header" transform="translate(2512.84 1172.79) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#E53935" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">5</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 5</text></g>
 <g data-badge="header" transform="translate(2345 725.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#80286c" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">6</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 6</text></g>
-<g data-badge="header" transform="translate(2072 671.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#7CB342" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">7</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 7</text></g>
+<g data-badge="header" transform="translate(2062 671.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#7CB342" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">7</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 7</text></g>
 <g data-badge="header" transform="translate(1146.5 451.6) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#00897B" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">8</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 8</text></g>
 <g data-badge="header" transform="translate(861.5 185.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#00BFA5" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">9</text><text x="38.0" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="38.0" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 9</text></g>
 <g data-badge="header" transform="translate(1034 1209.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#90CAF9" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">10</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 10</text></g>
-<g data-badge="header" transform="translate(1058 1038.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#FFCC66" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">11</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 11</text></g>
-<g data-badge="header" transform="translate(1900 1386.75) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#33691E" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">12</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 12</text></g>
+<g data-badge="header" transform="translate(1184 906.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#FFCC66" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#614F2E">11</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#614F2E">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#614F2E">Line 11</text></g>
+<g data-badge="header" transform="translate(1900 1381.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#33691E" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">12</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 12</text></g>
 <g data-badge="header" transform="translate(2689.09 857.26) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#827717" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">13</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 13</text></g>
 <g data-badge="header" transform="translate(2035.49 39.46) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#6D4C41" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">14</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 14</text></g>
-<g data-badge="header" transform="translate(2552 1859.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#3949AB" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">18</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 18</text></g>
+<g data-badge="header" transform="translate(2534 1828.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#3949AB" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">18</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 18</text></g>
 <g data-badge="header" transform="translate(2795 347.15) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#1A237E" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">21</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 21</text></g>
 <g data-badge="header" transform="translate(1817 1689.95) scale(0.7)"><rect x="0" y="0" width="80.0" height="43.0" rx="9.0" fill="#DD2C00" /><text x="9.5" y="32.5" font-family="'Microsoft YaHei', sans-serif" font-size="25" font-weight="bold" fill="#FFFFFF">22</text><text x="44.6" y="21.5" font-family="'Microsoft YaHei', sans-serif" font-size="11.5" font-weight="600" fill="#FFFFFF">号线</text><text x="44.6" y="35.0" font-family="Arial, sans-serif" font-size="7.5" fill="#FFFFFF">Line 22</text></g>
 <g data-badge="header" transform="translate(923.45 1588.95) scale(0.7)"><rect x="0" y="0" width="73.0" height="43.0" rx="9.0" fill="#C0CA33" /><text x="36.5" y="21.2" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="15" font-weight="600" fill="#614F2E">广佛线</text><text x="36.5" y="32.8" text-anchor="middle" font-family="Arial, sans-serif" font-size="8" fill="#614F2E">Guangfo Line</text></g>
@@ -937,45 +937,45 @@
 <text x="977.5" y="957.95" font-size="7.5" text-anchor="middle">滘口</text>
 </g>
 <g id="图例">
-<text x="686" y="1945.25" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="19" font-weight="700" fill="#1a1a1a">广州地铁线网全图</text>
-<text x="852" y="1944.25" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="10.5" fill="#666666">19线 · 318站(换乘72) · 换乘站白底深边唯一, 胶囊=多走廊换乘</text>
-<rect x="983.2" y="1951.25" width="46.5" height="22" rx="6" fill="#FDD835"/>
-<text x="1006.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">1号线</text>
-<rect x="1037.7" y="1951.25" width="46.5" height="22" rx="6" fill="#1E88E5"/>
-<text x="1060.95" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">2号线</text>
-<rect x="1092.2" y="1951.25" width="46.5" height="22" rx="6" fill="#ECA154"/>
-<text x="1115.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">3号线</text>
-<rect x="1146.7" y="1951.25" width="46.5" height="22" rx="6" fill="#43A047"/>
-<text x="1169.95" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">4号线</text>
-<rect x="1201.2" y="1951.25" width="46.5" height="22" rx="6" fill="#E53935"/>
-<text x="1224.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">5号线</text>
-<rect x="1255.7" y="1951.25" width="46.5" height="22" rx="6" fill="#80286c"/>
-<text x="1278.95" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">6号线</text>
-<rect x="1310.2" y="1951.25" width="46.5" height="22" rx="6" fill="#7CB342"/>
-<text x="1333.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">7号线</text>
-<rect x="1364.7" y="1951.25" width="46.5" height="22" rx="6" fill="#00897B"/>
-<text x="1387.95" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">8号线</text>
-<rect x="1419.2" y="1951.25" width="46.5" height="22" rx="6" fill="#00BFA5"/>
-<text x="1442.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">9号线</text>
-<rect x="1473.7" y="1951.25" width="54" height="22" rx="6" fill="#90CAF9"/>
-<text x="1500.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">10号线</text>
-<rect x="1535.7" y="1951.25" width="54" height="22" rx="6" fill="#FFCC66"/>
-<text x="1562.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">11号线</text>
-<rect x="1597.7" y="1951.25" width="54" height="22" rx="6" fill="#33691E"/>
-<text x="1624.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">12号线</text>
-<rect x="1659.7" y="1951.25" width="54" height="22" rx="6" fill="#827717"/>
-<text x="1686.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">13号线</text>
-<rect x="1721.7" y="1951.25" width="54" height="22" rx="6" fill="#6D4C41"/>
-<text x="1748.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">14号线</text>
-<rect x="1783.7" y="1951.25" width="54" height="22" rx="6" fill="#3949AB"/>
-<text x="1810.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">18号线</text>
-<rect x="1845.7" y="1951.25" width="54" height="22" rx="6" fill="#1A237E"/>
-<text x="1872.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">21号线</text>
-<rect x="1907.7" y="1951.25" width="54" height="22" rx="6" fill="#DD2C00"/>
-<text x="1934.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">22号线</text>
-<rect x="1969.7" y="1951.25" width="51.5" height="22" rx="6" fill="#C0CA33"/>
-<text x="1995.45" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">广佛线</text>
-<rect x="2029.2" y="1951.25" width="49" height="22" rx="6" fill="#00B0FF"/>
-<text x="2053.7" y="1967.25" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">APM线</text>
+<text x="686" y="1931.95" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="19" font-weight="700" fill="#1a1a1a">广州地铁线网全图</text>
+<text x="852" y="1930.95" font-family="'Microsoft YaHei', 'PingFang SC', sans-serif" font-size="10.5" fill="#666666">19线 · 318站(换乘72) · 换乘站白底深边唯一, 胶囊=多走廊换乘</text>
+<rect x="983.2" y="1937.95" width="46.5" height="22" rx="6" fill="#FDD835"/>
+<text x="1006.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">1号线</text>
+<rect x="1037.7" y="1937.95" width="46.5" height="22" rx="6" fill="#1E88E5"/>
+<text x="1060.95" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">2号线</text>
+<rect x="1092.2" y="1937.95" width="46.5" height="22" rx="6" fill="#ECA154"/>
+<text x="1115.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">3号线</text>
+<rect x="1146.7" y="1937.95" width="46.5" height="22" rx="6" fill="#43A047"/>
+<text x="1169.95" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">4号线</text>
+<rect x="1201.2" y="1937.95" width="46.5" height="22" rx="6" fill="#E53935"/>
+<text x="1224.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">5号线</text>
+<rect x="1255.7" y="1937.95" width="46.5" height="22" rx="6" fill="#80286c"/>
+<text x="1278.95" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">6号线</text>
+<rect x="1310.2" y="1937.95" width="46.5" height="22" rx="6" fill="#7CB342"/>
+<text x="1333.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">7号线</text>
+<rect x="1364.7" y="1937.95" width="46.5" height="22" rx="6" fill="#00897B"/>
+<text x="1387.95" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">8号线</text>
+<rect x="1419.2" y="1937.95" width="46.5" height="22" rx="6" fill="#00BFA5"/>
+<text x="1442.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">9号线</text>
+<rect x="1473.7" y="1937.95" width="54" height="22" rx="6" fill="#90CAF9"/>
+<text x="1500.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">10号线</text>
+<rect x="1535.7" y="1937.95" width="54" height="22" rx="6" fill="#FFCC66"/>
+<text x="1562.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">11号线</text>
+<rect x="1597.7" y="1937.95" width="54" height="22" rx="6" fill="#33691E"/>
+<text x="1624.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">12号线</text>
+<rect x="1659.7" y="1937.95" width="54" height="22" rx="6" fill="#827717"/>
+<text x="1686.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">13号线</text>
+<rect x="1721.7" y="1937.95" width="54" height="22" rx="6" fill="#6D4C41"/>
+<text x="1748.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">14号线</text>
+<rect x="1783.7" y="1937.95" width="54" height="22" rx="6" fill="#3949AB"/>
+<text x="1810.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">18号线</text>
+<rect x="1845.7" y="1937.95" width="54" height="22" rx="6" fill="#1A237E"/>
+<text x="1872.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">21号线</text>
+<rect x="1907.7" y="1937.95" width="54" height="22" rx="6" fill="#DD2C00"/>
+<text x="1934.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">22号线</text>
+<rect x="1969.7" y="1937.95" width="51.5" height="22" rx="6" fill="#C0CA33"/>
+<text x="1995.45" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">广佛线</text>
+<rect x="2029.2" y="1937.95" width="49" height="22" rx="6" fill="#00B0FF"/>
+<text x="2053.7" y="1953.95" text-anchor="middle" font-family="'Microsoft YaHei', sans-serif" font-size="12.5" font-weight="700" fill="#FFFFFF">APM线</text>
 </g>
 </svg>
