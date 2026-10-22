@@ -86,12 +86,12 @@ def parse_card(line):
 
 
 # ---------- 牌几何 ----------
-FONT = 7.0        # 牌字号(全网)
-FONT_CARD = 7.5   # 单线卡字号
-H = 12.0          # 牌高
-H_CARD = 13.0
-PADX = 2.5        # 左右内边距
-SEPW = 3.6        # 分隔区宽(含两侧空隙)
+FONT = 6.5        # 牌字号(全网)
+FONT_CARD = 7.0   # 单线卡字号
+H = 11.0          # 牌高
+H_CARD = 12.0
+PADX = 2.0        # 左右内边距
+SEPW = 3.2        # 分隔区宽(含两侧空隙)
 GAP = 1.2         # 组内牌间缝
 CORR_HALF = 3.5   # 走廊 stroke-width 7 半宽(触线判定含线宽)
 
@@ -100,8 +100,11 @@ from PIL import ImageFont
 try:
     _FM = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/msyhbd.ttc', int(fs * 10))
            for fs in (FONT, FONT_CARD)}
+    _FM_ARIAL = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/arial.ttf', int(fs * 10))
+                 for fs in (5.5, 6.0)}
 except Exception:
     _FM = None
+    _FM_ARIAL = None
 _W_CACHE = {}
 
 
@@ -117,24 +120,41 @@ def part_w(txt, fs):
     return w
 
 
+def cell_a(line_disp, fs):
+    """线号格宽(定宽): 数字/GF 统一按 max(两位数字, GF); APM 独立(字母宽, 官图同款).
+    -> 1位与2位数字线号的牌总宽全等(2026-10-23 用户: 编号胶囊需保持一样大小)."""
+    if line_disp == 'APM':
+        return part_w('APM', fs)
+    return max(part_w('22', fs), part_w('GF', fs))
+
+
+def cell_b(fs):
+    return part_w('00', fs)   # 序号格定宽(两位)
+
+
+def chip_need_w(line_disp, serial, fs):
+    """牌需求宽 = 定宽格 与 实测文本宽 取 max(兜住 CSV 支线序号 01-1 这类长内容)."""
+    return 2 * PADX + max(cell_a(line_disp, fs), part_w(line_disp, fs)) + SEPW + max(cell_b(fs), part_w(serial, fs))
+
+
 def chip_w(line_disp, serial, fs):
     import math
-    return math.ceil((2 * PADX + part_w(line_disp, fs) + SEPW + part_w(serial, fs)) * 2) / 2.0
+    return math.ceil(chip_need_w(line_disp, serial, fs) * 2) / 2.0
 
 
 def chip_svg(cx, cy, w, h, color, line_disp, serial, fs):
-    """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段."""
+    """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中)."""
     x0, y0 = cx - w / 2, cy - h / 2
-    wl = part_w(line_disp, fs)
-    xline = x0 + PADX + wl / 2
-    xsep = x0 + PADX + wl + SEPW / 2
-    xser = x0 + PADX + wl + SEPW + part_w(serial, fs) / 2
+    ca = cell_a(line_disp, fs)
+    xline = x0 + PADX + ca / 2
+    xsep = x0 + PADX + ca + SEPW / 2
+    xser = x0 + PADX + ca + SEPW + cell_b(fs) / 2
     ty = cy + 0.06 * fs
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
-        f'fill="#FFFFFF" stroke="{color}" stroke-width="1.1"/>' +
-        f'<line x1="{xsep:.2f}" y1="{y0 + 1.4:.2f}" x2="{xsep:.2f}" y2="{y0 + h - 1.4:.2f}" '
-        f'stroke="{color}" stroke-width="0.9"/>' +
+        f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
+        f'<line x1="{xsep:.2f}" y1="{y0 + 1.2:.2f}" x2="{xsep:.2f}" y2="{y0 + h - 1.2:.2f}" '
+        f'stroke="{color}" stroke-width="0.8"/>' +
         f'<text x="{xline:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central" '
         f'font-size="{fs}" font-weight="700" fill="#000000">{line_disp}</text>' +
         f'<text x="{xser:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central" '
@@ -208,6 +228,164 @@ def expand_viewbox(t, chip_rects, margin=2.0):
     return t
 
 
+# ---------- 站名标签避让(编号版): 牌压名 -> 沿钉→标方向外推, 校验走廊/邻标净距 ----------
+LABEL_CHIP_GAP = 1.0    # 标签-牌净距下限
+LABEL_CORR_GAP = 1.0    # 标签-走廊净距下限(推移后不得新压线)
+LABEL_LBL_GAP = 0.3     # 标签-标签净距下限(推移后)
+
+
+def parse_labels(svg_text):
+    """站名标注组 -> [(nm, x, y, fs, attrs, content)]; zh=content匹配站名, en=拼音小字号."""
+    m = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', svg_text, re.S)
+    out = []
+    if not m:
+        return out, m
+    for tx in re.finditer(r'<text ([^>]*)>([^<]+)</text>', m.group(1)):
+        at, content = tx.group(1), tx.group(2)
+        gx = re.search(r'\bx="([-\d.]+)"', at)
+        gy = re.search(r'\by="([-\d.]+)"', at)
+        gf = re.search(r'font-size="([\d.]+)"', at)
+        if not (gx and gy):
+            continue
+        out.append({'x': float(gx.group(1)), 'y': float(gy.group(1)),
+                    'fs': float(gf.group(1)) if gf else 7.5, 'attrs': at, 'content': content})
+    return out, m
+
+
+def label_groups(labels, pin_names):
+    """站名(zh, 中文任意字号含密集区6/5px)与紧邻其下的拼音(en/en2)聚成一组: -> {nm: [label...]}."""
+    zh = [l for l in labels if l['content'] in pin_names and not l['content'].isascii()]
+    ens = [l for l in labels if l not in zh]
+    groups = {l['content']: [l] for l in zh}
+    for e in ens:
+        best, bd = None, 1e9
+        for z in zh:
+            dy = e['y'] - z['y']
+            d = abs(e['x'] - z['x']) + abs(dy)
+            if dy > -1 and abs(e['x'] - z['x']) < 4 and dy < 16 and d < bd:
+                best, bd = z, d
+        if best:
+            groups[best['content']].append(e)
+    return groups
+
+
+def text_box(l):
+    """单条text近似盒(中锚+基线y): 宽=实测, 高=fs*1.1."""
+    import math
+    if _FM_ARIAL is not None and l['fs'] < 6.8 and l['content'].isascii():
+        w = _FM_ARIAL[round(min(l['fs'], 6.0), 1)].getlength(l['content']) / 10.0
+    else:
+        w = part_w(l['content'], 7.0) / 7.0 * l['fs']   # 按字号比例换算(bold量宽, 保守偏宽)
+    return (l['x'] - w / 2, l['y'] - l['fs'] * 0.92, w, l['fs'] * 1.12)
+
+
+def group_box(items):
+    boxes = [text_box(l) for l in items]
+    x0 = min(b[0] for b in boxes); y0 = min(b[1] for b in boxes)
+    x1 = max(b[0] + b[2] for b in boxes); y1 = max(b[1] + b[3] for b in boxes)
+    return (x0, y0, x1 - x0, y1 - y0)
+
+
+def _clear_rect(rect, others, gap):
+    """真净距判据: 与任一 other 的净距 >= gap(角部擦边也算犯, rects_overlap(pad) 会漏判)."""
+    for o in others:
+        if _gap(rect, o) < gap:
+            return False
+    return True
+
+
+def _gap(r1, r2):
+    """两矩形净距(重叠为负, 量级=角部侵入深度)."""
+    ox = min(r1[0] + r1[2], r2[0] + r2[3]) - max(r1[0], r2[0])
+    oy = min(r1[1] + r1[3], r2[1] + r2[3]) - max(r1[1], r2[1])
+    if ox >= 0 and oy >= 0:
+        return -min(ox, oy)
+    return max(-ox if ox < 0 else 0, -oy if oy < 0 else 0)
+
+
+def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag):
+    """编号版站名避让: 与牌相犯(<净距)的标签组沿 钉->标 方向外推(0.5px步进, ±35°/±70°轮换),
+    推移校验: 全部牌净距>=LABEL_CHIP_GAP, 走廊净距>=LABEL_CORR_GAP, 其他标签>=LABEL_LBL_GAP.
+    返回新的站名标注组 innerHTML(全部文本, 位置按需更新)."""
+    labels, m = parse_labels(svg_text)
+    if not labels:
+        return None
+    groups = label_groups(labels, set(pin_by_name))
+    all_chip_rects = [r for lst in chips_by_station.values() for r in lst]
+    cur_boxes = {nm: group_box(g) for nm, g in groups.items()}
+    order = sorted(groups.items(), key=lambda kv: -group_box(kv[1])[2] * group_box(kv[1])[3])
+    moved, unresolved, relaxed = [], [], []
+    import math as _m
+    for nm, g in order:
+        box = cur_boxes[nm]
+        if _clear_rect(box, all_chip_rects, LABEL_CHIP_GAP):
+            continue   # 本就不压(含邻站牌)
+        # 推移基准方向: 远离最近的相犯牌; 无相犯牌信息时用 钉->标 方向
+        bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
+        viol = min(all_chip_rects, key=lambda r: _gap(box, r))
+        if viol is not None:
+            vcx, vcy = viol[0] + viol[2] / 2, viol[1] + viol[3] / 2
+            dx, dy = bcx - vcx, bcy - vcy
+        else:
+            pin = pin_by_name.get(nm)
+            dx, dy = (bcx - pin[0], bcy - pin[1]) if pin else (0.0, -1.0)
+        l = (dx * dx + dy * dy) ** 0.5 or 1.0
+        bx, by = dx / l, dy / l
+        near_segs = [s for s in segs
+                     if abs((s[0] + s[2]) / 2 - bcx) < 70 and abs((s[1] + s[3]) / 2 - bcy) < 70]
+        near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
+                     and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
+        done = False
+        relax = None
+        # 兜底链: 全约束 -> 放标签互斥 -> 放走廊净距(牌不压名优先, 2026-10-23 用户主诉)
+        for relax_lbl, relax_corr in ((False, False), (True, False), (True, True)):
+            for ang in (0, 35, -35, 70, -70, 105, -105, 180):
+                ra = _m.radians(ang)
+                ca_, sa_ = _m.cos(ra), _m.sin(ra)
+                ux, uy = bx * ca_ - by * sa_, bx * sa_ + by * ca_
+                for step in range(1, 33):
+                    d = step * 0.5
+                    r2 = (box[0] + ux * d, box[1] + uy * d, box[2], box[3])
+                    if not _clear_rect(r2, all_chip_rects, LABEL_CHIP_GAP):
+                        continue
+                    if not relax_corr and not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs):
+                        continue
+                    if not relax_lbl and not _clear_rect(r2, near_lbls, LABEL_LBL_GAP):
+                        continue
+                    for l2 in g:
+                        l2['x'] = round(l2['x'] + ux * d, 2)
+                        l2['y'] = round(l2['y'] + uy * d, 2)
+                    cur_boxes[nm] = r2
+                    moved.append((nm, d, ang))
+                    done = True
+                    relax = 'lbl' if (relax_lbl and not relax_corr) else ('corr' if relax_corr else None)
+                    break
+                if done:
+                    break
+            if done:
+                break
+        if done and relax:
+            relaxed.append('%s(%s)' % (nm, relax))
+        if not done:
+            unresolved.append(nm)
+    rep = report.setdefault('label_nudge', {}).setdefault(tag, {})
+    rep['moved'] = len(moved)
+    rep['max_shift'] = max((d for _, d, _ in moved), default=0)
+    rep['relaxed'] = relaxed
+    rep['unresolved'] = unresolved
+    # 重组 innerHTML
+    emit = []
+    grouped_ids = {id(l2) for g in groups.values() for l2 in g}
+    for l2 in labels:
+        if id(l2) in grouped_ids:
+            at = re.sub(r'\bx="[-\d.]+"', 'x="%.2f"' % l2['x'], l2['attrs'])
+            at = re.sub(r'\by="[-\d.]+"', 'y="%.2f"' % l2['y'], at)
+        else:
+            at = l2['attrs']
+        emit.append('<text %s>%s</text>' % (at, l2['content']))
+    return ''.join(emit)
+
+
 # ---------- 单线卡 ----------
 def gen_line_card(line, codes, report):
     path = os.path.join(LINES_DIR, 'line-%s.svg' % line)
@@ -232,6 +410,15 @@ def gen_line_card(line, codes, report):
         chip_svg(cx, cy, w, H_CARD, color, disp, serial, FONT_CARD)
         for nm, disp, serial, cx, cy, w, h in chips)
     t2 = t[:m.start()] + ('<g id="站圆">' + circles_svg + '</g>' if circles_svg else '') + t[m.end():]
+    # 站名避让: 与牌相犯的标签沿钉->标方向外推(缩小后仍压的才推)
+    chips_by_station = {}
+    for nm, disp, serial, cx, cy, w, h in chips:
+        chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H_CARD / 2, w, H_CARD))
+    new_labels = nudge_labels(t2, {nm: (cx, cy) for nm, cx, cy in card['pins']},
+                              chips_by_station, card['segs'], report, line)
+    if new_labels is not None:
+        t2 = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
+                    lambda mm: mm.group(1) + new_labels + mm.group(2), t2, count=1, flags=re.S)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t2, re.S)
     t2 = t2[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + chips_svg + '</g>' + t2[mn.end():]
     out = os.path.join(LINES_DIR, 'line-%s.codes.svg' % line)
@@ -474,6 +661,18 @@ def gen_network(codes, report):
     for gid in ('站圆', '换乘标记'):
         m = re.search(r'<g id="%s">.*?</g>' % gid, t, re.S)
         t = t[:m.start()] + t[m.end():]
+    # 站名避让(牌全部落定后): 钉位=该站各线钉质心
+    chips_by_station = {}
+    for nm, ln, cx, cy, w in chips:
+        chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H / 2, w, H))
+    pin_center = {}
+    for nm, lst in pins.items():
+        pin_center[nm] = (sum(p[1] for p in lst) / len(lst), sum(p[2] for p in lst) / len(lst))
+    all_segs = [s for ln in ORDER for s in segs_of[ln]]
+    new_labels = nudge_labels(t, pin_center, chips_by_station, all_segs, report, '全网')
+    if new_labels is not None:
+        t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
+                   lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
     chips_svg = ''.join(
         chip_svg(cx, cy, w, H, color_of[ln], *codes[(nm, ln)], FONT)
         for nm, ln, cx, cy, w in chips)

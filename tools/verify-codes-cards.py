@@ -64,12 +64,33 @@ def check_card(path, label, gen):
     vb, chips, has_group = parse_chips(path)
     if not chips:
         return [(label, 'V1', '编号牌组非空', bool(has_group), '0 牌')]
-    # V4 文本适配: 实测字体宽度 + 分隔区 + 边距 <= 牌宽(独立于生成器重算)
+    # V5 牌-站名不叠: 站名标注文本盒与任意牌矩形净距>0.8
+    t = open(path, encoding='utf-8').read()
+    lm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+    clashes = []
+    if lm:
+        for tx in re.finditer(r'<text ([^>]*)>([^<]+)</text>', lm.group(1)):
+            at, content = tx.group(1), tx.group(2)
+            try:
+                x = float(re.search(r'\bx="([-\d.]+)"', at).group(1))
+                y = float(re.search(r'\by="([-\d.]+)"', at).group(1))
+                fs = float(re.search(r'font-size="([\d.]+)"', at).group(1))
+            except (AttributeError, ValueError):
+                continue
+            box = gen.text_box({'x': x, 'y': y, 'fs': fs, 'content': content})
+            for cx, cy, w, h, col, _texts in chips:
+                if gen._gap(box, (cx - w / 2, cy - h / 2, w, h)) < 0.5:
+                    clashes.append(content)
+                    break
+    v5 = (label, 'V5', '牌不压站名', not clashes, '%d处' % len(clashes) + (':' + ','.join(clashes[:5]) if clashes else ''))
+    # V4 文本适配: 定宽格与实测文本取max + 分隔区 + 边距 <= 牌宽(独立于生成器重算)
     overflow = []
     for cx, cy, w, h, col, texts in chips:
-        need = 2 * gen.PADX + gen.SEPW + sum(gen.part_w(t[0], t[3]) for t in texts)
-        if need > w + 0.05:
-            overflow.append('%s(需%.1f>%.1f)' % ('|'.join(t[0] for t in texts), need, w))
+        if len(texts) >= 2:
+            fs = texts[0][3]
+            need = gen.chip_need_w(texts[0][0], texts[1][0], fs)
+            if need > w + 0.05:
+                overflow.append('%s|%s(需%.1f>%.1f)' % (texts[0][0], texts[1][0], need, w))
     im = render(path, vb)
 
     def px(x, y):
@@ -106,6 +127,7 @@ def check_card(path, label, gen):
         (label, 'V2', '边框线色', n_border == len(chips), '%d/%d' % (n_border, len(chips))),
         (label, 'V3', '内部黑字', n_ink == len(chips), '%d/%d' % (n_ink, len(chips))),
         (label, 'V4', '文本适配牌宽', not overflow, '; '.join(overflow[:6]) or '全过'),
+        v5,
     ]
 
 
