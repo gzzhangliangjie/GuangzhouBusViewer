@@ -662,6 +662,24 @@ for name in ORDER:
     if not done:
         badge_fail.append(name)
         print('  !! 徽标 %s 未找到合法位' % name)
+# 双段线第二枚徽标(2026-10-22用户: 12号线分两段, 广州体育馆这段也是12号线也要标识):
+# 主循环每线一枚只标了南段; 双段卡按连通分量补第二枚, 版式=该段终点旁同规范
+BADGE_AT_2ND = {
+    '12号线': [(1456.0, 809.9)],  # 北段广州体育馆端: 终点标签正下方同x居中(斜向下→正下方, 避45°延长线;
+                                   # 浔峰岗端右侧被8号线上步/同德圆+x1174.5走廊占满不可用)
+}
+for _n2, _anchors2 in BADGE_AT_2ND.items():
+    _sc2 = BADGE_SCALE_BY.get(_n2, BADGE_SCALE)
+    _bw2, _bh2 = badge_size[_n2][0] * _sc2, badge_size[_n2][1] * _sc2
+    for _cx2, _cy2 in _anchors2:
+        _rect2 = (_cx2 - _bw2 / 2, _cy2 - _bh2 / 2, _bw2, _bh2)
+        _why2 = badge_rect_why(_rect2, badges, ignore_corridor=True)
+        if _why2 is None:
+            badges.append((_n2, _rect2[0], _rect2[1], _bw2, _bh2))
+        else:
+            badge_fail.append(_n2)
+            print('  !! 二段徽标 %s (%g,%g) 拒: %s' % (_n2, _cx2, _cy2, _why2))
+
 # 贴本体校正: 离本体>90px的徽标在本体走廊包围盒外扩120px内网格搜最近合法位(用户: APM偏离太远, 2026-10-22)
 for _i in range(len(badges)):
     _nm, _bx, _by, _bw, _bh = badges[_i]
