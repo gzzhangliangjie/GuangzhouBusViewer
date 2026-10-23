@@ -51,10 +51,17 @@ def parse_chips(svg_path):
     return vb, chips, rings, m is not None
 
 
-def render(svg_path, vb):
-    W, H = int(vb[2] * SCALE), int(vb[3] * SCALE)
-    svg = open(svg_path, encoding='utf-8').read()
-    svg = re.sub(r'(<svg[^>]*?) width="[\d.]+" height="[\d.]+"', r'\1 width="%d" height="%d"' % (W, H), svg, count=1)
+def render(svg_path, vb, crop=None, scale=None):
+    """crop=(x,y,w,h) 时按裁剪框渲染(20x 精测用); scale 覆盖默认 SCALE."""
+    sc = scale or SCALE
+    if crop:
+        svg_txt = open(svg_path, encoding='utf-8').read()
+        svg_txt = re.sub(r'viewBox="[-\d. ]+"', 'viewBox="%.2f %.2f %.2f %.2f"' % crop, svg_txt, count=1)
+        W, H = int(crop[2] * sc), int(crop[3] * sc)
+    else:
+        W, H = int(vb[2] * sc), int(vb[3] * sc)
+        svg_txt = open(svg_path, encoding='utf-8').read()
+    svg = re.sub(r'(<svg[^>]*?) width="[\d.]+" height="[\d.]+"', r'\1 width="%d" height="%d"' % (W, H), svg_txt, count=1)
     html = os.path.join(tempfile.gettempdir(), '_codeswrap.html')
     with open(html, 'w', encoding='utf-8') as f:
         f.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
@@ -144,12 +151,40 @@ def check_card(path, label, gen):
             fails.append('黑字(@%.0f,%.0f)' % (cx, cy))
         else:
             n_ink += 1
+    # V6 数字纵向居中: 抽样3牌 20x裁剪精测(|Δ|<=0.15pt)——2x全图量测有-0.3pt亚像素抗锯齿
+    # 系统偏差(二十倍仲裁: 当前渲染实际offset=0.000), 低倍量测不可信; 精测窗=文字锚点±2.5pt
+    # (避开深色线的分隔竖线, 全内窗会把竖线算进墨迹)
+    offs = []
+    sample = [c for c in chips if len(c[5]) >= 2]
+    for idx in ({0, len(sample) // 2, len(sample) - 1} if sample else set()):
+        cx, cy, w, h, col, texts = sample[idx]
+        crop = (cx - w / 2 - 4, cy - h / 2 - 4, w + 8, h + 8)
+        im2 = render(path, vb, crop=crop, scale=20.0)
+        dark2 = im2.max(axis=2) < 110
+        bx, by = crop[0], crop[1]
+        rows = []
+        for txt, ax, ay, fs in texts:
+            y_lo = int((cy - h / 2 + 1.1 - by) * 20)
+            y_hi = int((cy + h / 2 - 1.1 - by) * 20) + 1
+            x_lo = int((ax - 2.5 - bx) * 20)
+            x_hi = int((ax + 2.5 - bx) * 20) + 1
+            zone = dark2[y_lo:y_hi, x_lo:x_hi]
+            ys2, _xs = np.where(zone)
+            if len(ys2) >= 6:
+                rows += [ys2.min() + y_lo, ys2.max() + y_lo]
+        if len(rows) < 2:
+            continue
+        ink_c = (min(rows) + max(rows)) / 2 / 20.0 + by
+        offs.append(ink_c - cy)
+    v6 = (label, 'V6', '数字纵向居中', bool(offs) and max(abs(o) for o in offs) <= 0.15,
+          'max|Δ|=%.2fpt (%d采样)' % (max((abs(o) for o in offs), default=9), len(offs)))
     return [
         (label, 'V1', '编号牌数=%d' % len(chips), True, ''),
         (label, 'V2', '边框线色', n_border == len(chips), '%d/%d' % (n_border, len(chips))),
         (label, 'V3', '内部黑字', n_ink == len(chips), '%d/%d' % (n_ink, len(chips))),
         (label, 'V4', '文本适配牌宽', not overflow, '; '.join(overflow[:6]) or '全过'),
         v5,
+        v6,
     ]
 
 

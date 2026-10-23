@@ -188,22 +188,25 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     xline = x0 + PADX + ca / 2
     xsep = x0 + PADX + ca + SEPW / 2
     xser = x0 + PADX + ca + SEPW + cb / 2
-    ty = cy   # 墨迹标定: central 基准已光学居中, 旧 +0.06fs 是向下错偏(六轮用户: 数字偏下)
-    tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
+    # 墨迹标定: central 基准在雅黑下系统性偏低 ~0.017em(十轮实测牌内墨迹中心 +0.10pt),
+    # ty = cy - 0.02fs 抬升; V6 门禁逐牌复测
     sfs = fs
     stl = ''
     std = FONT_CARD if card else FONT
     if part_w(serial, std) > cb + 0.01:
         sfs = serial_font(serial, std)
         stl = f' textLength="{cb:.2f}" lengthAdjust="spacingAndGlyphs"'
+    tyL = cy - 0.02 * fs
+    tyS = cy - 0.02 * sfs
+    tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
         f'<line x1="{xsep:.2f}" y1="{y0 + 1.2:.2f}" x2="{xsep:.2f}" y2="{y0 + h - 1.2:.2f}" '
         f'stroke="{color}" stroke-width="0.8"/>' +
-        f'<text x="{xline:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central"'
+        f'<text x="{xline:.2f}" y="{tyL:.2f}" text-anchor="middle" dominant-baseline="central"'
         f'{tl} font-size="{fs}" font-weight="700" fill="#000000">{line_disp}</text>' +
-        f'<text x="{xser:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central"'
+        f'<text x="{xser:.2f}" y="{tyS:.2f}" text-anchor="middle" dominant-baseline="central"'
         f'{stl} font-size="{sfs}" font-weight="700" fill="#000000">{serial}</text>'
     )
 
@@ -354,7 +357,7 @@ def _gap(r1, r2):
 def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, align_centers=None):
     """编号版站名避让: 与牌相犯(<净距)的标签组沿 钉->标 方向外推(0.5px步进, ±35°/±70°轮换),
     推移校验: 全部牌净距>=LABEL_CHIP_GAP, 走廊净距>=LABEL_CORR_GAP, 其他标签>=LABEL_LBL_GAP.
-    对齐pass(七轮 用户: 文字位置跟序号胶囊的中心没对齐): 多牌组标签按主偏移轴吸附组心
+    对齐pass(七/十轮 用户: 文字位置跟序号胶囊的中心没对齐): 有牌站标签按主偏移轴吸附组心
     (侧置->y对齐组心y / 上下置->x对齐组心x), 带同套净距校验, 放不下则保持原位.
     返回新的站名标注组 innerHTML(全部文本, 位置按需更新)."""
     labels, m = parse_labels(svg_text)
@@ -419,7 +422,8 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
         if not done:
             unresolved.append(nm)
 
-    # 对齐pass: 多牌组(组形变了)的标签吸附组心(单牌站组心=钉=底图引擎原对齐, 不动)
+    # 对齐pass: 有牌站的标签吸附组心(十轮: 单牌站也参与——斜走廊站标签沿45°摆位,
+    # 对小圆点(9pt)无感但对牌(20.5x9)垂直差1-2pt可见, 厦滘/大石/沙溪用户三报)
     aligned = []
     if align_centers:
         for nm, (gcx, gcy) in align_centers.items():
@@ -430,8 +434,8 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 continue   # 仍相犯的以避让结果为准
             bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
             dx, dy = bcx - gcx, bcy - gcy
-            if max(abs(dx), abs(dy)) < 2:
-                continue   # 已对齐
+            if max(abs(dx), abs(dy)) < 1.0:
+                continue   # 已对齐(十轮: 阈值2->1, 斜走廊站标签45°摆位两轴都偏1-2pt)
             axis_y = abs(dx) >= abs(dy)   # 侧置->对y, 上下置->对x
             g = groups[nm]
             near_segs = [s for s in segs
@@ -509,8 +513,9 @@ def gen_line_card(line, codes, report):
     chips_by_station = {}
     for nm, disp, serial, cx, cy, w, h, fs in chips:
         chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H_CARD / 2, w, H_CARD))
+    align_c = {nm: (cx, cy) for nm, disp, serial, cx, cy, w, h, fs in chips}
     new_labels = nudge_labels(t2, {nm: (cx, cy) for nm, cx, cy in card['pins']},
-                              chips_by_station, card['segs'], report, line)
+                              chips_by_station, card['segs'], report, line, align_c)
     if new_labels is not None:
         t2 = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                     lambda mm: mm.group(1) + new_labels + mm.group(2), t2, count=1, flags=re.S)
@@ -918,9 +923,9 @@ def gen_network(codes, report):
     for nm, lst in pins.items():
         pin_center[nm] = (sum(p[1] for p in lst) / len(lst), sum(p[2] for p in lst) / len(lst))
     all_segs = [s for ln in ORDER for s in segs_of[ln]]
-    # 对齐组心: 多牌站(组形相对底图标记变了)标签吸附新组心
+    # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
-                     for nm, rs in obstacles.items() if len(by_st.get(nm, [])) >= 2}
+                     for nm, rs in obstacles.items()}
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
