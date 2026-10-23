@@ -26,22 +26,26 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
 
 
 def parse_chips(svg_path):
-    """-> (vb, chips, has_group). chips=[(cx, cy, w, h, color, [(text,x,y,fs)...])]."""
+    """-> (vb, chips, rings, has_group). chips=[(cx,cy,w,h,color,texts)]; rings=多线组外描边圈矩形."""
     t = open(svg_path, encoding='utf-8').read()
     vb = [float(v) for v in re.search(r'viewBox="([-\d. ]+)"', t).group(1).split()]
     m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', t, re.S)
     chips = []
+    rings = []
     if m:
-        for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*stroke="(#[0-9A-Fa-f]{6})"', m.group(1)):
-            x, y, w, h, col = float(r.group(1)), float(r.group(2)), float(r.group(3)), float(r.group(4)), r.group(5)
-            chips.append([x + w / 2, y + h / 2, w, h, col, []])
+        for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"([^>]*)stroke="(#[0-9A-Fa-f]{6})"', m.group(1)):
+            x, y, w, h, rest, col = float(r.group(1)), float(r.group(2)), float(r.group(3)), float(r.group(4)), r.group(5), r.group(6)
+            if 'data-ring' in rest:
+                rings.append((x, y, w, h))
+            else:
+                chips.append([x + w / 2, y + h / 2, w, h, col, []])
         for tx in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', m.group(1)):
             x, y, fs, txt = float(tx.group(1)), float(tx.group(2)), float(tx.group(3)), tx.group(4)
             for c in chips:
                 if abs(y - c[1]) < c[3] / 2 and c[0] - c[2] / 2 <= x <= c[0] + c[2] / 2:
                     c[5].append((txt, x, y, fs))
                     break
-    return vb, chips, m is not None
+    return vb, chips, rings, m is not None
 
 
 def render(svg_path, vb):
@@ -61,7 +65,7 @@ def render(svg_path, vb):
 
 
 def check_card(path, label, gen):
-    vb, chips, has_group = parse_chips(path)
+    vb, chips, rings, has_group = parse_chips(path)
     if not chips:
         return [(label, 'V1', '编号牌组非空', bool(has_group), '0 牌')]
     # V5 牌-站名不叠: 站名标注文本盒与任意牌矩形净距>0.8
@@ -78,10 +82,12 @@ def check_card(path, label, gen):
             except (AttributeError, ValueError):
                 continue
             box = gen.text_box({'x': x, 'y': y, 'fs': fs, 'content': content})
-            for cx, cy, w, h, col, _texts in chips:
-                if gen._gap(box, (cx - w / 2, cy - h / 2, w, h)) < 0.5:
-                    clashes.append(content)
-                    break
+            hit = any(gen._gap(box, (cx - w / 2, cy - h / 2, w, h)) < 0.5
+                      for cx, cy, w, h, col, _texts in chips)
+            if not hit:
+                hit = any(gen._gap(box, (rx, ry, rw, rh)) < 0.5 for rx, ry, rw, rh in rings)
+            if hit:
+                clashes.append(content)
     v5 = (label, 'V5', '牌不压站名', not clashes, '%d处' % len(clashes) + (':' + ','.join(clashes[:5]) if clashes else ''))
     # V4 文本适配: 定宽格与实测文本取max + 分隔区 + 边距 <= 牌宽(独立于生成器重算)
     overflow = []

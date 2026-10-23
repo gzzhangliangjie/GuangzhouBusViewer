@@ -86,26 +86,37 @@ def parse_card(line):
 
 
 # ---------- 牌几何 ----------
-FONT = 6.5        # 牌字号(全网)
-FONT_CARD = 7.0   # 单线卡字号
-H = 11.0          # 牌高
-H_CARD = 12.0
+FONT = 6.0        # 牌字号(全网, 2026-10-23 三轮再缩)
+FONT_CARD = 6.5   # 单线卡字号
+APM_FONT = 5.1    # APM 专用更小字号(用户: 尤其APM要缩更小)
+APM_FONT_CARD = 5.5
+H = 10.0          # 牌高
+H_CARD = 11.0
 PADX = 2.0        # 左右内边距
-SEPW = 3.2        # 分隔区宽(含两侧空隙)
+SEPW = 3.0        # 分隔区宽(含两侧空隙)
 GAP = 1.2         # 组内牌间缝
 CORR_HALF = 3.5   # 走廊 stroke-width 7 半宽(触线判定含线宽)
+RING_PAD = 2.5    # 多线组外描边圈的内衬(用户: 多线要在胶囊组外围多画一圈描边)
+INK = '#1a1a1a'
 
 # 文本宽度 = 渲染字体(微软雅黑 Bold)实测, 精确到 0.1px(APM 估算 13 vs 实测 17, 必须量测)
 from PIL import ImageFont
 try:
     _FM = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/msyhbd.ttc', int(fs * 10))
-           for fs in (FONT, FONT_CARD)}
+           for fs in (FONT, FONT_CARD, APM_FONT, APM_FONT_CARD)}
     _FM_ARIAL = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/arial.ttf', int(fs * 10))
                  for fs in (5.5, 6.0)}
 except Exception:
     _FM = None
     _FM_ARIAL = None
 _W_CACHE = {}
+
+
+def font_of(line_disp, card):
+    """牌字号: APM 专用更小档, 其余标准档."""
+    if line_disp == 'APM':
+        return APM_FONT_CARD if card else APM_FONT
+    return FONT_CARD if card else FONT
 
 
 def part_w(txt, fs):
@@ -275,7 +286,7 @@ def text_box(l):
     if _FM_ARIAL is not None and l['fs'] < 6.8 and l['content'].isascii():
         w = _FM_ARIAL[round(min(l['fs'], 6.0), 1)].getlength(l['content']) / 10.0
     else:
-        w = part_w(l['content'], 7.0) / 7.0 * l['fs']   # 按字号比例换算(bold量宽, 保守偏宽)
+        w = part_w(l['content'], FONT_CARD) / FONT_CARD * l['fs']   # 按字号比例换算(bold量宽, 保守偏宽)
     return (l['x'] - w / 2, l['y'] - l['fs'] * 0.92, w, l['fs'] * 1.12)
 
 
@@ -343,7 +354,7 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag):
                 ra = _m.radians(ang)
                 ca_, sa_ = _m.cos(ra), _m.sin(ra)
                 ux, uy = bx * ca_ - by * sa_, bx * sa_ + by * ca_
-                for step in range(1, 33):
+                for step in range(1, 49):   # 上限24px: 品字外圈宽~51px, 标签逃出需>16px
                     d = step * 0.5
                     r2 = (box[0] + ux * d, box[1] + uy * d, box[2], box[3])
                     if not _clear_rect(r2, all_chip_rects, LABEL_CHIP_GAP):
@@ -397,8 +408,9 @@ def gen_line_card(line, codes, report):
         key = (nm, line)
         if key in codes:
             disp, serial = codes[key]
-            w = chip_w(disp, serial, FONT_CARD)
-            chips.append((nm, disp, serial, cx, cy, w, H_CARD))
+            fs = font_of(disp, True)
+            w = chip_w(disp, serial, fs)
+            chips.append((nm, disp, serial, cx, cy, w, H_CARD, fs))
         else:
             kept.append((nm, cx, cy))
             report['no_code'].append('%s/%s' % (line, nm))
@@ -407,12 +419,12 @@ def gen_line_card(line, codes, report):
         f'<circle cx="{cx}" cy="{cy}" r="4.5" data-nm="{nm}" style="fill:#FFFFFF;stroke:{color};stroke-width:2"/>'
         for nm, cx, cy in kept)
     chips_svg = ''.join(
-        chip_svg(cx, cy, w, H_CARD, color, disp, serial, FONT_CARD)
-        for nm, disp, serial, cx, cy, w, h in chips)
+        chip_svg(cx, cy, w, H_CARD, color, disp, serial, fs)
+        for nm, disp, serial, cx, cy, w, h, fs in chips)
     t2 = t[:m.start()] + ('<g id="站圆">' + circles_svg + '</g>' if circles_svg else '') + t[m.end():]
     # 站名避让: 与牌相犯的标签沿钉->标方向外推(缩小后仍压的才推)
     chips_by_station = {}
-    for nm, disp, serial, cx, cy, w, h in chips:
+    for nm, disp, serial, cx, cy, w, h, fs in chips:
         chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H_CARD / 2, w, H_CARD))
     new_labels = nudge_labels(t2, {nm: (cx, cy) for nm, cx, cy in card['pins']},
                               chips_by_station, card['segs'], report, line)
@@ -423,7 +435,7 @@ def gen_line_card(line, codes, report):
     t2 = t2[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + chips_svg + '</g>' + t2[mn.end():]
     out = os.path.join(LINES_DIR, 'line-%s.codes.svg' % line)
     open(out, 'w', encoding='utf-8').write(
-        expand_viewbox(t2, [(cx - w / 2, cy - H_CARD / 2, w, H_CARD) for nm, disp, serial, cx, cy, w, h in chips]))
+        expand_viewbox(t2, [(cx - w / 2, cy - H_CARD / 2, w, H_CARD) for nm, disp, serial, cx, cy, w, h, fs in chips]))
     report['line_chips'][line] = len(chips)
     return chips
 
@@ -613,7 +625,7 @@ def gen_network(codes, report):
                 report['no_code'].append('全网/%s@%s' % (nm, ln))
                 continue
             disp, serial = codes[key]
-            items.append((ln, cx, cy, chip_w(disp, serial, FONT)))
+            items.append((ln, cx, cy, chip_w(disp, serial, font_of(disp, False))))
         if not items:
             continue
         tag, placed, fails, worst = place_station(items, segs_of)
@@ -655,31 +667,116 @@ def gen_network(codes, report):
             if not resolved:
                 report['chip_overlaps'].append('%s(%s)x%s(%s)' % (a[0], a[1], b[0], b[1]))
 
+    # 多线组外描边圈(官图用例: 换乘组整体加一圈黑描边白底包络) + 组矩形(避让障碍)
+    by_st = {}
+    for nm, ln, cx, cy, w in chips:
+        by_st.setdefault(nm, []).append((cx - w / 2, cy - H / 2, w, H))
+    rings = []          # (nm, rect)
+    obstacles = {}      # nm -> [rect]  多线站=圈矩形, 单线站=牌矩形
+    for nm, rects in by_st.items():
+        if len(rects) >= 2:
+            x0 = min(r[0] for r in rects) - RING_PAD
+            y0 = min(r[1] for r in rects) - RING_PAD
+            x1 = max(r[0] + r[2] for r in rects) + RING_PAD
+            y1 = max(r[1] + r[3] for r in rects) + RING_PAD
+            ring = (x0, y0, x1 - x0, y1 - y0)
+            rings.append((nm, ring))
+            obstacles[nm] = [ring]
+        else:
+            obstacles[nm] = rects
+    ring_bad = []
+    for nm, ring in rings:
+        for nm2, rects2 in obstacles.items():
+            if nm2 == nm:
+                continue
+            if any(_gap(ring, r2) < 0.3 for r2 in rects2):
+                ring_bad.append('%s x %s' % (nm, nm2))
+
+    # 外圈冲突解析: 优先沿走廊推让邻站单牌(触线保持), 不行则逐档收缩本圈内衬
+    def shift_station_chips(nm2):
+        idx = [i for i, c in enumerate(chips) if c[0] == nm2]
+        if len(idx) != 1:
+            return False   # 多牌组不动(整组重排复杂, 走收缩)
+        i = idx[0]
+        nm, ln, cx, cy, w = chips[i]
+        ux, uy = corridor_tangent(segs_of[ln], cx, cy)
+        others = [r for nm3, rects3 in obstacles.items() if nm3 != nm2 for r in rects3]
+        for step in range(1, 9):
+            for sgn in (1, -1):
+                d = sgn * step * 2.0
+                rect = (cx + d * ux - w / 2, cy + d * uy - H / 2, w, H)
+                touch = min(rect_seg_dist(rect, s) for s in segs_of[ln]) <= CORR_HALF + 0.01
+                if touch and all(_gap(rect, o) >= 0.3 for o in others):
+                    chips[i] = (nm, ln, cx + d * ux, cy + d * uy, w)
+                    obstacles[nm2] = [rect]
+                    return True
+        return False
+
+    def shrink_ring(nm, ring_rect):
+        best = ring_rect
+        for pad in (1.8, 1.2, 0.8):
+            rects = by_st[nm]
+            r2 = (min(r[0] for r in rects) - pad, min(r[1] for r in rects) - pad,
+                  max(r[0] + r[2] for r in rects) - min(r[0] for r in rects) + 2 * pad,
+                  max(r[1] + r[3] for r in rects) - min(r[1] for r in rects) + 2 * pad)
+            ok = all(_gap(r2, o) >= 0.3 for nm3, rects3 in obstacles.items() if nm3 != nm
+                     for o in rects3)
+            if ok:
+                return r2
+            best = r2
+        return best   # 收到底仍犯: 记录
+
+    resolved, leftover = [], []
+    for nm, ring in rings:
+        conflicts = [nm2 for nm2 in obstacles if nm2 != nm and any(_gap(ring, r) < 0.3 for r in obstacles[nm2])]
+        if not conflicts:
+            continue
+        fixed = False
+        for nm2 in conflicts:
+            if not shift_station_chips(nm2):
+                continue
+            if all(_gap(ring, r) >= 0.3 for nm2b in obstacles if nm2b != nm for r in obstacles[nm2b]):
+                fixed = True
+                resolved.append('%s:推让%s' % (nm, nm2))
+                break
+        if not fixed:
+            r2 = shrink_ring(nm, ring)
+            rings[rings.index((nm, ring))] = (nm, r2)
+            obstacles[nm] = [r2]
+            if all(_gap(r2, r) >= 0.3 for nm2b in obstacles if nm2b != nm for r in obstacles[nm2b]):
+                resolved.append('%s:收缩' % nm)
+            else:
+                leftover.append(nm)
+    report['ring_fix'] = resolved
+    report['ring_overlaps'] = leftover
+
     # 组装 SVG
     path = os.path.join(LINES_DIR, 'network-全网.svg')
     t = open(path, encoding='utf-8').read()
     for gid in ('站圆', '换乘标记'):
         m = re.search(r'<g id="%s">.*?</g>' % gid, t, re.S)
         t = t[:m.start()] + t[m.end():]
-    # 站名避让(牌全部落定后): 钉位=该站各线钉质心
-    chips_by_station = {}
-    for nm, ln, cx, cy, w in chips:
-        chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H / 2, w, H))
+    # 站名避让(牌/圈全部落定后): 钉位=该站各线钉质心
     pin_center = {}
     for nm, lst in pins.items():
         pin_center[nm] = (sum(p[1] for p in lst) / len(lst), sum(p[2] for p in lst) / len(lst))
     all_segs = [s for ln in ORDER for s in segs_of[ln]]
-    new_labels = nudge_labels(t, pin_center, chips_by_station, all_segs, report, '全网')
+    new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网')
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                    lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
+    rings_svg = ''.join(
+        f'<rect x="{r[0]:.2f}" y="{r[1]:.2f}" width="{r[2]:.2f}" height="{r[3]:.2f}" rx="5" '
+        f'data-ring="{nm}" fill="#FFFFFF" stroke="{INK}" stroke-width="1.4"/>'
+        for nm, r in rings)
     chips_svg = ''.join(
-        chip_svg(cx, cy, w, H, color_of[ln], *codes[(nm, ln)], FONT)
+        chip_svg(cx, cy, w, H, color_of[ln], codes[(nm, ln)][0], codes[(nm, ln)][1],
+                 font_of(codes[(nm, ln)][0], False))
         for nm, ln, cx, cy, w in chips)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t, re.S)
-    t = t[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + chips_svg + '</g>' + t[mn.end():]
+    t = t[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + rings_svg + chips_svg + '</g>' + t[mn.end():]
     open(os.path.join(LINES_DIR, 'network-全网.codes.svg'), 'w', encoding='utf-8').write(
-        expand_viewbox(t, [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
+        expand_viewbox(t, [r for _, r in rings] + [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
 
     by_station = {}
     for nm, ln, cx, cy, w in chips:

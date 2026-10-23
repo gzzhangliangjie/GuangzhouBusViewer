@@ -38,125 +38,131 @@
  "label_nudge": {
   "1号线": {
    "moved": 5,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "2号线": {
-   "moved": 13,
-   "max_shift": 4.0,
+   "moved": 12,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "3号线": {
    "moved": 20,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "4号线": {
    "moved": 6,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "5号线": {
-   "moved": 5,
-   "max_shift": 4.0,
+   "moved": 3,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "6号线": {
-   "moved": 7,
-   "max_shift": 4.0,
+   "moved": 6,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "7号线": {
-   "moved": 9,
-   "max_shift": 4.0,
+   "moved": 7,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "8号线": {
-   "moved": 16,
-   "max_shift": 4.0,
+   "moved": 15,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "9号线": {
    "moved": 1,
-   "max_shift": 4.0,
+   "max_shift": 3.0,
    "relaxed": [],
    "unresolved": []
   },
   "10号线": {
    "moved": 3,
-   "max_shift": 4.0,
+   "max_shift": 3.0,
    "relaxed": [],
    "unresolved": []
   },
   "11号线": {
    "moved": 7,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "12号线": {
    "moved": 2,
-   "max_shift": 3.5,
+   "max_shift": 2.5,
    "relaxed": [],
    "unresolved": []
   },
   "13号线": {
-   "moved": 3,
-   "max_shift": 4.0,
+   "moved": 1,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "14号线": {
-   "moved": 11,
-   "max_shift": 4.0,
+   "moved": 2,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "18号线": {
    "moved": 4,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "21号线": {
-   "moved": 4,
-   "max_shift": 4.0,
+   "moved": 3,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "22号线": {
    "moved": 1,
-   "max_shift": 4.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "广佛线": {
-   "moved": 7,
-   "max_shift": 4.0,
+   "moved": 6,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "APM线": {
    "moved": 3,
-   "max_shift": 8.0,
+   "max_shift": 5.0,
    "relaxed": [],
    "unresolved": []
   },
   "全网": {
-   "moved": 78,
-   "max_shift": 14.5,
+   "moved": 105,
+   "max_shift": 20.0,
    "relaxed": [],
    "unresolved": []
   }
  },
+ "ring_fix": [
+  "体育西路:收缩",
+  "珠江新城:收缩",
+  "天河客运站:推让植物园"
+ ],
+ "ring_overlaps": [],
  "net_chips": 398,
  "net_multi_stations": 72
 }
