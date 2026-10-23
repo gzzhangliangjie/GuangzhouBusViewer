@@ -608,24 +608,26 @@ def layout_candidates(items):
     pts = push_apart([(it[1], it[2]) for it in items], [it[3] for it in items], 0, 'x')
     cands.append(('H', [(items[i][0], pts[i][0], pts[i][1], items[i][3]) for i in range(n)]))
     if n == 3:
-        # 三角排布两种朝向(2026-10-23 六轮 用户: 上二下一T字 或 上一下二品字, 行对齐):
-        # P3=T字(底1=钉y最大, 顶排2按x), P3D=品字(顶1=钉y最小, 底排2按x)
-        for tag, single_max in (('P3', True), ('P3D', False)):
-            if single_max:
-                single = max(range(n), key=lambda i: items[i][2])
-            else:
-                single = min(range(n), key=lambda i: items[i][2])
+        # 三角排布两种朝向显式生成(八轮: 旧实现用max/min钉y定单牌行, 共y钉时P3/P3D退化成
+        # 同一候选=真T字(单牌行在下)从未被生成——大学城南上12/7下4做不出来的根因):
+        # P3=T字(单牌行在下), P3D=品字(单牌行在上); 单牌成员仅做几何初始化, 线-槽配对由置换搜索定
+        for tag, single_top in (('P3', False), ('P3D', True)):
+            single = max(range(n), key=lambda i: items[i][2])
             pair = sorted([i for i in range(n) if i != single], key=lambda i: items[i][1])
             pair_y = (items[pair[0]][2] + items[pair[1]][2]) / 2
             sx, sy = items[single][1], items[single][2]
             if abs(sy - pair_y) < H + GAP:
                 sh = (H + GAP - abs(sy - pair_y)) / 2
-                if sy > pair_y:      # 单牌在下: 排上移/单牌下移
-                    pair_y -= sh
-                    sy += sh
-                else:
+                if single_top:       # 品字: 单牌行在上
                     pair_y += sh
                     sy -= sh
+                else:                # T字: 单牌行在下
+                    pair_y -= sh
+                    sy += sh
+            elif single_top and sy > pair_y:
+                sy, pair_y = pair_y - (H + GAP) / 2, pair_y + 0  # 钉形与朝向冲突时按朝向放
+            elif not single_top and sy < pair_y:
+                sy = pair_y + (H + GAP) / 2
             pts = push_apart([(items[pair[0]][1], pair_y), (items[pair[1]][1], pair_y)],
                              [items[pair[0]][3], items[pair[1]][3]], 0, 'x')
             place = {pair[0]: pts[0], pair[1]: pts[1], single: (sx, sy)}
@@ -654,23 +656,22 @@ def layout_candidates(items):
     return [(tag, _separate(placed)) for tag, placed in cands]
 
 
-def _pattern_prio(tag, n, items):
-    """官图排布优先级(2026-10-23 六/七轮 用户: 2线=上下叠; 3线=T字/品字三角;
-    七轮补充: 共y横排钉(x散>=12, 平行走廊组如官洲/大学城北/大学城南/芳村/广州南站)
-    =紧凑上下叠+整体描边, V 也是规范模式)."""
+def _pattern_prio(tag, n, items=None):
+    """排布优先级终稿(2026-10-23 八轮 用户全部口径收敛):
+    1线=S骑线; 2线=V上下紧叠(平行走廊站列x=钉均值, 触线成立);
+    3线=一律 P3 T字(上二下一)/P3D 品字(上一下二)——平行走廊站(大学城南)也用三角
+    (八轮用户: 大学城南要上12/7下4的T字, 七轮'平行走廊3线=V'是过度推广, 已废);
+    4线=G4田字; H=退化兜底."""
     if n == 2:
         return {'V': 0, 'H': 1}.get(tag, 2)
     if n == 3:
-        y_spread = max(it[2] for it in items) - min(it[2] for it in items)
-        x_spread = max(it[1] for it in items) - min(it[1] for it in items)
-        if y_spread < 6 and x_spread >= 12:
-            return {'V': 0, 'P3': 1, 'P3D': 1, 'H': 2}.get(tag, 3)
         return {'P3': 0, 'P3D': 0, 'V': 1, 'H': 2}.get(tag, 3)
     return {'G4': 0, 'V': 1, 'H': 2}.get(tag, 3)
 
 
-def exit_vec(segs, px, py, rmin=5.0, rmax=30.0):
-    """走廊出向: 站点邻域走廊采样点的合成单位向量和(指向线路走出方向).
+def exit_vec(segs, px, py, rmin=5.0, rmax=60.0):
+    """走廊出向: 站点邻域走廊采样点的合成单位向量和(指向线路走出方向); 半径60
+    (八轮: 半径30采不到38pt外的走向段——大学城南4号线南向段在38pt外, 出向被算成0致上4下12/7, 用户要上12/7下4).
     终端站=强出向(如22号线番禺广场=纯西-12); 贯通站两向抵消≈0(走tie-break).
     2026-10-23 七轮 用户: 番禺广场18/22共钉, 牌位须按走廊关联(22西出居左)."""
     vx = vy = 0.0
@@ -792,9 +793,7 @@ def gen_network(codes, report):
             if n == 2:
                 ok_pat = tag == 'V'
             elif n == 3:
-                y_sp = max(it[2] for it in items) - min(it[2] for it in items)
-                x_sp = max(it[1] for it in items) - min(it[1] for it in items)
-                ok_pat = tag in ('P3', 'P3D') or (tag == 'V' and y_sp < 6 and x_sp >= 12)
+                ok_pat = tag in ('P3', 'P3D')
             else:
                 ok_pat = tag == 'G4'
             if not ok_pat:
