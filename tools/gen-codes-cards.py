@@ -1305,13 +1305,8 @@ def gen_network(codes, report):
     # 组装 SVG
     path = os.path.join(LINES_DIR, 'network-全网.svg')
     t = open(path, encoding='utf-8').read()
-    # 应用徽标新位(与 _svg_src 同源, 按 span 逆序替换)
-    for bd in sorted(badges, key=lambda b: -b['span'][0]):
-        if abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01:
-            seg = t[bd['span'][0]:bd['span'][1]]
-            seg = seg.replace('translate(%s %s)' % (('%g' % bd['ox']), ('%g' % bd['oy'])),
-                              'translate(%.2f %.2f)' % (bd['tx'], bd['ty']), 1)
-            t = t[:bd['span'][0]] + seg + t[bd['span'][1]:]
+    # (徽标transform只在居中pass后统一应用一次——此处早应用会让居中pass的二次替换
+    #  按旧坐标匹配而静默失败, 居中从未真正落盘=2/5/13/14/18实测偏差10~23pt的根因)
     for gid in ('站圆', '换乘标记'):
         m = re.search(r'<g id="%s">.*?</g>' % gid, t, re.S)
         t = t[:m.start()] + t[m.end():]
@@ -1371,13 +1366,29 @@ def gen_network(codes, report):
                     centered.append('%s(%s)' % (bd['key'], tname))
             else:
                 report.setdefault('badge_center_fail', []).append('%s@%s' % (bd['key'], tname))
-        # 重写徽标 transform(以原始 span 定位, 用最新坐标)
-        for bd in sorted(badges, key=lambda b: -b['span'][0]):
-            if abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01:
-                seg5 = t[bd['span'][0]:bd['span'][1]]
-                seg5 = seg5.replace('translate(%s %s)' % (('%g' % bd['ox']), ('%g' % bd['oy'])),
-                                    'translate(%.2f %.2f)' % (bd['tx'], bd['ty']), 1)
-                t = t[:bd['span'][0]] + seg5 + t[bd['span'][1]:]
+        # 重写徽标 transform: ⚠️不能按原始span偏移切片——t已被改写(站圆删除/站名重排),
+        # span错位=替换落空(居中从未落盘、徽标停在重放位的根因)。改为按data-badge组全文重写,
+        # 同key多徽标(12号线双段)按出现序依次配对。
+        keyed = {}
+        for bd in badges:
+            keyed.setdefault(bd['key'], []).append(bd)
+        seen = {}
+
+        def _sub_badge(mm):
+            inner = mm.group(5)
+            km = re.search(r'font-size="25"[^>]*>([^<]+)<', inner)
+            key = km.group(1) if km else None
+            if key in keyed:
+                idx = seen.get(key, 0)
+                seen[key] = idx + 1
+                bd = keyed[key][idx] if idx < len(keyed[key]) else None
+                if bd and (abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01):
+                    return (mm.group(1) + '"translate(%.2f %.2f)' % (bd['tx'], bd['ty']) +
+                            mm.group(4) + '>' + inner + '</g>')
+            return mm.group(0)
+
+        t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
+                   _sub_badge, t, flags=re.S)
         report['badge_centered'] = centered
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
