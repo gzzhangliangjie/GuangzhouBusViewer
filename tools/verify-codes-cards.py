@@ -85,16 +85,20 @@ def check_card(path, label, gen):
             hit = any(gen._gap(box, (cx - w / 2, cy - h / 2, w, h)) < 0.5
                       for cx, cy, w, h, col, _texts in chips)
             if not hit:
-                hit = any(gen._gap(box, (rx, ry, rw, rh)) < 0.5 for rx, ry, rw, rh in rings)
+                # data-ring=胶囊形黑pass矩形, 外扩 pad+RIM 才是轮廓外缘
+                e = gen.RING_PAD + gen.RIM
+                hit = any(gen._gap(box, (rx - e, ry - e, rw + 2 * e, rh + 2 * e)) < 0.5
+                          for rx, ry, rw, rh in rings)
             if hit:
                 clashes.append(content)
     v5 = (label, 'V5', '牌不压站名', not clashes, '%d处' % len(clashes) + (':' + ','.join(clashes[:5]) if clashes else ''))
-    # V4 文本适配: 定宽格与实测文本取max + 分隔区 + 边距 <= 牌宽(独立于生成器重算)
+    # V4 文本适配: 定宽格与实测文本取max + 分隔区 + 边距 <= 牌宽(独立于生成器重算; APM=textLength压入不取max)
     overflow = []
     for cx, cy, w, h, col, texts in chips:
         if len(texts) >= 2:
             fs = texts[0][3]
-            need = gen.chip_need_w(texts[0][0], texts[1][0], fs)
+            card = abs(fs - gen.FONT_CARD) < 0.01 or abs(fs - gen.APM_FONT_CARD) < 0.01
+            need = gen.chip_need_w(texts[0][0], texts[1][0], card)
             if need > w + 0.05:
                 overflow.append('%s|%s(需%.1f>%.1f)' % (texts[0][0], texts[1][0], need, w))
     im = render(path, vb)

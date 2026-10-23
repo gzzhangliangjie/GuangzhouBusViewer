@@ -88,15 +88,16 @@ def parse_card(line):
 # ---------- 牌几何 ----------
 FONT = 6.0        # 牌字号(全网, 2026-10-23 三轮再缩)
 FONT_CARD = 6.5   # 单线卡字号
-APM_FONT = 5.1    # APM 专用更小字号(用户: 尤其APM要缩更小)
-APM_FONT_CARD = 5.5
+APM_FONT = 4.5    # APM 专用小字号+textLength压缩(用户: APM牌缩到与数字牌同大)
+APM_FONT_CARD = 4.9
 H = 10.0          # 牌高
 H_CARD = 11.0
 PADX = 2.0        # 左右内边距
 SEPW = 3.0        # 分隔区宽(含两侧空隙)
 GAP = 1.2         # 组内牌间缝
 CORR_HALF = 3.5   # 走廊 stroke-width 7 半宽(触线判定含线宽)
-RING_PAD = 2.5    # 多线组外描边圈的内衬(用户: 多线要在胶囊组外围多画一圈描边)
+RING_PAD = 2.5    # 多线组外描边圈的白衬宽(用户: 描边沿胶囊边缘, 非矩形框)
+RIM = 0.7         # 外圈黑边线宽
 INK = '#1a1a1a'
 
 # 文本宽度 = 渲染字体(微软雅黑 Bold)实测, 精确到 0.1px(APM 估算 13 vs 实测 17, 必须量测)
@@ -131,43 +132,53 @@ def part_w(txt, fs):
     return w
 
 
-def cell_a(line_disp, fs):
-    """线号格宽(定宽): 数字/GF 统一按 max(两位数字, GF); APM 独立(字母宽, 官图同款).
-    -> 1位与2位数字线号的牌总宽全等(2026-10-23 用户: 编号胶囊需保持一样大小)."""
+def cell_a(card):
+    """线号格宽(定宽, 按标准字号): 数字/GF/APM 统一 max(两位数字, GF)——APM 牌与数字牌同大
+    (2026-10-23 用户: APM 缩到跟其他站点数字胶囊一样大; 三字母用小字号+textLength 压入格)."""
+    std = FONT_CARD if card else FONT
+    return max(part_w('22', std), part_w('GF', std))
+
+
+def cell_b(card, serial=None):
+    std = FONT_CARD if card else FONT
+    w = part_w('00', std)   # 序号格定宽(两位, 标准字号)
+    if serial:
+        w = max(w, part_w(serial, std))
+    return w
+
+
+def chip_need_w(line_disp, serial, card):
+    """牌需求宽 = 定宽格 与 实测文本宽 取 max(兜住 CSV 支线序号 01-1 这类长内容);
+    APM 不取 max(文本压入标准格, textLength 负责压缩) -> 与数字牌全等宽."""
+    ca = cell_a(card)
     if line_disp == 'APM':
-        return part_w('APM', fs)
-    return max(part_w('22', fs), part_w('GF', fs))
+        return 2 * PADX + ca + SEPW + cell_b(card)
+    return 2 * PADX + max(ca, part_w(line_disp, FONT_CARD if card else FONT)) + SEPW + cell_b(card, serial)
 
 
-def cell_b(fs):
-    return part_w('00', fs)   # 序号格定宽(两位)
-
-
-def chip_need_w(line_disp, serial, fs):
-    """牌需求宽 = 定宽格 与 实测文本宽 取 max(兜住 CSV 支线序号 01-1 这类长内容)."""
-    return 2 * PADX + max(cell_a(line_disp, fs), part_w(line_disp, fs)) + SEPW + max(cell_b(fs), part_w(serial, fs))
-
-
-def chip_w(line_disp, serial, fs):
+def chip_w(line_disp, serial, card):
     import math
-    return math.ceil(chip_need_w(line_disp, serial, fs) * 2) / 2.0
+    return math.ceil(chip_need_w(line_disp, serial, card) * 2) / 2.0
 
 
-def chip_svg(cx, cy, w, h, color, line_disp, serial, fs):
-    """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中)."""
+def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
+    """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中);
+    APM 线号文本 textLength 压入标准格(牌与数字牌同大)."""
     x0, y0 = cx - w / 2, cy - h / 2
-    ca = cell_a(line_disp, fs)
+    ca = cell_a(card)
+    cb = cell_b(card)
     xline = x0 + PADX + ca / 2
     xsep = x0 + PADX + ca + SEPW / 2
-    xser = x0 + PADX + ca + SEPW + cell_b(fs) / 2
+    xser = x0 + PADX + ca + SEPW + cb / 2
     ty = cy + 0.06 * fs
+    tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
         f'<line x1="{xsep:.2f}" y1="{y0 + 1.2:.2f}" x2="{xsep:.2f}" y2="{y0 + h - 1.2:.2f}" '
         f'stroke="{color}" stroke-width="0.8"/>' +
-        f'<text x="{xline:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central" '
-        f'font-size="{fs}" font-weight="700" fill="#000000">{line_disp}</text>' +
+        f'<text x="{xline:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central"'
+        f'{tl} font-size="{fs}" font-weight="700" fill="#000000">{line_disp}</text>' +
         f'<text x="{xser:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central" '
         f'font-size="{fs}" font-weight="700" fill="#000000">{serial}</text>'
     )
@@ -409,7 +420,7 @@ def gen_line_card(line, codes, report):
         if key in codes:
             disp, serial = codes[key]
             fs = font_of(disp, True)
-            w = chip_w(disp, serial, fs)
+            w = chip_w(disp, serial, True)
             chips.append((nm, disp, serial, cx, cy, w, H_CARD, fs))
         else:
             kept.append((nm, cx, cy))
@@ -419,7 +430,7 @@ def gen_line_card(line, codes, report):
         f'<circle cx="{cx}" cy="{cy}" r="4.5" data-nm="{nm}" style="fill:#FFFFFF;stroke:{color};stroke-width:2"/>'
         for nm, cx, cy in kept)
     chips_svg = ''.join(
-        chip_svg(cx, cy, w, H_CARD, color, disp, serial, fs)
+        chip_svg(cx, cy, w, H_CARD, color, disp, serial, fs, True)
         for nm, disp, serial, cx, cy, w, h, fs in chips)
     t2 = t[:m.start()] + ('<g id="站圆">' + circles_svg + '</g>' if circles_svg else '') + t[m.end():]
     # 站名避让: 与牌相犯的标签沿钉->标方向外推(缩小后仍压的才推)
@@ -625,7 +636,7 @@ def gen_network(codes, report):
                 report['no_code'].append('全网/%s@%s' % (nm, ln))
                 continue
             disp, serial = codes[key]
-            items.append((ln, cx, cy, chip_w(disp, serial, font_of(disp, False))))
+            items.append((ln, cx, cy, chip_w(disp, serial, False)))
         if not items:
             continue
         tag, placed, fails, worst = place_station(items, segs_of)
@@ -671,26 +682,23 @@ def gen_network(codes, report):
     by_st = {}
     for nm, ln, cx, cy, w in chips:
         by_st.setdefault(nm, []).append((cx - w / 2, cy - H / 2, w, H))
-    rings = []          # (nm, rect)
-    obstacles = {}      # nm -> [rect]  多线站=圈矩形, 单线站=牌矩形
+    # 多线组外描边圈 = 沿胶囊边缘的包络(底图换乘胶囊同款双描边技法):
+    # 每个胶囊矩形先描粗黑边(2*(pad+RIM))再描细白边(2*pad), 相邻胶囊描边融合成连续外轮廓
+    def ring_rect(nm, pad):
+        rects = by_st[nm]
+        e = pad + RIM   # 轮廓外伸(黑边外缘)
+        return (min(r[0] for r in rects) - e, min(r[1] for r in rects) - e,
+                max(r[0] + r[2] for r in rects) - min(r[0] for r in rects) + 2 * e,
+                max(r[1] + r[3] for r in rects) - min(r[1] for r in rects) + 2 * e)
+
+    ring_pads = {}      # nm -> pad
+    obstacles = {}      # nm -> [rect]  多线站=轮廓外缘矩形, 单线站=牌矩形
     for nm, rects in by_st.items():
         if len(rects) >= 2:
-            x0 = min(r[0] for r in rects) - RING_PAD
-            y0 = min(r[1] for r in rects) - RING_PAD
-            x1 = max(r[0] + r[2] for r in rects) + RING_PAD
-            y1 = max(r[1] + r[3] for r in rects) + RING_PAD
-            ring = (x0, y0, x1 - x0, y1 - y0)
-            rings.append((nm, ring))
-            obstacles[nm] = [ring]
+            ring_pads[nm] = RING_PAD
+            obstacles[nm] = [ring_rect(nm, RING_PAD)]
         else:
             obstacles[nm] = rects
-    ring_bad = []
-    for nm, ring in rings:
-        for nm2, rects2 in obstacles.items():
-            if nm2 == nm:
-                continue
-            if any(_gap(ring, r2) < 0.3 for r2 in rects2):
-                ring_bad.append('%s x %s' % (nm, nm2))
 
     # 外圈冲突解析: 优先沿走廊推让邻站单牌(触线保持), 不行则逐档收缩本圈内衬
     def shift_station_chips(nm2):
@@ -708,44 +716,40 @@ def gen_network(codes, report):
                 touch = min(rect_seg_dist(rect, s) for s in segs_of[ln]) <= CORR_HALF + 0.01
                 if touch and all(_gap(rect, o) >= 0.3 for o in others):
                     chips[i] = (nm, ln, cx + d * ux, cy + d * uy, w)
+                    by_st[nm2] = [rect]
                     obstacles[nm2] = [rect]
                     return True
         return False
 
-    def shrink_ring(nm, ring_rect):
-        best = ring_rect
-        for pad in (1.8, 1.2, 0.8):
-            rects = by_st[nm]
-            r2 = (min(r[0] for r in rects) - pad, min(r[1] for r in rects) - pad,
-                  max(r[0] + r[2] for r in rects) - min(r[0] for r in rects) + 2 * pad,
-                  max(r[1] + r[3] for r in rects) - min(r[1] for r in rects) + 2 * pad)
-            ok = all(_gap(r2, o) >= 0.3 for nm3, rects3 in obstacles.items() if nm3 != nm
-                     for o in rects3)
-            if ok:
-                return r2
-            best = r2
-        return best   # 收到底仍犯: 记录
+    def clear_of_others(nm, rect):
+        return all(_gap(rect, r) >= 0.3 for nm2 in obstacles if nm2 != nm for r in obstacles[nm2])
 
     resolved, leftover = [], []
-    for nm, ring in rings:
-        conflicts = [nm2 for nm2 in obstacles if nm2 != nm and any(_gap(ring, r) < 0.3 for r in obstacles[nm2])]
+    for nm in list(ring_pads):
+        rect = obstacles[nm][0]
+        conflicts = [nm2 for nm2 in obstacles if nm2 != nm and any(_gap(rect, r) < 0.3 for r in obstacles[nm2])]
         if not conflicts:
             continue
         fixed = False
         for nm2 in conflicts:
             if not shift_station_chips(nm2):
                 continue
-            if all(_gap(ring, r) >= 0.3 for nm2b in obstacles if nm2b != nm for r in obstacles[nm2b]):
+            if clear_of_others(nm, rect):
                 fixed = True
                 resolved.append('%s:推让%s' % (nm, nm2))
                 break
         if not fixed:
-            r2 = shrink_ring(nm, ring)
-            rings[rings.index((nm, ring))] = (nm, r2)
-            obstacles[nm] = [r2]
-            if all(_gap(r2, r) >= 0.3 for nm2b in obstacles if nm2b != nm for r in obstacles[nm2b]):
-                resolved.append('%s:收缩' % nm)
-            else:
+            for pad in (1.8, 1.2, 0.8):
+                r2 = ring_rect(nm, pad)
+                if clear_of_others(nm, r2):
+                    ring_pads[nm] = pad
+                    obstacles[nm] = [r2]
+                    resolved.append('%s:收缩%.1f' % (nm, pad))
+                    fixed = True
+                    break
+            if not fixed:
+                ring_pads[nm] = 0.8
+                obstacles[nm] = [ring_rect(nm, 0.8)]
                 leftover.append(nm)
     report['ring_fix'] = resolved
     report['ring_overlaps'] = leftover
@@ -765,18 +769,26 @@ def gen_network(codes, report):
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                    lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
-    rings_svg = ''.join(
-        f'<rect x="{r[0]:.2f}" y="{r[1]:.2f}" width="{r[2]:.2f}" height="{r[3]:.2f}" rx="5" '
-        f'data-ring="{nm}" fill="#FFFFFF" stroke="{INK}" stroke-width="1.4"/>'
-        for nm, r in rings)
+    # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
+    black_parts, white_parts = [], []
+    for nm, pad in ring_pads.items():
+        for x, y, w, h in by_st[nm]:
+            black_parts.append(
+                f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{H / 2:.2f}" '
+                f'data-ring="{nm}" fill="none" stroke="{INK}" stroke-width="{2 * (pad + RIM):.2f}"/>')
+            white_parts.append(
+                f'<rect x="{x:.2f}" y="{y:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{H / 2:.2f}" '
+                f'fill="none" stroke="#FFFFFF" stroke-width="{2 * pad:.2f}"/>')
+    rings_svg = ''.join(black_parts) + ''.join(white_parts)
     chips_svg = ''.join(
         chip_svg(cx, cy, w, H, color_of[ln], codes[(nm, ln)][0], codes[(nm, ln)][1],
-                 font_of(codes[(nm, ln)][0], False))
+                 font_of(codes[(nm, ln)][0], False), False)
         for nm, ln, cx, cy, w in chips)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t, re.S)
     t = t[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + rings_svg + chips_svg + '</g>' + t[mn.end():]
     open(os.path.join(LINES_DIR, 'network-全网.codes.svg'), 'w', encoding='utf-8').write(
-        expand_viewbox(t, [r for _, r in rings] + [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
+        expand_viewbox(t, [r for rs in obstacles.values() for r in rs]
+                       + [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
 
     by_station = {}
     for nm, ln, cx, cy, w in chips:

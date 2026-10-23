@@ -146,20 +146,19 @@
   },
   "APM线": {
    "moved": 3,
-   "max_shift": 5.0,
+   "max_shift": 3.5,
    "relaxed": [],
    "unresolved": []
   },
   "全网": {
-   "moved": 105,
-   "max_shift": 20.0,
+   "moved": 108,
+   "max_shift": 21.0,
    "relaxed": [],
    "unresolved": []
   }
  },
  "ring_fix": [
-  "体育西路:收缩",
-  "珠江新城:收缩",
+  "珠江新城:收缩1.8",
   "天河客运站:推让植物园"
  ],
  "ring_overlaps": [],
