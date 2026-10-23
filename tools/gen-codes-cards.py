@@ -1201,16 +1201,16 @@ def gen_network(codes, report):
         ln = _ln_of_key(bd['key'])
         bw, bh = 80 * bd['sc'], 43 * bd['sc']
         rect = (bd['tx'], bd['ty'], bw, bh)
-        # 十七轮末 用户定稿间距规则: 最小间距1pt(硬底线, 贴着也算违规)+标准间距8pt(软目标,
-        # 能标准就标准, 不行挤到>=1pt); 徽标=已验收终稿, 仅真违规(gap<1)做最小位移, 逐枚汇报;
-        # 歧义判定(到他线走廊边近于到本线边) -> 贴本体网格重放(用户确认: 10号线适用)
+        # 十八轮定稿: 徽标位=底图位(终点公式/斜线居中/环线网格的已验收终稿——延长线规则
+        # 本身就含居中: 横向终点=横向延长线上+垂直轴居中于走廊, 纵向反之, 斜线=标签同x居中);
+        # 仅 ①真碰撞(gap<1)最小挤让 ②用户逐枚确认的歧义重放({'1','2','10'}), 其余一律原位
         BADGE_MIN = 1.0
         if ln:
             viol_gap = min((_gap(rect, r) for r in chip_rects_all + ring_rects_all), default=9e9)
             own_ed0 = min((rect_seg_dist(rect, s2) for s2 in segs_of[ln]), default=9e9) - EDGE
             oth_ed0 = min((rect_seg_dist(rect, s2) for ln2 in ORDER if ln2 != ln
                            for s2 in segs_of[ln2] if rect_seg_dist(rect, s2) < 150), default=9e9) - EDGE
-            ambiguous0 = oth_ed0 < own_ed0
+            ambiguous0 = oth_ed0 < own_ed0 and bd['key'] in ('1', '2', '10')
             if viol_gap < BADGE_MIN:
                 import math as _m3
                 best3 = None   # (disp, -min_gap, dx, dy, r2)
@@ -1325,71 +1325,31 @@ def gen_network(codes, report):
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                    lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
-    # 徽标居中对齐(十七轮 用户: 2/5/12/13/14/18居中没解决——标签被重排后徽标没跟):
-    # 斜线终点规则=徽标x与终点标签中心x同轴居中, y贴标签上/下方(gap=3, 保持原侧)
-    centered = []
-    lm2 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-    if lm2:
-        lab_pos = {}
-        for tx3 in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', lm2.group(1)):
-            nm4 = tx3.group(4)
-            if not nm4.isascii() and nm4 not in lab_pos:
-                fs4 = float(tx3.group(3))
-                lab_pos[nm4] = (float(tx3.group(1)), float(tx3.group(2)), fs4)
-        chip_rings4 = [(cc[2] - cc[4] / 2, cc[3] - H / 2, cc[4], H) for cc in chips] + \
-                      [r for rs4 in obstacles.values() for r in rs4]
-        for bd in badges:
-            ln = _ln_of_key(bd['key'])
-            if not ln:
-                continue
-            ocx4, ocy4 = bd['ox'] + 40 * bd['sc'], bd['oy'] + 21.5 * bd['sc']
-            tpts = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
-            if not tpts:
-                continue
-            tp4 = min(tpts, key=lambda p: (p[1] - ocx4) ** 2 + (p[2] - ocy4) ** 2)
-            tpx4, tpy4 = tp4[1], tp4[2]
-            # 终点站名(取该钉站名)
-            tname = next((nm5 for nm5, lst in pins.items() if any(p[0] == ln and p[1] == tpx4 and p[2] == tpy4 for p in lst)), None)
-            if not tname or tname not in lab_pos:
-                continue
-            lx4, ly4, lfs4 = lab_pos[tname]
-            bw4, bh4 = 80 * bd['sc'], 43 * bd['sc']
-            bcx4, bcy4 = bd['tx'] + bw4 / 2, bd['ty'] + bh4 / 2
-            above = bcy4 < ly4
-            nx4 = lx4 - bw4 / 2
-            ny4 = (ly4 - lfs4 * 0.95 - 3 - bh4) if above else (ly4 + 3)
-            r4 = (nx4, ny4, bw4, bh4)
-            if (all(_gap(r4, r) >= BADGE_MIN for r in chip_rings4) and
-                    ((r4[0] - bd['ox']) ** 2 + (r4[1] - bd['oy']) ** 2) ** 0.5 <= 120):
-                if abs(nx4 - bd['tx']) > 0.05 or abs(ny4 - bd['ty']) > 0.05:
-                    bd['tx'], bd['ty'] = nx4, ny4
-                    centered.append('%s(%s)' % (bd['key'], tname))
-            else:
-                report.setdefault('badge_center_fail', []).append('%s@%s' % (bd['key'], tname))
-        # 重写徽标 transform: ⚠️不能按原始span偏移切片——t已被改写(站圆删除/站名重排),
-        # span错位=替换落空(居中从未落盘、徽标停在重放位的根因)。改为按data-badge组全文重写,
-        # 同key多徽标(12号线双段)按出现序依次配对。
-        keyed = {}
-        for bd in badges:
-            keyed.setdefault(bd['key'], []).append(bd)
-        seen = {}
+    # 徽标重写 transform(用户: 终点徽标的延长线规范去哪了——全量居中pass把19枚徽标全部
+    # 改成"标签上下居中", 覆盖了底图按终点公式/斜线居中/环线网格摆好的已验收位, 已废;
+    # 徽标位置=底图位+真碰撞挤让+用户确认的2/10号线歧义重放, 只做写入):
+    # ⚠️不能按原始span偏移切片——t已被改写(站圆删除/站名重排), span错位=替换落空。
+    # 按data-badge组全文正则重写(key配对, 12号线双段按出现序依次配对)。
+    keyed = {}
+    for bd in badges:
+        keyed.setdefault(bd['key'], []).append(bd)
+    seen = {}
 
-        def _sub_badge(mm):
-            inner = mm.group(5)
-            km = re.search(r'font-size="25"[^>]*>([^<]+)<', inner)
-            key = km.group(1) if km else None
-            if key in keyed:
-                idx = seen.get(key, 0)
-                seen[key] = idx + 1
-                bd = keyed[key][idx] if idx < len(keyed[key]) else None
-                if bd and (abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01):
-                    return (mm.group(1) + '"translate(%.2f %.2f)' % (bd['tx'], bd['ty']) +
-                            mm.group(4) + '>' + inner + '</g>')
-            return mm.group(0)
+    def _sub_badge(mm):
+        inner = mm.group(5)
+        km = re.search(r'font-size="25"[^>]*>([^<]+)<', inner)
+        key = km.group(1) if km else None
+        if key in keyed:
+            idx = seen.get(key, 0)
+            seen[key] = idx + 1
+            bd = keyed[key][idx] if idx < len(keyed[key]) else None
+            if bd and (abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01):
+                return (mm.group(1) + '"translate(%.2f %.2f)' % (bd['tx'], bd['ty']) +
+                        mm.group(4) + '>' + inner + '</g>')
+        return mm.group(0)
 
-        t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
-                   _sub_badge, t, flags=re.S)
-        report['badge_centered'] = centered
+    t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
+               _sub_badge, t, flags=re.S)
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
     for nm, pad in ring_pads.items():
