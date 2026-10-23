@@ -285,7 +285,7 @@ def expand_viewbox(t, chip_rects, margin=2.0):
 # ---------- 站名标签避让(编号版): 牌压名 -> 沿钉→标方向外推, 校验走廊/邻标净距 ----------
 LABEL_CHIP_GAP = 1.0    # 标签-牌净距下限
 LABEL_CORR_GAP = 1.0    # 标签-走廊净距下限(推移后不得新压线)
-LABEL_LBL_GAP = 0.3     # 标签-标签净距下限(推移后)
+LABEL_LBL_GAP = 1.5     # 标签-标签净距下限(十五轮 0.3->1.5: 冼村与妇儿中心标签距1.6"合法但太近"被用户报)
 
 
 def parse_labels(svg_text):
