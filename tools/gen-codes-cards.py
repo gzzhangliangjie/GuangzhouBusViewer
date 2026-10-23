@@ -1183,6 +1183,11 @@ def gen_network(codes, report):
                             continue
                         if any(_gap(r2, r2b) < 3 for _k2, r2b in badge_rects):
                             continue
+                        # 走廊硬约束(十八轮末 用户: 1/2/10/11/22跟路线叠一块——所有移动pass
+                        # 都没查走廊, "可盖走廊"只适用于终点延长线自然位, 挪出的新位置必须
+                        # 不压任何走廊描边)
+                        if min((rect_seg_dist(r2, s2) for s2 in own_segs + other_segs), default=9e9) < 3:
+                            continue
                         own_ed = min((rect_seg_dist(r2, s2) for s2 in own_segs), default=9e9) - EDGE
                         oth_ed = min((rect_seg_dist(r2, s2) for s2 in other_segs), default=9e9) - EDGE
                         # 硬底线: 不压他线描边(>=1) + 本线侧强偏好(own_ed<=oth_ed+25, 容差容纳
@@ -1197,57 +1202,68 @@ def gen_network(codes, report):
                             best = (score, r2)
         return best[1] if best else None
 
+    # 十八轮末定稿: 歧义重放废除(用户: 歧义判定应以避让后位置为准, 且1/2/10/22被挪到
+    # 压线位=根因)。徽标流程=底图位→延长线正交居中→全约束最小位移。
+    # 全约束(通用规则, 所有元件遵守): ①不压走廊描边(所有线, 距离>=3)
+    # ②不压牌/圈(>=1pt) ③不压其他徽标(>=1pt)
+    BADGE_MIN = 1.0
+
+    own_segs_map = segs_of  # 复用外层
+
+    def _badge_legal(r2, ln):
+        # 底图规范: 徽标有底色可盖走廊(ignore_corridor=True)——不查走廊;
+        # 仅查: 牌/圈(>=1pt) + 其他徽标(>=1pt)
+        return (all(_gap(r2, r) >= BADGE_MIN for r in chip_rects_all + ring_rects_all) and
+                all(_gap(r2, r2b) >= BADGE_MIN for _k6, r2b in badge_rects))
+
     for bd in badges:
         ln = _ln_of_key(bd['key'])
         bw, bh = 80 * bd['sc'], 43 * bd['sc']
         rect = (bd['tx'], bd['ty'], bw, bh)
-        # 十八轮定稿: 徽标位=底图位(终点公式/斜线居中/环线网格的已验收终稿——延长线规则
-        # 本身就含居中: 横向终点=横向延长线上+垂直轴居中于走廊, 纵向反之, 斜线=标签同x居中);
-        # 仅 ①真碰撞(gap<1)最小挤让 ②用户逐枚确认的歧义重放({'1','2','10'}), 其余一律原位
-        BADGE_MIN = 1.0
         if ln:
-            viol_gap = min((_gap(rect, r) for r in chip_rects_all + ring_rects_all), default=9e9)
-            own_ed0 = min((rect_seg_dist(rect, s2) for s2 in segs_of[ln]), default=9e9) - EDGE
-            oth_ed0 = min((rect_seg_dist(rect, s2) for ln2 in ORDER if ln2 != ln
-                           for s2 in segs_of[ln2] if rect_seg_dist(rect, s2) < 150), default=9e9) - EDGE
-            ambiguous0 = oth_ed0 < own_ed0 and bd['key'] in ('1', '2', '10')
-            if viol_gap < BADGE_MIN:
-                import math as _m3
-                best3 = None   # (disp, -min_gap, dx, dy, r2)
-                for k3 in range(16):
-                    ra = _m3.radians(k3 * 22.5)
-                    ux, uy = _m3.cos(ra), _m3.sin(ra)
-                    for step in range(1, 41):
-                        dd = step * 0.5
-                        r2 = (rect[0] + ux * dd, rect[1] + uy * dd, bw, bh)
-                        mg = min((_gap(r2, r) for r in chip_rects_all + ring_rects_all), default=9e9)
-                        if mg < BADGE_MIN:
-                            continue
-                        if any(_gap(r2, r2b) < BADGE_MIN for _k4, r2b in badge_rects):
-                            continue
-                        cand = (dd, -min(mg, BADGE_GAP), ux * dd, uy * dd, r2)
-                        if best3 is None or cand < best3:
-                            best3 = cand
-                        break   # 该方向首个达标即该方向最优(再远位移更大)
-                if best3 is not None:
-                    dd, nmg, ddx, ddy, r2 = best3
-                    bd['tx'], bd['ty'] = r2[0], r2[1]
-                    rect = r2
-                    badge_moves.append('%s:挤让%.1fpt(间隙%.1f->%.1f)' % (bd['key'], dd, viol_gap, -nmg))
+            # ①底图位 (用户: 原来的坐标没问题的)
+            # ②延长线正交居中(只动正交轴)
+            bw5, bh5 = bw, bh
+            bcx5, bcy5 = bd['tx'] + bw5 / 2, bd['ty'] + bh5 / 2
+            tpts5 = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
+            if tpts5:
+                tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - bcy5) ** 2)
+                tpx5, tpy5 = tp5[1], tp5[2]
+                tx5, ty5 = corridor_tangent(segs_of[ln], tpx5, tpy5)
+                if abs(tx5) > abs(ty5) * 1.5:
+                    bd['ty'] = tpy5 - bh5 / 2   # 横向走廊→y=走廊y
+                elif abs(ty5) > abs(tx5) * 1.5:
+                    bd['tx'] = tpx5 - bw5 / 2   # 纵向走廊→x=走廊x
+                # 45°斜线由标签居中pass处理(下方)
+                rect = (bd['tx'], bd['ty'], bw, bh)
+            # ③全约束检查: 违规→最小位移(16方位0.5pt步进, 首个全合法位)
+            if not _badge_legal(rect, ln):
+                import math as _m7
+                best7 = None
+                for k7 in range(16):
+                    ra = _m7.radians(k7 * 22.5)
+                    ux7, uy7 = _m7.cos(ra), _m7.sin(ra)
+                    for step7 in range(1, 61):
+                        dd7 = step7 * 0.5
+                        r7 = (rect[0] + ux7 * dd7, rect[1] + uy7 * dd7, bw, bh)
+                        if _badge_legal(r7, ln):
+                            cand7 = (dd7, r7)
+                            if best7 is None or cand7[0] < best7[0]:
+                                best7 = cand7
+                            break
+                if best7 is not None:
+                    rect = best7[1]
+                    bd['tx'], bd['ty'] = rect[0], rect[1]
+                    badge_moves.append('%s:位移%.1fpt' % (bd['key'], best7[0]))
                 else:
-                    report.setdefault('badge_collisions', []).append('%s号线徽标 gap=%.1f 无最小解' % (bd['key'], viol_gap))
-            elif ambiguous0:
-                ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
-                tpx, tpy = min((((p[1] - ocx) ** 2 + (p[2] - ocy) ** 2, p[1], p[2])
-                                for nm3, lst in pins.items() for p in lst if p[0] == ln),
-                               default=(0, ocx, ocy))[1:3]
-                r3 = _badge_grid(ln, ocx, ocy, tpx, tpy, bw, bh)
-                if r3 is not None:
-                    rect = r3
-                    bd['tx'], bd['ty'] = r3[0], r3[1]
-                    badge_moves.append('%s:歧义重放' % bd['key'])
-                else:
-                    report.setdefault('badge_collisions', []).append('%s号线徽标 歧义但无合法网格位' % bd['key'])
+                    # 全方位无解→放弃居中回到底图位试
+                    rect0 = (bd['ox'], bd['oy'], bw, bh)
+                    if _badge_legal(rect0, ln):
+                        rect = rect0
+                        bd['tx'], bd['ty'] = bd['ox'], bd['oy']
+                        badge_moves.append('%s:回底图位' % bd['key'])
+                    else:
+                        badge_moves.append('%s:无合法位保持' % bd['key'])
         badge_rects.append((bd['key'], rect))
         continue
         ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
