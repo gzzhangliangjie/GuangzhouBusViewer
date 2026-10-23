@@ -343,6 +343,16 @@ def _clear_rect(rect, others, gap):
     return True
 
 
+def _seg_closest(rect, seg):
+    """矩形中心在线段上的投影点(clamp进段)——走廊推让的方向基准."""
+    ax, ay, bx2, by2 = seg
+    cx, cy = rect[0] + rect[2] / 2, rect[1] + rect[3] / 2
+    dx, dy = bx2 - ax, by2 - ay
+    dd = dx * dx + dy * dy
+    t = 0.0 if dd == 0 else max(0.0, min(1.0, ((cx - ax) * dx + (cy - ay) * dy) / dd))
+    return (ax + t * dx, ay + t * dy)
+
+
 def _gap(r1, r2):
     """两矩形净距(重叠为负, 量级=角部侵入深度).
     ⚠️ox 的 r2 x1 = r2[0]+r2[2](宽)——二~六轮曾误写 r2[3](高), 所有净距判定被扭曲
@@ -371,37 +381,51 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
     import math as _m
     for nm, g in order:
         box = cur_boxes[nm]
-        if _clear_rect(box, all_chip_rects, LABEL_CHIP_GAP):
-            continue   # 本就不压(含邻站牌)
-        # 推移基准方向: 远离最近的相犯牌; 无相犯牌信息时用 钉->标 方向
         bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
-        viol = min(all_chip_rects, key=lambda r: _gap(box, r))
-        if viol is not None:
-            vcx, vcy = viol[0] + viol[2] / 2, viol[1] + viol[3] / 2
+        # ⚠️必须精确距离筛选——中点±70预筛会漏掉中点在远处的长线段(3号线竖段中点距嘉禾望岗
+        # 标签223pt但线段本体贴着标签), 十一轮标签被推上走廊的根因
+        near_segs = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
+        corr_viol = min(near_segs, key=lambda s: rect_seg_dist(box, s)) if near_segs else None
+        corr_d = rect_seg_dist(box, corr_viol) if corr_viol is not None else 9e9
+        chip_viol = min(all_chip_rects, key=lambda r: _gap(box, r), default=None)
+        chip_d = _gap(box, chip_viol) if chip_viol is not None else 9e9
+        if chip_d >= LABEL_CHIP_GAP and corr_d >= LABEL_CORR_GAP:
+            continue   # 牌与走廊都净(十一轮: 走廊违规也触发——底图遗留的天河南压1号线边0.7pt)
+        # 推移基准方向: 远离最近违规者(牌或走廊线段的最近点)
+        if chip_d < corr_d and chip_viol is not None:
+            vcx, vcy = chip_viol[0] + chip_viol[2] / 2, chip_viol[1] + chip_viol[3] / 2
             dx, dy = bcx - vcx, bcy - vcy
+        elif corr_viol is not None:
+            q = _seg_closest(box, corr_viol)
+            dx, dy = bcx - q[0], bcy - q[1]
         else:
             pin = pin_by_name.get(nm)
             dx, dy = (bcx - pin[0], bcy - pin[1]) if pin else (0.0, -1.0)
         l = (dx * dx + dy * dy) ** 0.5 or 1.0
         bx, by = dx / l, dy / l
-        near_segs = [s for s in segs
-                     if abs((s[0] + s[2]) / 2 - bcx) < 70 and abs((s[1] + s[3]) / 2 - bcy) < 70]
         near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
                      and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
         done = False
         relax = None
-        # 兜底链: 全约束 -> 放标签互斥 -> 放走廊净距(牌不压名优先, 2026-10-23 用户主诉)
+        # 兜底链: 全约束 -> 放标签互斥 -> 放走廊净距(十一轮改: 末档不做首个接受——约束一放
+        # 原位0.5pt处即"合规"被秒接受=没动, 改全角度×全程取走廊净距最大位, 体育中心南先例)
         for relax_lbl, relax_corr in ((False, False), (True, False), (True, True)):
+            best = None   # (corridor_clearance, d, ux, uy, r2)  末档用
             for ang in (0, 35, -35, 70, -70, 105, -105, 180):
                 ra = _m.radians(ang)
                 ca_, sa_ = _m.cos(ra), _m.sin(ra)
                 ux, uy = bx * ca_ - by * sa_, bx * sa_ + by * ca_
-                for step in range(1, 49):   # 上限24px: 品字外圈宽~51px, 标签逃出需>16px
+                for step in range(1, 57):   # 上限28px: 品字外圈宽~51px/体育中心南出1号线口袋需24.5px
                     d = step * 0.5
                     r2 = (box[0] + ux * d, box[1] + uy * d, box[2], box[3])
                     if not _clear_rect(r2, all_chip_rects, LABEL_CHIP_GAP):
                         continue
-                    if not relax_corr and not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs):
+                    if relax_corr:
+                        cd = min((rect_seg_dist(r2, s) for s in near_segs), default=9e9)
+                        if near_segs and (best is None or cd > best[0]):
+                            best = (cd, d, ux, uy, r2)
+                        continue
+                    if not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs):
                         continue
                     if not relax_lbl and not _clear_rect(r2, near_lbls, LABEL_LBL_GAP):
                         continue
@@ -411,12 +435,22 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                     cur_boxes[nm] = r2
                     moved.append((nm, d, ang))
                     done = True
-                    relax = 'lbl' if (relax_lbl and not relax_corr) else ('corr' if relax_corr else None)
+                    relax = 'lbl' if relax_lbl else None
                     break
                 if done:
                     break
             if done:
                 break
+            if relax_corr and best is not None:
+                cd, d, ux, uy, r2 = best
+                if cd > corr_d + 0.05:   # 比原位更优才动
+                    for l2 in g:
+                        l2['x'] = round(l2['x'] + ux * d, 2)
+                        l2['y'] = round(l2['y'] + uy * d, 2)
+                    cur_boxes[nm] = r2
+                    moved.append((nm, d, 0))
+                    done = True
+                    relax = 'corr'
         if done and relax:
             relaxed.append('%s(%s)' % (nm, relax))
         if not done:
@@ -438,8 +472,7 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 continue   # 已对齐(十轮: 阈值2->1, 斜走廊站标签45°摆位两轴都偏1-2pt)
             axis_y = abs(dx) >= abs(dy)   # 侧置->对y, 上下置->对x
             g = groups[nm]
-            near_segs = [s for s in segs
-                         if abs((s[0] + s[2]) / 2 - bcx) < 70 and abs((s[1] + s[3]) / 2 - bcy) < 70]
+            near_segs = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
             near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
                          and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
             for jitter in (0, 2, -2, 4, -4):
@@ -465,12 +498,50 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 cur_boxes[nm] = r2
                 aligned.append(nm)
                 break
+
+    # 逼近pass(十一轮 用户: 天河南文字离站点过远): 标签与自牌组净距>8pt时沿连线贴近,
+    # 逐步0.5pt直到净距<=2pt或任一约束(走廊/邻标/他牌)顶住
+    approached = []
+    if align_centers:
+        for nm, (gcx2, gcy2) in align_centers.items():
+            if nm not in cur_boxes or nm not in chips_by_station:
+                continue
+            box = cur_boxes[nm]
+            bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
+            own = chips_by_station[nm]
+            gap0 = min(_gap(box, r) for r in own)
+            if gap0 <= 8.0:
+                continue
+            ux, uy = gcx2 - bcx, gcy2 - bcy
+            l = (ux * ux + uy * uy) ** 0.5 or 1.0
+            ux, uy = ux / l, uy / l
+            g = groups[nm]
+            near_segs = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
+            near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
+                         and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
+            others = [r for nm3, lst in chips_by_station.items() if nm3 != nm for r in lst]
+            moved_d = 0.0
+            while gap0 - moved_d > 2.0:
+                d2 = moved_d + 0.5
+                r2 = (box[0] + ux * d2, box[1] + uy * d2, box[2], box[3])
+                if (not _clear_rect(r2, others, LABEL_CHIP_GAP) or
+                        not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) or
+                        not _clear_rect(r2, near_lbls, LABEL_LBL_GAP)):
+                    break
+                moved_d = d2
+            if moved_d >= 1.0:
+                for l2 in g:
+                    l2['x'] = round(l2['x'] + ux * moved_d, 2)
+                    l2['y'] = round(l2['y'] + uy * moved_d, 2)
+                cur_boxes[nm] = (box[0] + ux * moved_d, box[1] + uy * moved_d, box[2], box[3])
+                approached.append('%s:%.1f' % (nm, moved_d))
     rep = report.setdefault('label_nudge', {}).setdefault(tag, {})
     rep['moved'] = len(moved)
     rep['max_shift'] = max((d for _, d, _ in moved), default=0)
     rep['relaxed'] = relaxed
     rep['unresolved'] = unresolved
     rep['aligned'] = aligned
+    rep['approached'] = approached
     # 重组 innerHTML
     emit = []
     grouped_ids = {id(l2) for g in groups.values() for l2 in g}
@@ -926,6 +997,16 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
+    # APM九站标签统一7.5px(十一轮 用户: APM站点文字大小不一——底图密集区6px档在编号版不齐;
+    # 先改盘再解析, 几何校验/发射同口径)
+    apm_names = {nm for nm, lst in pins.items() if any(ln == 'APM线' for ln, _x, _y in lst)}
+    lm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+    if lm:
+        seg2 = lm.group(1)
+        for nm in apm_names:
+            seg2 = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>%s</text>)' % re.escape(nm),
+                          lambda mm: mm.group(1) + '7.5' + mm.group(2), seg2)
+        t = t[:lm.start(1)] + seg2 + t[lm.end(1):]
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
