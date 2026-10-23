@@ -351,9 +351,11 @@ def _gap(r1, r2):
     return max(-ox if ox < 0 else 0, -oy if oy < 0 else 0)
 
 
-def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag):
+def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, align_centers=None):
     """编号版站名避让: 与牌相犯(<净距)的标签组沿 钉->标 方向外推(0.5px步进, ±35°/±70°轮换),
     推移校验: 全部牌净距>=LABEL_CHIP_GAP, 走廊净距>=LABEL_CORR_GAP, 其他标签>=LABEL_LBL_GAP.
+    对齐pass(七轮 用户: 文字位置跟序号胶囊的中心没对齐): 多牌组标签按主偏移轴吸附组心
+    (侧置->y对齐组心y / 上下置->x对齐组心x), 带同套净距校验, 放不下则保持原位.
     返回新的站名标注组 innerHTML(全部文本, 位置按需更新)."""
     labels, m = parse_labels(svg_text)
     if not labels:
@@ -416,11 +418,55 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag):
             relaxed.append('%s(%s)' % (nm, relax))
         if not done:
             unresolved.append(nm)
+
+    # 对齐pass: 多牌组(组形变了)的标签吸附组心(单牌站组心=钉=底图引擎原对齐, 不动)
+    aligned = []
+    if align_centers:
+        for nm, (gcx, gcy) in align_centers.items():
+            if nm not in cur_boxes:
+                continue
+            box = cur_boxes[nm]
+            if not _clear_rect(box, all_chip_rects, LABEL_CHIP_GAP):
+                continue   # 仍相犯的以避让结果为准
+            bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
+            dx, dy = bcx - gcx, bcy - gcy
+            if max(abs(dx), abs(dy)) < 2:
+                continue   # 已对齐
+            axis_y = abs(dx) >= abs(dy)   # 侧置->对y, 上下置->对x
+            g = groups[nm]
+            near_segs = [s for s in segs
+                         if abs((s[0] + s[2]) / 2 - bcx) < 70 and abs((s[1] + s[3]) / 2 - bcy) < 70]
+            near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
+                         and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
+            for jitter in (0, 2, -2, 4, -4):
+                if axis_y:
+                    d = gcy - bcy + jitter
+                    if abs(d) < 1:
+                        break
+                    r2 = (box[0], box[1] + d, box[2], box[3])
+                else:
+                    d = gcx - bcx + jitter
+                    if abs(d) < 1:
+                        break
+                    r2 = (box[0] + d, box[1], box[2], box[3])
+                if (not _clear_rect(r2, all_chip_rects, LABEL_CHIP_GAP) or
+                        not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) or
+                        not _clear_rect(r2, near_lbls, LABEL_LBL_GAP)):
+                    continue
+                for l2 in g:
+                    if axis_y:
+                        l2['y'] = round(l2['y'] + (gcy - bcy + jitter), 2)
+                    else:
+                        l2['x'] = round(l2['x'] + (gcx - bcx + jitter), 2)
+                cur_boxes[nm] = r2
+                aligned.append(nm)
+                break
     rep = report.setdefault('label_nudge', {}).setdefault(tag, {})
     rep['moved'] = len(moved)
     rep['max_shift'] = max((d for _, d, _ in moved), default=0)
     rep['relaxed'] = relaxed
     rep['unresolved'] = unresolved
+    rep['aligned'] = aligned
     # 重组 innerHTML
     emit = []
     grouped_ids = {id(l2) for g in groups.values() for l2 in g}
@@ -873,7 +919,10 @@ def gen_network(codes, report):
     for nm, lst in pins.items():
         pin_center[nm] = (sum(p[1] for p in lst) / len(lst), sum(p[2] for p in lst) / len(lst))
     all_segs = [s for ln in ORDER for s in segs_of[ln]]
-    new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网')
+    # 对齐组心: 多牌站(组形相对底图标记变了)标签吸附新组心
+    align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
+                     for nm, rs in obstacles.items() if len(by_st.get(nm, [])) >= 2}
+    new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                    lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
