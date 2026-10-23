@@ -29,9 +29,9 @@
  "layout_tags": {
   "G4": 1,
   "S": 246,
-  "P3": 4,
-  "V": 64,
-  "P3D": 3
+  "V": 67,
+  "P3D": 2,
+  "P3": 2
  },
  "layout_violations": [],
  "csv_vs_master": [],
@@ -151,7 +151,7 @@
    "unresolved": []
   },
   "全网": {
-   "moved": 130,
+   "moved": 129,
    "max_shift": 21.0,
    "relaxed": [],
    "unresolved": []

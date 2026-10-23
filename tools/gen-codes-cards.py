@@ -140,25 +140,33 @@ def part_w(txt, fs):
     return w
 
 
-def cell_a(card):
-    """线号格宽(定宽, 按标准字号): 数字/GF/APM 统一 max(两位数字, GF)——APM 牌与数字牌同大
-    (2026-10-23 用户: APM 缩到跟其他站点数字胶囊一样大; 三字母用小字号+textLength 压入格)."""
+def cell_a_std(card):
+    """定宽线号格(牌宽计算基准, 恒 max(两位数字, GF))."""
     std = FONT_CARD if card else FONT
     return max(part_w('22', std), part_w('GF', std))
 
 
+def cell_a(line_disp, card):
+    """竖线位置(线号格宽): 牌外框恒宽不变, 只有竖线随线号位数自适应——
+    1位数字线号窄格(文本+1.9呼吸, 2026-10-23 七轮 用户: 竖线左移给序号让空间),
+    2位/GF/APM 维持定宽格(APM 压缩基准不变); 省出的宽度由序号格吸收."""
+    std = FONT_CARD if card else FONT
+    if len(line_disp) == 1 and line_disp.isdigit():
+        return part_w(line_disp, std) + 1.9
+    return cell_a_std(card)
+
+
 def cell_b(card):
-    """序号格定宽(两位, 标准字号)——支线序号 01-1 也压入此格(2026-10-23 五轮: 全牌同大)."""
+    """序号格定宽(两位, 标准字号)——牌宽计算的基准值(渲染时序号格=牌宽-边距-线号格-分隔区)."""
     std = FONT_CARD if card else FONT
     return part_w('00', std)
 
 
 def chip_need_w(line_disp, serial, card):
-    """牌需求宽 = 定宽格与线号实测取 max; 序号格恒定宽(长序号 01-1 由小字号+textLength 压入)
-    -> 全部牌(数字/GF/APM/支线序号)全等宽."""
-    ca = cell_a(card)
+    """牌需求宽(恒定): 定宽线号格与线号实测取 max + 分隔区 + 两位序号格
+    -> 全部牌(数字/GF/APM/支线序号)全等宽; 1位数字线号的竖线左移不改变牌宽."""
     std = FONT_CARD if card else FONT
-    return 2 * PADX + max(ca, part_w(line_disp, std) if line_disp != 'APM' else 0) + SEPW + cell_b(card)
+    return 2 * PADX + max(cell_a_std(card), part_w(line_disp, std) if line_disp != 'APM' else 0) + SEPW + cell_b(card)
 
 
 def chip_w(line_disp, serial, card):
@@ -175,8 +183,8 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中);
     超宽文本(APM线号/支线序号)小字号+textLength 压入标准格 -> 全牌同大."""
     x0, y0 = cx - w / 2, cy - h / 2
-    ca = cell_a(card)
-    cb = cell_b(card)
+    ca = cell_a(line_disp, card)
+    cb = w - 2 * PADX - ca - SEPW   # 序号格=余量(1位数字线号竖线左移后序号格变宽)
     xline = x0 + PADX + ca / 2
     xsep = x0 + PADX + ca + SEPW / 2
     xser = x0 + PADX + ca + SEPW + cb / 2
@@ -546,8 +554,9 @@ def layout_candidates(items):
         ln, px, py, w = items[0]
         return [('S', [(ln, px, py, w)])]
     cands = []
-    # 纵叠(官图2线模式; 同轴钉的多线站退化用)
-    pts = push_apart([(it[1], it[2]) for it in items], [1] * n, H + GAP, 'y')
+    # 纵叠(官图2线模式): 同列紧排——列x=钉x均值(平行走廊站两线各距~12<半宽+走廊半宽, 触线成立)
+    mx = sum(it[1] for it in items) / n
+    pts = push_apart([(mx, it[2]) for it in items], [1] * n, H + GAP, 'y')
     cands.append(('V', [(items[i][0], pts[i][0], pts[i][1], items[i][3]) for i in range(n)]))
     # 横排
     pts = push_apart([(it[1], it[2]) for it in items], [it[3] for it in items], 0, 'x')
@@ -599,38 +608,85 @@ def layout_candidates(items):
     return [(tag, _separate(placed)) for tag, placed in cands]
 
 
-def _pattern_prio(tag, n):
-    """官图排布优先级(2026-10-23 六轮 用户: 2线=上下叠; 3线=T字/品字三角):
-    规范模式=0, 退化模式>0; 全触线仍最高优先, 退化只在规范模式放不下时用."""
+def _pattern_prio(tag, n, items):
+    """官图排布优先级(2026-10-23 六/七轮 用户: 2线=上下叠; 3线=T字/品字三角;
+    七轮补充: 共y横排钉(x散>=12, 平行走廊组如官洲/大学城北/大学城南/芳村/广州南站)
+    =紧凑上下叠+整体描边, V 也是规范模式)."""
     if n == 2:
         return {'V': 0, 'H': 1}.get(tag, 2)
     if n == 3:
+        y_spread = max(it[2] for it in items) - min(it[2] for it in items)
+        x_spread = max(it[1] for it in items) - min(it[1] for it in items)
+        if y_spread < 6 and x_spread >= 12:
+            return {'V': 0, 'P3': 1, 'P3D': 1, 'H': 2}.get(tag, 3)
         return {'P3': 0, 'P3D': 0, 'V': 1, 'H': 2}.get(tag, 3)
     return {'G4': 0, 'V': 1, 'H': 2}.get(tag, 3)
 
 
+def exit_vec(segs, px, py, rmin=5.0, rmax=30.0):
+    """走廊出向: 站点邻域走廊采样点的合成单位向量和(指向线路走出方向).
+    终端站=强出向(如22号线番禺广场=纯西-12); 贯通站两向抵消≈0(走tie-break).
+    2026-10-23 七轮 用户: 番禺广场18/22共钉, 牌位须按走廊关联(22西出居左)."""
+    vx = vy = 0.0
+    for s in segs:
+        dx, dy = s[2] - s[0], s[3] - s[1]
+        L = (dx * dx + dy * dy) ** 0.5
+        if L < 1:
+            continue
+        steps = max(2, int(L / 2))
+        for i in range(steps + 1):
+            qx = s[0] + dx * i / steps
+            qy = s[1] + dy * i / steps
+            d = ((qx - px) ** 2 + (qy - py) ** 2) ** 0.5
+            if rmin < d < rmax:
+                vx += (qx - px) / d
+                vy += (qy - py) / d
+    L = (vx * vx + vy * vy) ** 0.5
+    return (vx / L, vy / L, L) if L > 1e-6 else (0.0, 0.0, 0.0)
+
+
 def place_station(items, segs_of):
-    """择优: 全触线 > 规范排布优先级 > 钉向匹配 > 最差距离. 返回 (tag, placed, fails, worst)."""
+    """择优(七轮重写: 槽位与牌解耦——全牌等宽, 每模式的槽位做全排列组合搜索):
+    全触线 > 规范排布优先级 > 方向匹配(钉偏移+走廊出向+线号tie-break) > 最差距离.
+    共钉线(番禺广场18/22)由走廊出向区分; 出向也≈0的贯通线走线号序tie-break
+    (东山口1上6下=官图用例口径)."""
+    import itertools
     n = len(items)
     gx = sum(it[1] for it in items) / n
     gy = sum(it[2] for it in items) / n
+    exits = {}
+    for ln, px, py, w in items:
+        exits[ln] = exit_vec(segs_of[ln], px, py)
+    order_idx = {ln: i for i, ln in enumerate(ORDER)}
+    pin_of = {it[0]: (it[1], it[2]) for it in items}
     scored = []
-    for tag, placed in layout_candidates(items):
-        worst, fails = 0.0, []
-        for ln, cx, cy, w in placed:
-            rect = (cx - w / 2, cy - H / 2, w, H)
-            d = min(rect_seg_dist(rect, s) for s in segs_of[ln]) - CORR_HALF
-            if d > 0.01:
-                fails.append('%s d=%.1f' % (ln, d))
-            worst = max(worst, d)
-        dirscore = 0.0
-        pin_of = {it[0]: (it[1], it[2]) for it in items}
-        for ln, cx, cy, w in placed:
-            pl = ((cx - gx) ** 2 + (cy - gy) ** 2) ** 0.5 or 1.0
-            px, py = pin_of[ln]
-            ql = ((px - gx) ** 2 + (py - gy) ** 2) ** 0.5 or 1.0
-            dirscore += ((cx - gx) / pl) * ((px - gx) / ql) + ((cy - gy) / pl) * ((py - gy) / ql)
-        scored.append((len(fails) == 0, _pattern_prio(tag, n), dirscore, worst, tag, placed, fails))
+    for tag, placed0 in layout_candidates(items):
+        slots = [(cx, cy) for _, cx, cy, _ in placed0]
+        prio = _pattern_prio(tag, n, items)
+        for perm in itertools.permutations(range(n)):
+            placed = [(items[perm[k]][0], slots[k][0], slots[k][1], items[perm[k]][3])
+                      for k in range(n)]
+            worst, fails = 0.0, []
+            for ln, cx, cy, w in placed:
+                rect = (cx - w / 2, cy - H / 2, w, H)
+                d = min(rect_seg_dist(rect, s) for s in segs_of[ln]) - CORR_HALF
+                if d > 0.01:
+                    fails.append('%s d=%.1f' % (ln, d))
+                worst = max(worst, d)
+            dirscore = 0.0
+            for ln, cx, cy, w in placed:
+                pl = ((cx - gx) ** 2 + (cy - gy) ** 2) ** 0.5 or 1.0
+                px, py = pin_of[ln]
+                ql = ((px - gx) ** 2 + (py - gy) ** 2) ** 0.5 or 1.0
+                # ① 钉偏移方向匹配
+                dirscore += ((cx - gx) / pl) * ((px - gx) / ql) + ((cy - gy) / pl) * ((py - gy) / ql)
+                # ② 走廊出向匹配(强出向线: 终端/明显单侧走出)
+                ex, ey, el = exits[ln]
+                if el >= 2.0:
+                    dirscore += 0.8 * (((cx - gx) / pl) * ex + ((cy - gy) / pl) * ey)
+                # ③ 线号序tie-break(小号先得上/左槽)
+                dirscore += 0.01 * (len(ORDER) - order_idx.get(ln, 99))
+            scored.append((len(fails) == 0, prio, dirscore, worst, tag, placed, fails))
     scored.sort(key=lambda x: (not x[0], x[1], -x[2], x[3]))
     ok, prio, dirscore, worst, tag, placed, fails = scored[0]
     for a in range(len(placed)):
@@ -683,11 +739,18 @@ def gen_network(codes, report):
         if fails:
             report['touch_fail'].append('%s[%s]: %s' % (nm, tag, ','.join(fails)))
         report['layout_tags'][tag] = report['layout_tags'].get(tag, 0) + 1
-        # 集中review(2026-10-23 六轮): 2线须V(上下叠), 3线须P3/P3D(T字/品字), 4线须G4
+        # 集中review(六/七轮): 2线须V; 3线须三角(共y横排钉的平行走廊组=V规范); 4线须G4
         n = len(items)
         if n >= 2:
             layout_review.append('%d线 %s %s' % (n, tag, nm))
-            ok_pat = (tag == 'V') if n == 2 else (tag in ('P3', 'P3D')) if n == 3 else (tag == 'G4')
+            if n == 2:
+                ok_pat = tag == 'V'
+            elif n == 3:
+                y_sp = max(it[2] for it in items) - min(it[2] for it in items)
+                x_sp = max(it[1] for it in items) - min(it[1] for it in items)
+                ok_pat = tag in ('P3', 'P3D') or (tag == 'V' and y_sp < 6 and x_sp >= 12)
+            else:
+                ok_pat = tag == 'G4'
             if not ok_pat:
                 report['layout_violations'].append('%d线站%s用了%s(退化)' % (n, nm, tag))
 
