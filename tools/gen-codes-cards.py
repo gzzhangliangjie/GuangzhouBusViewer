@@ -505,43 +505,46 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 aligned.append(nm)
                 break
 
-    # 逼近pass(十一轮 用户: 天河南文字离站点过远): 标签与自牌组净距>8pt时沿连线贴近,
-    # 逐步0.5pt直到净距<=2pt或任一约束(走廊/邻标/他牌)顶住
+    # 逼近pass v2(十二轮 用户: 海珠广场/文化公园明明有更优位): 标签离自牌组>8pt时,
+    # 16方位×步程全向扫描, 取满足全约束下离组心最近的位置——旧版只沿连线走,
+    # 被走廊挡住即停, 找不到绕行的近位(海珠广场13.8pt外手工存在1pt级合法位)
     approached = []
     if align_centers:
+        import math as _m2
         for nm, (gcx2, gcy2) in align_centers.items():
             if nm not in cur_boxes or nm not in chips_by_station:
                 continue
             box = cur_boxes[nm]
             bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
-            own = chips_by_station[nm]
-            gap0 = min(_gap(box, r) for r in own)
-            if gap0 <= 8.0:
+            d0 = ((bcx - gcx2) ** 2 + (bcy - gcy2) ** 2) ** 0.5
+            if min(_gap(box, r) for r in chips_by_station[nm]) <= 8.0:
                 continue
-            ux, uy = gcx2 - bcx, gcy2 - bcy
-            l = (ux * ux + uy * uy) ** 0.5 or 1.0
-            ux, uy = ux / l, uy / l
             g = groups[nm]
             dense = max(l2['fs'] for l2 in groups[nm]) < 7.0   # 密集档小字: 压线允许, 贴近不受走廊限
-            near_segs = [] if dense else [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
+            near_segs = [] if dense else [s for s in segs if rect_seg_dist((gcx2 - 45, gcy2 - 45, 90, 90), s) < 90]
             near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
                          and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
-            others = [r for nm3, lst in chips_by_station.items() if nm3 != nm for r in lst]
-            moved_d = 0.0
-            while gap0 - moved_d > 2.0:
-                d2 = moved_d + 0.5
-                r2 = (box[0] + ux * d2, box[1] + uy * d2, box[2], box[3])
-                if (not _clear_rect(r2, others, LABEL_CHIP_GAP) or
-                        not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) or
-                        not _clear_rect(r2, near_lbls, LABEL_LBL_GAP)):
-                    break
-                moved_d = d2
-            if moved_d >= 1.0:
+            allchips = [r for lst in chips_by_station.values() for r in lst]   # 含自牌: 逼近也须保净距(十二轮V5批量爆=曾排除自牌)
+            best = None   # (dist_to_center, dx, dy, r2)
+            for k in range(16):
+                ra = _m2.radians(k * 22.5)
+                ux, uy = _m2.cos(ra), _m2.sin(ra)
+                for step in range(1, 81):
+                    dd = step * 0.5
+                    r2 = (box[0] + ux * dd, box[1] + uy * dd, box[2], box[3])
+                    if (not _clear_rect(r2, allchips, LABEL_CHIP_GAP) or
+                            not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) or
+                            not _clear_rect(r2, near_lbls, LABEL_LBL_GAP)):
+                        continue   # 不break: 走廊带挡住的更远处可能合法(海珠广场最优位在31.6pt外)
+                    dc = ((r2[0] + r2[2] / 2 - gcx2) ** 2 + (r2[1] + r2[3] / 2 - gcy2) ** 2) ** 0.5
+                    if best is None or dc < best[0]:
+                        best = (dc, ux * dd, uy * dd, r2)
+            if best is not None and best[0] < d0 - 1.0:
                 for l2 in g:
-                    l2['x'] = round(l2['x'] + ux * moved_d, 2)
-                    l2['y'] = round(l2['y'] + uy * moved_d, 2)
-                cur_boxes[nm] = (box[0] + ux * moved_d, box[1] + uy * moved_d, box[2], box[3])
-                approached.append('%s:%.1f' % (nm, moved_d))
+                    l2['x'] = round(l2['x'] + best[1], 2)
+                    l2['y'] = round(l2['y'] + best[2], 2)
+                cur_boxes[nm] = best[3]
+                approached.append('%s:%.1f->%.1f' % (nm, d0, best[0]))
     rep = report.setdefault('label_nudge', {}).setdefault(tag, {})
     rep['moved'] = len(moved)
     rep['max_shift'] = max((d for _, d, _ in moved), default=0)
@@ -1004,8 +1007,16 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
-    # (十一轮末撤APM统一7.5px: 用户约定=密集档小字(fs<7, 底图逐档缩小6/5/4.2)允许压线,
-    # APM夹缝站保持底图6px; 7.5px常规标签才强制走廊净距)
+    # APM九站标签统一6px(十二轮 用户: 要缩就一起缩, 有大有小难受; 6px=密集档,
+    # 压线豁免/贴近豁免自动生效——fs<7 判据见 nudge_labels)
+    apm_names = {nm for nm, lst in pins.items() if any(ln == 'APM线' for ln, _x, _y in lst)}
+    lmz = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+    if lmz:
+        segz = lmz.group(1)
+        for nm in apm_names:
+            segz = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>' + re.escape(nm) + r'</text>)',
+                          lambda mm: mm.group(1) + '6' + mm.group(2), segz)
+        t = t[:lmz.start(1)] + segz + t[lmz.end(1):]
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
