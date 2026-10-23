@@ -1202,68 +1202,50 @@ def gen_network(codes, report):
                             best = (score, r2)
         return best[1] if best else None
 
-    # 十八轮末定稿: 歧义重放废除(用户: 歧义判定应以避让后位置为准, 且1/2/10/22被挪到
-    # 压线位=根因)。徽标流程=底图位→延长线正交居中→全约束最小位移。
-    # 全约束(通用规则, 所有元件遵守): ①不压走廊描边(所有线, 距离>=3)
-    # ②不压牌/圈(>=1pt) ③不压其他徽标(>=1pt)
+    # 十八轮终版: 底图位 → 延长线正交居中 → 真牌圈碰撞最小挤让。就这么简单。
+    # 不做公式重放/gap梯度/网格搜索——底图位已按规范放好, 唯一要修的是编号牌引入的新碰撞。
     BADGE_MIN = 1.0
-
-    own_segs_map = segs_of  # 复用外层
-
-    def _badge_legal(r2, ln):
-        # 底图规范: 徽标有底色可盖走廊(ignore_corridor=True)——不查走廊;
-        # 仅查: 牌/圈(>=1pt) + 其他徽标(>=1pt)
-        return (all(_gap(r2, r) >= BADGE_MIN for r in chip_rects_all + ring_rects_all) and
-                all(_gap(r2, r2b) >= BADGE_MIN for _k6, r2b in badge_rects))
-
     for bd in badges:
         ln = _ln_of_key(bd['key'])
         bw, bh = 80 * bd['sc'], 43 * bd['sc']
         rect = (bd['tx'], bd['ty'], bw, bh)
-        if ln:
-            # ①底图位 (用户: 原来的坐标没问题的)
-            # ②延长线正交居中(只动正交轴)
-            bw5, bh5 = bw, bh
-            bcx5, bcy5 = bd['tx'] + bw5 / 2, bd['ty'] + bh5 / 2
-            tpts5 = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
-            if tpts5:
-                tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - bcy5) ** 2)
-                tpx5, tpy5 = tp5[1], tp5[2]
-                tx5, ty5 = corridor_tangent(segs_of[ln], tpx5, tpy5)
-                if abs(tx5) > abs(ty5) * 1.5:
-                    bd['ty'] = tpy5 - bh5 / 2   # 横向走廊→y=走廊y
-                elif abs(ty5) > abs(tx5) * 1.5:
-                    bd['tx'] = tpx5 - bw5 / 2   # 纵向走廊→x=走廊x
-                # 45°斜线由标签居中pass处理(下方)
-                rect = (bd['tx'], bd['ty'], bw, bh)
-            # ③全约束检查: 违规→最小位移(16方位0.5pt步进, 首个全合法位)
-            if not _badge_legal(rect, ln):
-                import math as _m7
-                best7 = None
-                for k7 in range(16):
-                    ra = _m7.radians(k7 * 22.5)
-                    ux7, uy7 = _m7.cos(ra), _m7.sin(ra)
-                    for step7 in range(1, 61):
-                        dd7 = step7 * 0.5
-                        r7 = (rect[0] + ux7 * dd7, rect[1] + uy7 * dd7, bw, bh)
-                        if _badge_legal(r7, ln):
-                            cand7 = (dd7, r7)
-                            if best7 is None or cand7[0] < best7[0]:
-                                best7 = cand7
-                            break
-                if best7 is not None:
-                    rect = best7[1]
-                    bd['tx'], bd['ty'] = rect[0], rect[1]
-                    badge_moves.append('%s:位移%.1fpt' % (bd['key'], best7[0]))
-                else:
-                    # 全方位无解→放弃居中回到底图位试
-                    rect0 = (bd['ox'], bd['oy'], bw, bh)
-                    if _badge_legal(rect0, ln):
-                        rect = rect0
-                        bd['tx'], bd['ty'] = bd['ox'], bd['oy']
-                        badge_moves.append('%s:回底图位' % bd['key'])
-                    else:
-                        badge_moves.append('%s:无合法位保持' % bd['key'])
+        if not ln:
+            badge_rects.append((bd['key'], rect))
+            continue
+        # ①延长线正交居中(只动正交轴, 底图位在延长方向上的间距不动)
+        bcx9, bcy9 = bd['tx'] + bw / 2, bd['ty'] + bh / 2
+        lnpins9 = [p for nm9, lst9 in pins.items() for p in lst9 if p[0] == ln]
+        if lnpins9:
+            tp9 = min(lnpins9, key=lambda p: (p[1] - bcx9) ** 2 + (p[2] - bcy9) ** 2)
+            tx9, ty9 = corridor_tangent(segs_of[ln], tp9[1], tp9[2])
+            if abs(tx9) > abs(ty9) * 1.5:
+                bd['ty'] = tp9[2] - bh / 2    # 横向走廊→y=走廊y
+            elif abs(ty9) > abs(tx9) * 1.5:
+                bd['tx'] = tp9[1] - bw / 2    # 纵向走廊→x=走廊x
+            # 45°斜线=标签x居中(由标签居中pass处理)
+            rect = (bd['tx'], bd['ty'], bw, bh)
+        # ②真牌圈碰撞(gap<1pt)最小挤让
+        viol9 = any(_gap(rect, r) < BADGE_MIN for r in chip_rects_all + ring_rects_all)
+        if viol9:
+            import math as _m9
+            best9 = None
+            for k9 in range(16):
+                ra9 = _m9.radians(k9 * 22.5)
+                ux9, uy9 = _m9.cos(ra9), _m9.sin(ra9)
+                for st9 in range(1, 41):
+                    dd9 = st9 * 0.5
+                    r9 = (rect[0] + ux9 * dd9, rect[1] + uy9 * dd9, bw, bh)
+                    if (all(_gap(r9, r) >= BADGE_MIN for r in chip_rects_all + ring_rects_all) and
+                            all(_gap(r9, r9b) >= BADGE_MIN for _kb, r9b in badge_rects)):
+                        if best9 is None or dd9 < best9[0]:
+                            best9 = (dd9, r9)
+                        break
+            if best9:
+                rect = best9[1]
+                bd['tx'], bd['ty'] = rect[0], rect[1]
+                badge_moves.append('%s:挤让%.1fpt' % (bd['key'], best9[0]))
+            else:
+                badge_moves.append('%s:无解保持' % bd['key'])
         badge_rects.append((bd['key'], rect))
         continue
         ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
