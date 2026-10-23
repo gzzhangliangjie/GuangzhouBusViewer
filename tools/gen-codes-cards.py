@@ -370,7 +370,7 @@ def _gap(r1, r2):
     return max(-ox if ox < 0 else 0, -oy if oy < 0 else 0)
 
 
-def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, align_centers=None):
+def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, align_centers=None, near_trigger=8.0):
     """编号版站名避让: 与牌相犯(<净距)的标签组沿 钉->标 方向外推(0.5px步进, ±35°/±70°轮换),
     推移校验: 全部牌净距>=LABEL_CHIP_GAP, 走廊净距>=LABEL_CORR_GAP, 其他标签>=LABEL_LBL_GAP.
     对齐pass(七/十轮 用户: 文字位置跟序号胶囊的中心没对齐): 有牌站标签按主偏移轴吸附组心
@@ -380,15 +380,11 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
     if not labels:
         return None
     groups = label_groups(labels, set(pin_by_name))
-    # 统一字号规则(十七轮 用户: 所有站点同一套——先按7.5px常规试, 实在放不下才降6px+白光环;
-    # 底图6px的也先升7.5试, 有地方(如换乘站在他线侧)自然回常规; 无APM专用分支)
+    # 密集档铁律(十七轮末 用户: 放不下的那些文字不用挪位置——底图6px位即终稿):
+    # fs<7 标签一律保持底图字号/位置/光环, 不做7.5升级试探(曾把夹缝四站挪乱),
+    # 仅当与牌重叠时按密集规则(走廊豁免)推离; 7.5常规标签才走完整避让链,
+    # 真放不下(fs>=7 仍违规)才降6px+光环(降档pass)
     downgraded = []
-    for nm, g in groups.items():
-        for l2 in g:
-            if not l2['content'].isascii() and l2['fs'] < 7.5:
-                l2['fs'] = 7.5
-                l2['attrs'] = re.sub(r' font-size="[\d.]+"', ' font-size="7.5"', l2['attrs'])
-                l2['attrs'] = re.sub(r' style="paint-order:[^"]*"', '', l2['attrs'])
     all_chip_rects = [r for lst in chips_by_station.values() for r in lst]
     cur_boxes = {nm: group_box(g) for nm, g in groups.items()}
     order = sorted(groups.items(), key=lambda kv: -group_box(kv[1])[2] * group_box(kv[1])[3])
@@ -533,7 +529,7 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
             xov = box[0] < gx1 and box[0] + box[2] > gx0
             yov = box[1] < gy1 and box[1] + box[3] > gy0
             straddle = (xov != yov)   # 恰一轴相交=斜角跨骑(冼村歪在右上角型), 距离再近也要槽位归正
-            if min(_gap(box, r) for r in own) <= 8.0 and not straddle:
+            if min(_gap(box, r) for r in own) <= near_trigger and not straddle:
                 continue
             g = groups[nm]
             dense = max(l2['fs'] for l2 in groups[nm]) < 7.0   # 密集档小字: 压线允许, 贴近不受走廊限
@@ -703,8 +699,9 @@ def gen_line_card(line, codes, report):
     for nm, disp, serial, cx, cy, w, h, fs in chips:
         chips_by_station.setdefault(nm, []).append((cx - w / 2, cy - H_CARD / 2, w, H_CARD))
     align_c = {nm: (cx, cy) for nm, disp, serial, cx, cy, w, h, fs in chips}
+    # 单线卡贴近优先(用户: 文字离站点远的优先级高于挪位置): 4pt即触发槽位贴边
     new_labels = nudge_labels(t2, {nm: (cx, cy) for nm, cx, cy in card['pins']},
-                              chips_by_station, card['segs'], report, line, align_c)
+                              chips_by_station, card['segs'], report, line, align_c, near_trigger=4.0)
     if new_labels is not None:
         t2 = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                     lambda mm: mm.group(1) + new_labels + mm.group(2), t2, count=1, flags=re.S)

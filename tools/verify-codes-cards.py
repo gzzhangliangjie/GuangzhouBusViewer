@@ -178,6 +178,38 @@ def check_card(path, label, gen):
         offs.append(ink_c - cy)
     v6 = (label, 'V6', '数字纵向居中', bool(offs) and max(abs(o) for o in offs) <= 0.15,
           'max|Δ|=%.2fpt (%d采样)' % (max((abs(o) for o in offs), default=9), len(offs)))
+    # V7 标签贴近站点(十七轮末 用户: 文字离站点远的优先级高于挪位置): 组盒(zh+en)到最近牌
+    # 净距<=9pt; 量法必须组盒——只量zh盒会把带英文行的卡标签误报15pt(英文行填补间隙贴牌2pt)
+    t_full = open(path, encoding='utf-8').read()
+    lmz = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t_full, re.S)
+    zh_lbl, en_lbl = {}, []
+    far7 = 0
+    checked7 = 0
+    if lmz:
+        for tx in re.finditer(r'<text x="([-\d.]+)" y="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', lmz.group(1)):
+            x7, y7, fs7, c7 = float(tx.group(1)), float(tx.group(2)), float(tx.group(3)), tx.group(4)
+            if c7.isascii():
+                en_lbl.append((x7, y7, fs7, c7))
+            else:
+                zh_lbl[c7] = (x7, y7, fs7)
+        for nm7, (x7, y7, fs7) in zh_lbl.items():
+            box7 = gen.text_box({'x': x7, 'y': y7, 'fs': fs7, 'content': nm7})
+            for ex, ey, efs, ec in en_lbl:
+                if abs(ex - x7) < 3 and 0 < ey - y7 < 16:
+                    eb = gen.text_box({'x': ex, 'y': ey, 'fs': efs, 'content': ec})
+                    x0b = min(box7[0], eb[0]); y0b = min(box7[1], eb[1])
+                    box7 = (x0b, y0b, max(box7[0] + box7[2], eb[0] + eb[2]) - x0b,
+                            max(box7[1] + box7[3], eb[1] + eb[3]) - y0b)
+            d7 = min((gen._gap(box7, (cx - w / 2, cy - h / 2, w, h))
+                      for cx, cy, w, h, col, _t in chips), default=None)
+            if d7 is None or d7 > 12:
+                # 离最近牌>12pt = 无牌站(暂缓开通保留圆点, 如广州火车站@11号线):
+                # 其"站点标记"是圆点不是牌, 不在本门禁域
+                continue
+            checked7 += 1
+            if d7 > 9.0:
+                far7 += 1
+    v7 = (label, 'V7', '标签贴站<=9pt', far7 == 0, '%d/%d超' % (far7, checked7))
     return [
         (label, 'V1', '编号牌数=%d' % len(chips), True, ''),
         (label, 'V2', '边框线色', n_border == len(chips), '%d/%d' % (n_border, len(chips))),
@@ -185,6 +217,7 @@ def check_card(path, label, gen):
         (label, 'V4', '文本适配牌宽', not overflow, '; '.join(overflow[:6]) or '全过'),
         v5,
         v6,
+        v7,
     ]
 
 
