@@ -284,7 +284,8 @@ def expand_viewbox(t, chip_rects, margin=2.0):
 
 # ---------- 站名标签避让(编号版): 牌压名 -> 沿钉→标方向外推, 校验走廊/邻标净距 ----------
 LABEL_CHIP_GAP = 1.0    # 标签-牌净距下限
-LABEL_CORR_GAP = 1.0    # 标签-走廊净距下限(推移后不得新压线)
+LABEL_CORR_GAP = 4.5    # 标签-走廊净距下限(十六轮 用户怒报大量文字压线: 旧1.0量到走廊中心线,
+                        # 走廊描边±3.5 -> 中心线距1.0~3.5的标签全嵌在线上; 改=走廊边缘外1.0=中心线4.5)
 LABEL_LBL_GAP = 1.5     # 标签-标签净距下限(十五轮 0.3->1.5: 冼村与妇儿中心标签距1.6"合法但太近"被用户报)
 
 
@@ -505,9 +506,9 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 aligned.append(nm)
                 break
 
-    # 逼近pass v2(十二轮 用户: 海珠广场/文化公园明明有更优位): 标签离自牌组>8pt时,
-    # 16方位×步程全向扫描, 取满足全约束下离组心最近的位置——旧版只沿连线走,
-    # 被走廊挡住即停, 找不到绕行的近位(海珠广场13.8pt外手工存在1pt级合法位)
+    # 逼近pass v3(十六轮 用户: 冼村歪在右上角/天河南漂在线上): 四正方位槽优先——
+    # R/L/U/D 贴边居中槽(净距2pt, 密集档免走廊校验)先试, 选距当前最近的合法槽;
+    # 无合法槽再16方位×40pt全向扫描(十二轮海珠广场先例). 通用机制无站名硬编码.
     approached = []
     if align_centers:
         import math as _m2
@@ -517,14 +518,55 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
             box = cur_boxes[nm]
             bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
             d0 = ((bcx - gcx2) ** 2 + (bcy - gcy2) ** 2) ** 0.5
-            if min(_gap(box, r) for r in chips_by_station[nm]) <= 8.0:
+            own = chips_by_station[nm]
+            gx0 = min(r[0] for r in own); gy0 = min(r[1] for r in own)
+            gx1 = max(r[0] + r[2] for r in own); gy1 = max(r[1] + r[3] for r in own)
+            xov = box[0] < gx1 and box[0] + box[2] > gx0
+            yov = box[1] < gy1 and box[1] + box[3] > gy0
+            straddle = (xov != yov)   # 恰一轴相交=斜角跨骑(冼村歪在右上角型), 距离再近也要槽位归正
+            if min(_gap(box, r) for r in own) <= 8.0 and not straddle:
                 continue
             g = groups[nm]
             dense = max(l2['fs'] for l2 in groups[nm]) < 7.0   # 密集档小字: 压线允许, 贴近不受走廊限
             near_segs = [] if dense else [s for s in segs if rect_seg_dist((gcx2 - 45, gcy2 - 45, 90, 90), s) < 90]
             near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
                          and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
-            allchips = [r for lst in chips_by_station.values() for r in lst]   # 含自牌: 逼近也须保净距(十二轮V5批量爆=曾排除自牌)
+            allchips = [r for lst in chips_by_station.values() for r in lst]   # 含自牌: 逼近也须保净距
+
+            def _legal(r2):
+                return (_clear_rect(r2, allchips, LABEL_CHIP_GAP) and
+                        all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) and
+                        _clear_rect(r2, near_lbls, LABEL_LBL_GAP))
+
+            # ①四正方位槽: 贴边2pt+垂直居中, ±jitter
+            slot_best = None   # (dist_to_current, r2)
+            for side in 'RLUD':
+                for jit in (0, 2, -2, 4, -4):
+                    if side == 'R':
+                        r2 = (gx1 + 2.0, gcy2 - box[3] / 2 + jit, box[2], box[3])
+                    elif side == 'L':
+                        r2 = (gx0 - 2.0 - box[2], gcy2 - box[3] / 2 + jit, box[2], box[3])
+                    elif side == 'U':
+                        r2 = (gcx2 - box[2] / 2, gy0 - 2.0 - box[3], box[2], box[3])
+                    else:
+                        r2 = (gcx2 - box[2] / 2, gy1 + 2.0, box[2], box[3])
+                    if not _legal(r2):
+                        continue
+                    dc = ((r2[0] + r2[2] / 2 - bcx) ** 2 + (r2[1] + r2[3] / 2 - bcy) ** 2) ** 0.5
+                    if slot_best is None or dc < slot_best[0]:
+                        slot_best = (dc, r2)
+            if slot_best is not None and (straddle or slot_best[0] < d0 - 1.0):
+                # straddle(斜角跨骑)时合法槽位即接受——归正优先于距离(冼村先例:
+                # 槽位距当前14.8>当前距组心13.3 被"更近"条件拒掉=歪位不动的根因)
+                r2 = slot_best[1]
+                mdx, mdy = r2[0] - box[0], r2[1] - box[1]
+                for l2 in g:
+                    l2['x'] = round(l2['x'] + mdx, 2)
+                    l2['y'] = round(l2['y'] + mdy, 2)
+                cur_boxes[nm] = r2
+                approached.append('%s:槽位' % nm)
+                continue
+            # ②全向扫描兜底
             best = None   # (dist_to_center, dx, dy, r2)
             for k in range(16):
                 ra = _m2.radians(k * 22.5)
@@ -532,9 +574,7 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                 for step in range(1, 81):
                     dd = step * 0.5
                     r2 = (box[0] + ux * dd, box[1] + uy * dd, box[2], box[3])
-                    if (not _clear_rect(r2, allchips, LABEL_CHIP_GAP) or
-                            not all(rect_seg_dist(r2, s) >= LABEL_CORR_GAP for s in near_segs) or
-                            not _clear_rect(r2, near_lbls, LABEL_LBL_GAP)):
+                    if not _legal(r2):
                         continue   # 不break: 走廊带挡住的更远处可能合法(海珠广场最优位在31.6pt外)
                     dc = ((r2[0] + r2[2] / 2 - gcx2) ** 2 + (r2[1] + r2[3] / 2 - gcy2) ** 2) ** 0.5
                     if best is None or dc < best[0]:
@@ -1063,29 +1103,39 @@ def gen_network(codes, report):
                     badge_moves.append('%s:避让%.0fpt' % (bd['key'], d2))
                     moved = True
                     break
-        # b) 拉近终点牌: 目标净距25, 任何牌/圈净距<8即停
+        # b) 沿本线走廊滑位搜索(十六轮 用户: 10号线徽标放右侧, 鹤洞下花围上):
+        # 本线走廊采样点两侧(优先屏幕右侧=东侧/南侧)生成贴线候选(净距6),
+        # 按离原位距离排序取首个与全部牌/圈净距>=8的候选; 无合法则保持a)结果
         if ln:
-            own = [(cc, r) for cc, r in zip(chips, chip_rects_all) if cc[1] == ln]
-            if own:
-                near_cc, near_r = min(own, key=lambda z: _gap(rect, z[1]))
-                gap0 = _gap(rect, near_r)
-                if gap0 > 25:
-                    vx = near_r[0] + near_r[2] / 2 - (rect[0] + rect[2] / 2)
-                    vy = near_r[1] + near_r[3] / 2 - (rect[1] + rect[3] / 2)
-                    l2 = (vx * vx + vy * vy) ** 0.5 or 1.0
-                    ux, uy = vx / l2, vy / l2
-                    for step in range(1, 121):
-                        d2 = step * 0.5
-                        if d2 >= gap0 - 25:
-                            break
-                        r2 = (rect[0] + ux * d2, rect[1] + uy * d2, bw, bh)
-                        if any(_gap(r2, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all if r is not near_r):
-                            break
-                        rect = r2
-                        bd['tx'], bd['ty'] = r2[0], r2[1]
-                        moved = True
-                    if moved:
-                        badge_moves.append('%s:拉近->%.0fpt' % (bd['key'], _gap(rect, near_r)))
+            samples = []
+            for s in segs_of[ln]:
+                L = ((s[2] - s[0]) ** 2 + (s[3] - s[1]) ** 2) ** 0.5
+                if L < 4:
+                    continue
+                n2 = max(2, int(L / 6))
+                dxu, dyu = (s[2] - s[0]) / L, (s[3] - s[1]) / L
+                for i in range(n2 + 1):
+                    samples.append((s[0] + (s[2] - s[0]) * i / n2, s[1] + (s[3] - s[1]) * i / n2, dxu, dyu))
+            ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
+            cands = []
+            for qx, qy, dxu, dyu in samples:
+                for sgn in (1, -1):
+                    nx_, ny_ = -dyu * sgn, dxu * sgn   # 法向
+                    off = (bw / 2 + 6) if abs(nx_) >= abs(ny_) else (bh / 2 + 6)
+                    cx2, cy2 = qx + nx_ * off, qy + ny_ * off
+                    r2 = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
+                    d_org = ((cx2 - ocx) ** 2 + (cy2 - ocy) ** 2) ** 0.5
+                    # 屏幕右侧=法向+x侧(横段取+y侧): 旧"近竖取x近横取y"在45°对角线把
+                    # 西南侧当右侧(10号线徽标落西塱西侧的根因), 改纯东侧优先
+                    is_right = (nx_ > 0.05) or (abs(nx_) <= 0.05 and ny_ > 0)
+                    cands.append((d_org + (0 if is_right else 400), r2))
+            cands.sort(key=lambda z: z[0])
+            for d_org, r2 in cands:
+                if all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all):
+                    bd['tx'], bd['ty'] = r2[0], r2[1]
+                    rect = r2
+                    badge_moves.append('%s:滑位%.0fpt' % (bd['key'], d_org ** 0.5))
+                    break
         badge_rects.append((bd['key'], rect))
     report['badge_moves'] = badge_moves
 
@@ -1110,15 +1160,16 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
-    # APM九站标签统一6px+统一白光环样式(十二/十四轮 用户: 要缩一起缩; 字号同为6仍显大小不一=
-    # 夹缝四站带paint-order白光环(底图密集区白光环压线)侵蚀笔画显小, 无光环四站显大——
-    # 九站统一加同款光环; 6px=密集档, 压线豁免/贴近豁免自动生效——fs<7 判据见 nudge_labels)
-    apm_names = {nm for nm, lst in pins.items() if any(ln == 'APM线' for ln, _x, _y in lst)}
+    # APM标签分档(十六轮 用户: 林和西/广州塔按正常的来——3号线换乘站周围有地方):
+    # 纯APM站(海心沙/大剧院/花城大道/妇儿中心/黄埔大道/天河南/体育中心南)=6px+白光环密集档;
+    # 与他线换乘的APM站(林和西/广州塔)=7.5px常规档(无光环, 走廊净距强制)
+    apm_only = {nm for nm, lst in pins.items()
+                if {ln for ln, _x, _y in lst} == {'APM线'}}
     HALO = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"'
     lmz = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
     if lmz:
         segz = lmz.group(1)
-        for nm in apm_names:
+        for nm in apm_only:
             segz = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>' + re.escape(nm) + r'</text>)',
                           lambda mm: mm.group(1) + '6' + mm.group(2), segz)
             segz = re.sub(r'<text ((?:(?!style=)[^>])*)>(' + re.escape(nm) + r'</text>)',
