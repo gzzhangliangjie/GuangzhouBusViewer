@@ -1348,6 +1348,36 @@ def gen_network(codes, report):
                         mm.group(4) + '>' + inner + '</g>')
         return mm.group(0)
 
+    # 延长线正交居中pass(十八轮末 用户无数次强调2/5/12/13/14/18——实测偏差12~40pt全部偏轴):
+    # 延长线规则含居中=徽标中心必须在走廊延长线上(横向走廊->徽标中心y=走廊y, 纵向->徽标中心x=走廊x,
+    # 45°斜线->徽标中心x=终点标签x)。只动正交轴, 不动延长方向上的位置。
+    lm3 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+    for bd in badges:
+        ln = _ln_of_key(bd['key'])
+        if not ln:
+            continue
+        bw5, bh5 = 80 * bd['sc'], 43 * bd['sc']
+        bcx5, bcy5 = bd['tx'] + bw5 / 2, bd['ty'] + bh5 / 2
+        tpts5 = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
+        if not tpts5:
+            continue
+        tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - bcy5) ** 2)
+        tpx5, tpy5 = tp5[1], tp5[2]
+        tx5, ty5 = corridor_tangent(segs_of[ln], tpx5, tpy5)
+        if abs(tx5) > abs(ty5) * 1.5:
+            # 横向走廊 -> 徽标中心y = 钉y(走廊y)
+            bd['ty'] = tpy5 - bh5 / 2
+        elif abs(ty5) > abs(tx5) * 1.5:
+            # 纵向走廊 -> 徽标中心x = 钉x(走廊x)
+            bd['tx'] = tpx5 - bw5 / 2
+        else:
+            # 45°斜线 -> 徽标中心x = 终点标签x
+            tname5 = next((nm5 for nm5, lst in pins.items()
+                          if any(p[0] == ln and p[1] == tpx5 and p[2] == tpy5 for p in lst)), None)
+            if tname5 and lm3:
+                for tx6 in re.finditer(r'<text x="([-\d.]+)" y="[-\d.]+"[^>]*>' + re.escape(tname5) + r'</text>', lm3.group(1)):
+                    bd['tx'] = float(tx6.group(1)) - bw5 / 2
+                    break
     t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                _sub_badge, t, flags=re.S)
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
