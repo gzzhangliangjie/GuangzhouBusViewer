@@ -1212,18 +1212,8 @@ def gen_network(codes, report):
         if not ln:
             badge_rects.append((bd['key'], rect))
             continue
-        # ①延长线正交居中(只动正交轴, 底图位在延长方向上的间距不动)
-        bcx9, bcy9 = bd['tx'] + bw / 2, bd['ty'] + bh / 2
-        lnpins9 = [p for nm9, lst9 in pins.items() for p in lst9 if p[0] == ln]
-        if lnpins9:
-            tp9 = min(lnpins9, key=lambda p: (p[1] - bcx9) ** 2 + (p[2] - bcy9) ** 2)
-            tx9, ty9 = corridor_tangent(segs_of[ln], tp9[1], tp9[2])
-            if abs(tx9) > abs(ty9) * 1.5:
-                bd['ty'] = tp9[2] - bh / 2    # 横向走廊→y=走廊y
-            elif abs(ty9) > abs(tx9) * 1.5:
-                bd['tx'] = tp9[1] - bw / 2    # 纵向走廊→x=走廊x
-            # 45°斜线=标签x居中(由标签居中pass处理)
-            rect = (bd['tx'], bd['ty'], bw, bh)
+        # ①走廊轴居中已废(把底图位从走廊旁拽到走廊正上方=压线根因);
+        # 底图位本身就在延长线旁的正确位置
         # ②真牌圈碰撞(gap<1pt)最小挤让
         viol9 = any(_gap(rect, r) < BADGE_MIN for r in chip_rects_all + ring_rects_all)
         if viol9:
@@ -1347,28 +1337,22 @@ def gen_network(codes, report):
         return mm.group(0)
 
     # 延长线正交居中pass(十八轮末 用户无数次强调2/5/12/13/14/18——实测偏差12~40pt全部偏轴):
-    # 延长线规则含居中=徽标中心必须在走廊延长线上(横向走廊->徽标中心y=走廊y, 纵向->徽标中心x=走廊x,
-    # 45°斜线->徽标中心x=终点标签x)。只动正交轴, 不动延长方向上的位置。
+    # 横/纵走廊轴居中已彻底废(把底图位从走廊旁拽到走廊正上方=压线根因,
+    # 底图位本身就在正确位置不需要居中); 仅保留45°斜线终点标签x居中
     lm3 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
     for bd in badges:
         ln = _ln_of_key(bd['key'])
         if not ln:
             continue
-        bw5, bh5 = 80 * bd['sc'], 43 * bd['sc']
-        bcx5, bcy5 = bd['tx'] + bw5 / 2, bd['ty'] + bh5 / 2
+        bw5 = 80 * bd['sc']
+        bcx5 = bd['tx'] + bw5 / 2
         tpts5 = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
         if not tpts5:
             continue
-        tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - bcy5) ** 2)
+        tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - (bd['ty'] + 21.5 * bd['sc'])) ** 2)
         tpx5, tpy5 = tp5[1], tp5[2]
         tx5, ty5 = corridor_tangent(segs_of[ln], tpx5, tpy5)
-        if abs(tx5) > abs(ty5) * 1.5:
-            # 横向走廊 -> 徽标中心y = 钉y(走廊y)
-            bd['ty'] = tpy5 - bh5 / 2
-        elif abs(ty5) > abs(tx5) * 1.5:
-            # 纵向走廊 -> 徽标中心x = 钉x(走廊x)
-            bd['tx'] = tpx5 - bw5 / 2
-        else:
+        if abs(tx5) <= abs(ty5) * 1.5 and abs(ty5) <= abs(tx5) * 1.5:
             # 45°斜线 -> 徽标中心x = 终点标签x
             tname5 = next((nm5 for nm5, lst in pins.items()
                           if any(p[0] == ln and p[1] == tpx5 and p[2] == tpy5 for p in lst)), None)
