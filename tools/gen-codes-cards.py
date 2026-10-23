@@ -86,17 +86,17 @@ def parse_card(line):
 
 
 # ---------- 牌几何 ----------
-FONT = 6.0        # 牌字号(全网, 2026-10-23 三轮再缩)
-FONT_CARD = 6.5   # 单线卡字号
-APM_FONT = 4.5    # APM 专用小字号+textLength压缩(用户: APM牌缩到与数字牌同大)
-APM_FONT_CARD = 4.9
-H = 10.0          # 牌高
-H_CARD = 11.0
-PADX = 2.0        # 左右内边距
-SEPW = 3.0        # 分隔区宽(含两侧空隙)
-GAP = 1.2         # 组内牌间缝
+FONT = 5.5        # 牌字号(全网, 2026-10-23 五轮再缩)
+FONT_CARD = 6.0   # 单线卡字号
+APM_FONT = 4.1    # APM 专用小字号+textLength压缩(用户: APM牌缩到与数字牌同大)
+APM_FONT_CARD = 4.5
+H = 9.0           # 牌高
+H_CARD = 10.0
+PADX = 1.8        # 左右内边距
+SEPW = 2.6        # 分隔区宽(含两侧空隙)
+GAP = 1.0         # 组内牌间缝
 CORR_HALF = 3.5   # 走廊 stroke-width 7 半宽(触线判定含线宽)
-RING_PAD = 2.5    # 多线组外描边圈的白衬宽(用户: 描边沿胶囊边缘, 非矩形框)
+RING_PAD = 1.2    # 多线组外描边圈的白衬宽(用户: 描边贴紧内部胶囊, 五轮2.5->1.2)
 RIM = 0.7         # 外圈黑边线宽
 INK = '#1a1a1a'
 
@@ -139,21 +139,18 @@ def cell_a(card):
     return max(part_w('22', std), part_w('GF', std))
 
 
-def cell_b(card, serial=None):
+def cell_b(card):
+    """序号格定宽(两位, 标准字号)——支线序号 01-1 也压入此格(2026-10-23 五轮: 全牌同大)."""
     std = FONT_CARD if card else FONT
-    w = part_w('00', std)   # 序号格定宽(两位, 标准字号)
-    if serial:
-        w = max(w, part_w(serial, std))
-    return w
+    return part_w('00', std)
 
 
 def chip_need_w(line_disp, serial, card):
-    """牌需求宽 = 定宽格 与 实测文本宽 取 max(兜住 CSV 支线序号 01-1 这类长内容);
-    APM 不取 max(文本压入标准格, textLength 负责压缩) -> 与数字牌全等宽."""
+    """牌需求宽 = 定宽格与线号实测取 max; 序号格恒定宽(长序号 01-1 由小字号+textLength 压入)
+    -> 全部牌(数字/GF/APM/支线序号)全等宽."""
     ca = cell_a(card)
-    if line_disp == 'APM':
-        return 2 * PADX + ca + SEPW + cell_b(card)
-    return 2 * PADX + max(ca, part_w(line_disp, FONT_CARD if card else FONT)) + SEPW + cell_b(card, serial)
+    std = FONT_CARD if card else FONT
+    return 2 * PADX + max(ca, part_w(line_disp, std) if line_disp != 'APM' else 0) + SEPW + cell_b(card)
 
 
 def chip_w(line_disp, serial, card):
@@ -161,9 +158,14 @@ def chip_w(line_disp, serial, card):
     return math.ceil(chip_need_w(line_disp, serial, card) * 2) / 2.0
 
 
+def serial_font(serial, fs):
+    """支线序号(01-1式, 宽于两位格)缩小到 0.75 档 + textLength 压缩(同 APM 处理)."""
+    return round(fs * 0.75, 1)
+
+
 def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中);
-    APM 线号文本 textLength 压入标准格(牌与数字牌同大)."""
+    超宽文本(APM线号/支线序号)小字号+textLength 压入标准格 -> 全牌同大."""
     x0, y0 = cx - w / 2, cy - h / 2
     ca = cell_a(card)
     cb = cell_b(card)
@@ -172,6 +174,13 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     xser = x0 + PADX + ca + SEPW + cb / 2
     ty = cy + 0.06 * fs
     tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
+    sfs = fs
+    stl = ''
+    std = FONT_CARD if card else FONT
+    if part_w(serial, std) > cb + 0.01:
+        sfs = serial_font(serial, std)
+        stl = f' textLength="{cb:.2f}" lengthAdjust="spacingAndGlyphs"'
+        ty = cy + 0.06 * sfs
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
@@ -179,8 +188,8 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
         f'stroke="{color}" stroke-width="0.8"/>' +
         f'<text x="{xline:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central"'
         f'{tl} font-size="{fs}" font-weight="700" fill="#000000">{line_disp}</text>' +
-        f'<text x="{xser:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central" '
-        f'font-size="{fs}" font-weight="700" fill="#000000">{serial}</text>'
+        f'<text x="{xser:.2f}" y="{ty:.2f}" text-anchor="middle" dominant-baseline="central"'
+        f'{stl} font-size="{sfs}" font-weight="700" fill="#000000">{serial}</text>'
     )
 
 
@@ -739,7 +748,7 @@ def gen_network(codes, report):
                 resolved.append('%s:推让%s' % (nm, nm2))
                 break
         if not fixed:
-            for pad in (1.8, 1.2, 0.8):
+            for pad in (0.9, 0.6, 0.4):
                 r2 = ring_rect(nm, pad)
                 if clear_of_others(nm, r2):
                     ring_pads[nm] = pad
@@ -748,8 +757,8 @@ def gen_network(codes, report):
                     fixed = True
                     break
             if not fixed:
-                ring_pads[nm] = 0.8
-                obstacles[nm] = [ring_rect(nm, 0.8)]
+                ring_pads[nm] = 0.4
+                obstacles[nm] = [ring_rect(nm, 0.4)]
                 leftover.append(nm)
     report['ring_fix'] = resolved
     report['ring_overlaps'] = leftover
