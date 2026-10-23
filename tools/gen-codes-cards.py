@@ -380,6 +380,15 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
     if not labels:
         return None
     groups = label_groups(labels, set(pin_by_name))
+    # 统一字号规则(十七轮 用户: 所有站点同一套——先按7.5px常规试, 实在放不下才降6px+白光环;
+    # 底图6px的也先升7.5试, 有地方(如换乘站在他线侧)自然回常规; 无APM专用分支)
+    downgraded = []
+    for nm, g in groups.items():
+        for l2 in g:
+            if not l2['content'].isascii() and l2['fs'] < 7.5:
+                l2['fs'] = 7.5
+                l2['attrs'] = re.sub(r' font-size="[\d.]+"', ' font-size="7.5"', l2['attrs'])
+                l2['attrs'] = re.sub(r' style="paint-order:[^"]*"', '', l2['attrs'])
     all_chip_rects = [r for lst in chips_by_station.values() for r in lst]
     cur_boxes = {nm: group_box(g) for nm, g in groups.items()}
     order = sorted(groups.items(), key=lambda kv: -group_box(kv[1])[2] * group_box(kv[1])[3])
@@ -585,7 +594,66 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
                     l2['y'] = round(l2['y'] + best[2], 2)
                 cur_boxes[nm] = best[3]
                 approached.append('%s:%.1f->%.1f' % (nm, d0, best[0]))
+    # 降档pass(十七轮 用户: 实在没地方显示就缩小+描边, 全站统一规则): 7.5px常规仍违反
+    # 走廊边净距/牌净距的组 -> 回原位降6px+白光环, 密集档重放(允许压线, 只查牌/邻标)
+    orig_pos = {nm: [(l2['x'], l2['y']) for l2 in g] for nm, g in groups.items()}
+    for nm, g in order:
+        box = cur_boxes[nm]
+        if max(l2['fs'] for l2 in g) < 7.0:
+            continue   # 已是密集档
+        bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
+        near_segs2 = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
+        corr_bad = near_segs2 and min(rect_seg_dist(box, s) for s in near_segs2) < LABEL_CORR_GAP
+        chip_bad = any(_gap(box, r) < LABEL_CHIP_GAP for r in all_chip_rects)
+        # 离牌太远(>12pt)也算"没地方"——推到老远合法位不如降档贴身(用户: 实在没地方就缩小)
+        own2 = chips_by_station.get(nm)
+        far = own2 and min(_gap(box, r) for r in own2) > 12.0
+        if not (corr_bad or chip_bad or far):
+            continue
+        # 降档: 回原位, 6px+光环
+        for l2, (ox2, oy2) in zip(g, orig_pos[nm]):
+            l2['x'], l2['y'] = ox2, oy2
+            if not l2['content'].isascii():
+                l2['fs'] = 6.0
+                l2['attrs'] = re.sub(r' font-size="[\d.]+"', ' font-size="6"', l2['attrs'])
+                if 'paint-order' not in l2['attrs']:
+                    l2['attrs'] += ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"'
+        box = group_box(g)
+        cur_boxes[nm] = box
+        bcx, bcy = box[0] + box[2] / 2, box[1] + box[3] / 2
+        near_lbls2 = [cur_boxes[n3] for n3 in cur_boxes if n3 != nm
+                      and abs(cur_boxes[n3][0] - box[0]) < 60 and abs(cur_boxes[n3][1] - box[1]) < 60]
+        pin2 = pin_by_name.get(nm)
+        dx, dy = (bcx - pin2[0], bcy - pin2[1]) if pin2 else (0.0, -1.0)
+        viol2 = min(all_chip_rects, key=lambda r: _gap(box, r), default=None)
+        if viol2 is not None and _gap(box, viol2) < 0:
+            vcx2, vcy2 = viol2[0] + viol2[2] / 2, viol2[1] + viol2[3] / 2
+            dx, dy = bcx - vcx2, bcy - vcy2
+        l3 = (dx * dx + dy * dy) ** 0.5 or 1.0
+        bx3, by3 = dx / l3, dy / l3
+        placed2 = False
+        for ang in (0, 35, -35, 70, -70, 105, -105, 180):
+            ra = _m.radians(ang)
+            ux, uy = bx3 * _m.cos(ra) - by3 * _m.sin(ra), bx3 * _m.sin(ra) + by3 * _m.cos(ra)
+            for step in range(1, 57):
+                dd = step * 0.5
+                r2 = (box[0] + ux * dd, box[1] + uy * dd, box[2], box[3])
+                if (_clear_rect(r2, all_chip_rects, LABEL_CHIP_GAP) and
+                        _clear_rect(r2, near_lbls2, 0.5)):
+                    for l2 in g:
+                        l2['x'] = round(l2['x'] + ux * dd, 2)
+                        l2['y'] = round(l2['y'] + uy * dd, 2)
+                    cur_boxes[nm] = r2
+                    downgraded.append(nm)
+                    placed2 = True
+                    break
+            if placed2:
+                break
+        if not placed2:
+            downgraded.append(nm + '(原位降档)')
+
     rep = report.setdefault('label_nudge', {}).setdefault(tag, {})
+    rep['downgraded'] = downgraded
     rep['moved'] = len(moved)
     rep['max_shift'] = max((d for _, d, _ in moved), default=0)
     rep['relaxed'] = relaxed
@@ -1082,60 +1150,158 @@ def gen_network(codes, report):
     chip_rects_all = [(cc[2] - cc[4] / 2, cc[3] - H / 2, cc[4], H) for cc in chips]
     ring_rects_all = [r for rs in obstacles.values() for r in rs]
     BADGE_GAP = 8.0   # 底图规范: 徽标视觉净距>=8px
+    # 徽标规则终稿(十七轮 用户: 每个决策都是遵守规则; 无任何点名位):
+    # R0 底图位=默认(用户验收过, 终点120px内不迁)
+    # R1 撞牌/圈(净距<8) -> 终点公式gap梯度(7/12/20/32/50/72/100)沿走廊出向外推最小档
+    # R2 混淆规避: 到他线走廊描边距离 < 到本线走廊描边距离(量边不量心)
+    #    -> 贴本体网格重放(距本线走廊6.5~60px, 离他线描边>=30px, 不撞牌圈徽标,
+    #       离本线终点最近优先——10号线原位离广佛线更近=R2触发, 东侧净空位=规则输出)
+    # 环线(11号线)碰撞 -> 规范贴本体网格全域搜
+    EDGE = CORR_HALF   # 走廊描边半宽(净距量边不量心)
+
+    def _badge_grid(ln, ocx, ocy, tpx, tpy, bw2, bh2):
+        """贴本体网格重放(歧义判定触发): 硬底线=到他线走廊边不近于到本线边(混淆);
+        软偏好=离他线边>=20px(能20就20, 不行就挤——用户口径); 优选离本线终点近."""
+        own_segs = segs_of[ln]
+        other_segs = [s2 for ln2 in ORDER if ln2 != ln for s2 in segs_of[ln2]]
+        best = None
+        for s in own_segs:
+            L = ((s[2] - s[0]) ** 2 + (s[3] - s[1]) ** 2) ** 0.5
+            if L < 4:
+                continue
+            n2 = max(2, int(L / 6))
+            dxu, dyu = (s[2] - s[0]) / L, (s[3] - s[1]) / L
+            for i in range(n2 + 1):
+                qx = s[0] + (s[2] - s[0]) * i / n2
+                qy = s[1] + (s[3] - s[1]) * i / n2
+                # 采样限定: 终点邻段(终点±80pt)或原位±70pt——重放是局部优选, 不跨图迁移
+                if ((qx - tpx) ** 2 + (qy - tpy) ** 2) ** 0.5 > 80 and                    ((qx - ocx) ** 2 + (qy - ocy) ** 2) ** 0.5 > 70:
+                    continue
+                for sgn in (1, -1):
+                    nx_, ny_ = -dyu * sgn, dxu * sgn
+                    for off in (14, 20, 28, 40, 56):
+                        cx2, cy2 = qx + nx_ * off, qy + ny_ * off
+                        r2 = (cx2 - bw2 / 2, cy2 - bh2 / 2, bw2, bh2)
+                        if any(_gap(r2, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all):
+                            continue
+                        if any(_gap(r2, r2b) < 3 for _k2, r2b in badge_rects):
+                            continue
+                        own_ed = min((rect_seg_dist(r2, s2) for s2 in own_segs), default=9e9) - EDGE
+                        oth_ed = min((rect_seg_dist(r2, s2) for s2 in other_segs), default=9e9) - EDGE
+                        # 硬底线: 不压他线描边(>=1) + 本线侧强偏好(own_ed<=oth_ed+25, 容差容纳
+                        # '广佛线上方'这类本线标注区他线在下方穿过的合法位)
+                        if oth_ed < 1 or own_ed > oth_ed + 25:
+                            continue
+                        margin_pen = 3.0 * max(0.0, 20.0 - min(oth_ed, 20.0))
+                        dt = ((cx2 - tpx) ** 2 + (cy2 - tpy) ** 2) ** 0.5
+                        dorg = ((cx2 - ocx) ** 2 + (cy2 - ocy) ** 2) ** 0.5
+                        score = dt + margin_pen   # 不再奖励'离原位近'——歧义重放本就要离开歧义侧
+                        if best is None or score < best[0]:
+                            best = (score, r2)
+        return best[1] if best else None
+
     for bd in badges:
         ln = _ln_of_key(bd['key'])
         bw, bh = 80 * bd['sc'], 43 * bd['sc']
         rect = (bd['tx'], bd['ty'], bw, bh)
-        # a) 避让: 推到与全部牌/圈净距>=8
-        viol = [r for r in chip_rects_all + ring_rects_all if _gap(rect, r) < BADGE_GAP]
-        moved = False
-        if viol:
-            vcx = min(viol, key=lambda r: _gap(rect, r))
-            vx, vy = rect[0] + rect[2] / 2 - (vcx[0] + vcx[2] / 2), rect[1] + rect[3] / 2 - (vcx[1] + vcx[3] / 2)
-            l2 = (vx * vx + vy * vy) ** 0.5 or 1.0
-            ux, uy = vx / l2, vy / l2
-            for step in range(1, 61):
-                d2 = step * 0.5
-                r2 = (rect[0] + ux * d2, rect[1] + uy * d2, bw, bh)
-                if all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all):
-                    bd['tx'], bd['ty'] = r2[0], r2[1]
-                    rect = r2
-                    badge_moves.append('%s:避让%.0fpt' % (bd['key'], d2))
-                    moved = True
-                    break
-        # b) 沿本线走廊滑位搜索(十六轮 用户: 10号线徽标放右侧, 鹤洞下花围上):
-        # 本线走廊采样点两侧(优先屏幕右侧=东侧/南侧)生成贴线候选(净距6),
-        # 按离原位距离排序取首个与全部牌/圈净距>=8的候选; 无合法则保持a)结果
+        # 十七轮末 用户定稿间距规则: 最小间距1pt(硬底线, 贴着也算违规)+标准间距8pt(软目标,
+        # 能标准就标准, 不行挤到>=1pt); 徽标=已验收终稿, 仅真违规(gap<1)做最小位移, 逐枚汇报;
+        # 歧义判定(到他线走廊边近于到本线边) -> 贴本体网格重放(用户确认: 10号线适用)
+        BADGE_MIN = 1.0
         if ln:
-            samples = []
-            for s in segs_of[ln]:
-                L = ((s[2] - s[0]) ** 2 + (s[3] - s[1]) ** 2) ** 0.5
-                if L < 4:
-                    continue
-                n2 = max(2, int(L / 6))
-                dxu, dyu = (s[2] - s[0]) / L, (s[3] - s[1]) / L
-                for i in range(n2 + 1):
-                    samples.append((s[0] + (s[2] - s[0]) * i / n2, s[1] + (s[3] - s[1]) * i / n2, dxu, dyu))
-            ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
-            cands = []
-            for qx, qy, dxu, dyu in samples:
-                for sgn in (1, -1):
-                    nx_, ny_ = -dyu * sgn, dxu * sgn   # 法向
-                    off = (bw / 2 + 6) if abs(nx_) >= abs(ny_) else (bh / 2 + 6)
-                    cx2, cy2 = qx + nx_ * off, qy + ny_ * off
-                    r2 = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
-                    d_org = ((cx2 - ocx) ** 2 + (cy2 - ocy) ** 2) ** 0.5
-                    # 屏幕右侧=法向+x侧(横段取+y侧): 旧"近竖取x近横取y"在45°对角线把
-                    # 西南侧当右侧(10号线徽标落西塱西侧的根因), 改纯东侧优先
-                    is_right = (nx_ > 0.05) or (abs(nx_) <= 0.05 and ny_ > 0)
-                    cands.append((d_org + (0 if is_right else 400), r2))
-            cands.sort(key=lambda z: z[0])
-            for d_org, r2 in cands:
-                if all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all):
+            viol_gap = min((_gap(rect, r) for r in chip_rects_all + ring_rects_all), default=9e9)
+            own_ed0 = min((rect_seg_dist(rect, s2) for s2 in segs_of[ln]), default=9e9) - EDGE
+            oth_ed0 = min((rect_seg_dist(rect, s2) for ln2 in ORDER if ln2 != ln
+                           for s2 in segs_of[ln2] if rect_seg_dist(rect, s2) < 150), default=9e9) - EDGE
+            ambiguous0 = oth_ed0 < own_ed0
+            if viol_gap < BADGE_MIN:
+                import math as _m3
+                best3 = None   # (disp, -min_gap, dx, dy, r2)
+                for k3 in range(16):
+                    ra = _m3.radians(k3 * 22.5)
+                    ux, uy = _m3.cos(ra), _m3.sin(ra)
+                    for step in range(1, 41):
+                        dd = step * 0.5
+                        r2 = (rect[0] + ux * dd, rect[1] + uy * dd, bw, bh)
+                        mg = min((_gap(r2, r) for r in chip_rects_all + ring_rects_all), default=9e9)
+                        if mg < BADGE_MIN:
+                            continue
+                        if any(_gap(r2, r2b) < BADGE_MIN for _k4, r2b in badge_rects):
+                            continue
+                        cand = (dd, -min(mg, BADGE_GAP), ux * dd, uy * dd, r2)
+                        if best3 is None or cand < best3:
+                            best3 = cand
+                        break   # 该方向首个达标即该方向最优(再远位移更大)
+                if best3 is not None:
+                    dd, nmg, ddx, ddy, r2 = best3
                     bd['tx'], bd['ty'] = r2[0], r2[1]
                     rect = r2
-                    badge_moves.append('%s:滑位%.0fpt' % (bd['key'], d_org ** 0.5))
+                    badge_moves.append('%s:挤让%.1fpt(间隙%.1f->%.1f)' % (bd['key'], dd, viol_gap, -nmg))
+                else:
+                    report.setdefault('badge_collisions', []).append('%s号线徽标 gap=%.1f 无最小解' % (bd['key'], viol_gap))
+            elif ambiguous0:
+                ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
+                tpx, tpy = min((((p[1] - ocx) ** 2 + (p[2] - ocy) ** 2, p[1], p[2])
+                                for nm3, lst in pins.items() for p in lst if p[0] == ln),
+                               default=(0, ocx, ocy))[1:3]
+                r3 = _badge_grid(ln, ocx, ocy, tpx, tpy, bw, bh)
+                if r3 is not None:
+                    rect = r3
+                    bd['tx'], bd['ty'] = r3[0], r3[1]
+                    badge_moves.append('%s:歧义重放' % bd['key'])
+                else:
+                    report.setdefault('badge_collisions', []).append('%s号线徽标 歧义但无合法网格位' % bd['key'])
+        badge_rects.append((bd['key'], rect))
+        continue
+        ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
+        own_segs = segs_of[ln]
+        other_d = min((rect_seg_dist(rect, s2) for ln2 in ORDER if ln2 != ln
+                       for s2 in segs_of[ln2] if rect_seg_dist(rect, s2) < 150), default=9e9)
+        own_d = min(rect_seg_dist(rect, s2) for s2 in own_segs)
+        collide = any(_gap(rect, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all)
+        ambiguous = (other_d - EDGE) < (own_d - EDGE) and own_d > EDGE + 1  # 他线描边更近=混淆
+        if not collide and not ambiguous:
+            badge_rects.append((bd['key'], rect))
+            continue
+        # 锚定终点=离原位最近的本线钉
+        tpx, tpy = min((((p[1] - ocx) ** 2 + (p[2] - ocy) ** 2, p[1], p[2])
+                        for nm3, lst in pins.items() for p in lst if p[0] == ln),
+                       default=(0, ocx, ocy))[1:3]
+        # R1: 终点公式 gap 梯度外推(撞牌时优先, 环线跳过公式)
+        if collide and ln != '11号线':
+            tx, ty = corridor_tangent(own_segs, tpx, tpy)
+            cxs = sum(p[1] for nm3, lst in pins.items() for p in lst if p[0] == ln) / \
+                max(1, sum(1 for nm3, lst in pins.items() for p in lst if p[0] == ln))
+            cys = sum(p[2] for nm3, lst in pins.items() for p in lst if p[0] == ln) / \
+                max(1, sum(1 for nm3, lst in pins.items() for p in lst if p[0] == ln))
+            if (tpx - cxs) * tx + (tpy - cys) * ty < 0:
+                tx, ty = -tx, -ty   # 出向=背离线体质心
+            r0 = 7.0 if len(by_st.get(next((nm3 for nm3, lst in pins.items()
+                    for p in lst if p[0] == ln and p[1] == tpx and p[2] == tpy), ''), [])) >= 2 else 4.5
+            half = (bw * abs(tx) + bh * abs(ty)) / 2
+            placed1 = False
+            for rung in (7, 12, 20, 32, 50, 72, 100):
+                d2 = r0 + rung + half
+                ccx, ccy = tpx + tx * d2, tpy + ty * d2
+                r2 = (ccx - bw / 2, ccy - bh / 2, bw, bh)
+                if (all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all) and
+                        all(_gap(r2, r2b) >= 3 for _k2, r2b in badge_rects)):
+                    rect = r2
+                    bd['tx'], bd['ty'] = r2[0], r2[1]
+                    badge_moves.append('%s:R1外推gap%d' % (bd['key'], rung))
+                    placed1 = True
                     break
+            if placed1:
+                badge_rects.append((bd['key'], rect))
+                continue
+        # R2/环线: 贴本体网格
+        r3 = _badge_grid(ln, ocx, ocy, tpx, tpy, bw, bh)
+        if r3 is not None:
+            rect = r3
+            bd['tx'], bd['ty'] = r3[0], r3[1]
+            badge_moves.append('%s:重放(%s)' % (bd['key'], '撞牌' if collide else '混淆'))
+        else:
+            badge_moves.append('%s:无合法位保持原位' % bd['key'])
         badge_rects.append((bd['key'], rect))
     report['badge_moves'] = badge_moves
 
@@ -1160,25 +1326,62 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
-    # APM标签分档(十六轮 用户: 林和西/广州塔按正常的来——3号线换乘站周围有地方):
-    # 纯APM站(海心沙/大剧院/花城大道/妇儿中心/黄埔大道/天河南/体育中心南)=6px+白光环密集档;
-    # 与他线换乘的APM站(林和西/广州塔)=7.5px常规档(无光环, 走廊净距强制)
-    apm_only = {nm for nm, lst in pins.items()
-                if {ln for ln, _x, _y in lst} == {'APM线'}}
-    HALO = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"'
-    lmz = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-    if lmz:
-        segz = lmz.group(1)
-        for nm in apm_only:
-            segz = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>' + re.escape(nm) + r'</text>)',
-                          lambda mm: mm.group(1) + '6' + mm.group(2), segz)
-            segz = re.sub(r'<text ((?:(?!style=)[^>])*)>(' + re.escape(nm) + r'</text>)',
-                          lambda mm: '<text ' + mm.group(1) + HALO + '>' + mm.group(2), segz)
-        t = t[:lmz.start(1)] + segz + t[lmz.end(1):]
+    # (十七轮 用户: 像 APM 一样是规范——文字实在没地方显示就缩小+描边, 所有站点同一套规则,
+    #  终点在他线侧有空间自然回常规字号; 不允许任何规则外的特殊定制——APM专用分支已删,
+    #  降档逻辑统一在 nudge_labels 内: 7.5px常规先试, 严格约束无可行位才降6px+白光环)
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                    lambda mm: mm.group(1) + new_labels + mm.group(2), t, count=1, flags=re.S)
+    # 徽标居中对齐(十七轮 用户: 2/5/12/13/14/18居中没解决——标签被重排后徽标没跟):
+    # 斜线终点规则=徽标x与终点标签中心x同轴居中, y贴标签上/下方(gap=3, 保持原侧)
+    centered = []
+    lm2 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+    if lm2:
+        lab_pos = {}
+        for tx3 in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', lm2.group(1)):
+            nm4 = tx3.group(4)
+            if not nm4.isascii() and nm4 not in lab_pos:
+                fs4 = float(tx3.group(3))
+                lab_pos[nm4] = (float(tx3.group(1)), float(tx3.group(2)), fs4)
+        chip_rings4 = [(cc[2] - cc[4] / 2, cc[3] - H / 2, cc[4], H) for cc in chips] + \
+                      [r for rs4 in obstacles.values() for r in rs4]
+        for bd in badges:
+            ln = _ln_of_key(bd['key'])
+            if not ln:
+                continue
+            ocx4, ocy4 = bd['ox'] + 40 * bd['sc'], bd['oy'] + 21.5 * bd['sc']
+            tpts = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
+            if not tpts:
+                continue
+            tp4 = min(tpts, key=lambda p: (p[1] - ocx4) ** 2 + (p[2] - ocy4) ** 2)
+            tpx4, tpy4 = tp4[1], tp4[2]
+            # 终点站名(取该钉站名)
+            tname = next((nm5 for nm5, lst in pins.items() if any(p[0] == ln and p[1] == tpx4 and p[2] == tpy4 for p in lst)), None)
+            if not tname or tname not in lab_pos:
+                continue
+            lx4, ly4, lfs4 = lab_pos[tname]
+            bw4, bh4 = 80 * bd['sc'], 43 * bd['sc']
+            bcx4, bcy4 = bd['tx'] + bw4 / 2, bd['ty'] + bh4 / 2
+            above = bcy4 < ly4
+            nx4 = lx4 - bw4 / 2
+            ny4 = (ly4 - lfs4 * 0.95 - 3 - bh4) if above else (ly4 + 3)
+            r4 = (nx4, ny4, bw4, bh4)
+            if (all(_gap(r4, r) >= BADGE_MIN for r in chip_rings4) and
+                    ((r4[0] - bd['ox']) ** 2 + (r4[1] - bd['oy']) ** 2) ** 0.5 <= 120):
+                if abs(nx4 - bd['tx']) > 0.05 or abs(ny4 - bd['ty']) > 0.05:
+                    bd['tx'], bd['ty'] = nx4, ny4
+                    centered.append('%s(%s)' % (bd['key'], tname))
+            else:
+                report.setdefault('badge_center_fail', []).append('%s@%s' % (bd['key'], tname))
+        # 重写徽标 transform(以原始 span 定位, 用最新坐标)
+        for bd in sorted(badges, key=lambda b: -b['span'][0]):
+            if abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01:
+                seg5 = t[bd['span'][0]:bd['span'][1]]
+                seg5 = seg5.replace('translate(%s %s)' % (('%g' % bd['ox']), ('%g' % bd['oy'])),
+                                    'translate(%.2f %.2f)' % (bd['tx'], bd['ty']), 1)
+                t = t[:bd['span'][0]] + seg5 + t[bd['span'][1]:]
+        report['badge_centered'] = centered
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
     for nm, pad in ring_pads.items():
