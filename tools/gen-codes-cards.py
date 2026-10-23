@@ -1362,6 +1362,33 @@ def gen_network(codes, report):
                     break
     t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                _sub_badge, t, flags=re.S)
+    # 终稿锚定层(2026-10-23 用户定稿同步): 逐枚审定的徽标/站名/牌偏移持久化到
+    # data/codes-final-pins.json —— 重跑=算法产出+锚表覆盖, 输出与已验收SVG逐字节一致。
+    # 徽标按文档序配对(与提取序同源); 牌偏移在全部排布pass后应用(不回灌算法);
+    # 站名按站名串替换。锚表=终稿持久化(同 _network-audit 性质), 非放置算法。
+    fin_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
+    if os.path.exists(fin_path):
+        fin = json.load(open(fin_path, encoding='utf-8'))
+        for nm, (fx, fy) in fin.get('chip_shift', {}).items():
+            chips = [(a, b, cx + fx, cy + fy, w) if a == nm else (a, b, cx, cy, w)
+                     for a, b, cx, cy, w in chips]
+        lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+        if lm4:
+            inner4 = lm4.group(1)
+            for nm, (lx, ly) in fin.get('labels', {}).items():
+                inner4 = re.sub(r'<text x="[-\d.]+" y="[-\d.]+"([^>]*)>' + re.escape(nm) + r'</text>',
+                                r'<text x="%s" y="%s"\1>%s</text>' % (lx, ly, nm), inner4, count=1)
+            t = t[:lm4.start(1)] + inner4 + t[lm4.end(1):]
+        trs = fin.get('badges', [])
+        _bi = [0]
+        def _pin_badge(mm):
+            i = _bi[0]
+            _bi[0] += 1
+            if i < len(trs):
+                return mm.group(1) + '"' + trs[i] + mm.group(4) + '>' + mm.group(5) + '</g>'
+            return mm.group(0)
+        t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
+                   _pin_badge, t, flags=re.S)
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
     for nm, pad in ring_pads.items():
