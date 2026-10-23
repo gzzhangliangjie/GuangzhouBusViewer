@@ -1110,15 +1110,19 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
-    # APM九站标签统一6px(十二轮 用户: 要缩就一起缩, 有大有小难受; 6px=密集档,
-    # 压线豁免/贴近豁免自动生效——fs<7 判据见 nudge_labels)
+    # APM九站标签统一6px+统一白光环样式(十二/十四轮 用户: 要缩一起缩; 字号同为6仍显大小不一=
+    # 夹缝四站带paint-order白光环(底图密集区白光环压线)侵蚀笔画显小, 无光环四站显大——
+    # 九站统一加同款光环; 6px=密集档, 压线豁免/贴近豁免自动生效——fs<7 判据见 nudge_labels)
     apm_names = {nm for nm, lst in pins.items() if any(ln == 'APM线' for ln, _x, _y in lst)}
+    HALO = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"'
     lmz = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
     if lmz:
         segz = lmz.group(1)
         for nm in apm_names:
             segz = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>' + re.escape(nm) + r'</text>)',
                           lambda mm: mm.group(1) + '6' + mm.group(2), segz)
+            segz = re.sub(r'<text ((?:(?!style=)[^>])*)>(' + re.escape(nm) + r'</text>)',
+                          lambda mm: '<text ' + mm.group(1) + HALO + '>' + mm.group(2), segz)
         t = t[:lmz.start(1)] + segz + t[lmz.end(1):]
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
