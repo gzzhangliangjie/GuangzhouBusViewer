@@ -172,7 +172,7 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     xline = x0 + PADX + ca / 2
     xsep = x0 + PADX + ca + SEPW / 2
     xser = x0 + PADX + ca + SEPW + cb / 2
-    ty = cy + 0.06 * fs
+    ty = cy   # 墨迹标定: central 基准已光学居中, 旧 +0.06fs 是向下错偏(六轮用户: 数字偏下)
     tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
     sfs = fs
     stl = ''
@@ -180,7 +180,6 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     if part_w(serial, std) > cb + 0.01:
         sfs = serial_font(serial, std)
         stl = f' textLength="{cb:.2f}" lengthAdjust="spacingAndGlyphs"'
-        ty = cy + 0.06 * sfs
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
@@ -326,8 +325,10 @@ def _clear_rect(rect, others, gap):
 
 
 def _gap(r1, r2):
-    """两矩形净距(重叠为负, 量级=角部侵入深度)."""
-    ox = min(r1[0] + r1[2], r2[0] + r2[3]) - max(r1[0], r2[0])
+    """两矩形净距(重叠为负, 量级=角部侵入深度).
+    ⚠️ox 的 r2 x1 = r2[0]+r2[2](宽)——二~六轮曾误写 r2[3](高), 所有净距判定被扭曲
+    (广州东站标签 0.4px 擦边漏推根因, 2026-10-23 六轮修复)."""
+    ox = min(r1[0] + r1[2], r2[0] + r2[2]) - max(r1[0], r2[0])
     oy = min(r1[1] + r1[3], r2[1] + r2[3]) - max(r1[1], r2[1])
     if ox >= 0 and oy >= 0:
         return -min(ox, oy)
@@ -544,19 +545,28 @@ def layout_candidates(items):
     pts = push_apart([(it[1], it[2]) for it in items], [it[3] for it in items], 0, 'x')
     cands.append(('H', [(items[i][0], pts[i][0], pts[i][1], items[i][3]) for i in range(n)]))
     if n == 3:
-        # 品字: 底槽=钉y最大者, 顶排=其余按x排序
-        bottom = max(range(n), key=lambda i: items[i][2])
-        top = sorted([i for i in range(n) if i != bottom], key=lambda i: items[i][1])
-        pairs = push_apart([(items[top[0]][1], items[top[0]][2]), (items[top[1]][1], items[top[1]][2])],
-                           [items[top[0]][3], items[top[1]][3]], 0, 'x')
-        bx, by = items[bottom][1], items[bottom][2]
-        row_y = min(p[1] for p in pairs)
-        if by - row_y < H + GAP:
-            sh = (H + GAP - (by - row_y)) / 2
-            pairs = [(x, y - sh) for x, y in pairs]
-            by += sh
-        place = {top[0]: pairs[0], top[1]: pairs[1], bottom: (bx, by)}
-        cands.append(('P3', [(items[i][0], place[i][0], place[i][1], items[i][3]) for i in range(n)]))
+        # 三角排布两种朝向(2026-10-23 六轮 用户: 上二下一T字 或 上一下二品字, 行对齐):
+        # P3=T字(底1=钉y最大, 顶排2按x), P3D=品字(顶1=钉y最小, 底排2按x)
+        for tag, single_max in (('P3', True), ('P3D', False)):
+            if single_max:
+                single = max(range(n), key=lambda i: items[i][2])
+            else:
+                single = min(range(n), key=lambda i: items[i][2])
+            pair = sorted([i for i in range(n) if i != single], key=lambda i: items[i][1])
+            pair_y = (items[pair[0]][2] + items[pair[1]][2]) / 2
+            sx, sy = items[single][1], items[single][2]
+            if abs(sy - pair_y) < H + GAP:
+                sh = (H + GAP - abs(sy - pair_y)) / 2
+                if sy > pair_y:      # 单牌在下: 排上移/单牌下移
+                    pair_y -= sh
+                    sy += sh
+                else:
+                    pair_y += sh
+                    sy -= sh
+            pts = push_apart([(items[pair[0]][1], pair_y), (items[pair[1]][1], pair_y)],
+                             [items[pair[0]][3], items[pair[1]][3]], 0, 'x')
+            place = {pair[0]: pts[0], pair[1]: pts[1], single: (sx, sy)}
+            cands.append((tag, [(items[i][0], place[i][0], place[i][1], items[i][3]) for i in range(n)]))
     if n == 4:
         # 田字: 列=x排序对半分; 列内同x(=列钉x均值)竖排推开, 列间再推开
         order = sorted(range(4), key=lambda i: items[i][1])
@@ -581,8 +591,18 @@ def layout_candidates(items):
     return [(tag, _separate(placed)) for tag, placed in cands]
 
 
+def _pattern_prio(tag, n):
+    """官图排布优先级(2026-10-23 六轮 用户: 2线=上下叠; 3线=T字/品字三角):
+    规范模式=0, 退化模式>0; 全触线仍最高优先, 退化只在规范模式放不下时用."""
+    if n == 2:
+        return {'V': 0, 'H': 1}.get(tag, 2)
+    if n == 3:
+        return {'P3': 0, 'P3D': 0, 'V': 1, 'H': 2}.get(tag, 3)
+    return {'G4': 0, 'V': 1, 'H': 2}.get(tag, 3)
+
+
 def place_station(items, segs_of):
-    """择优: 全触线 > 钉向匹配 > 最差距离. 返回 (tag, placed, fails, worst)."""
+    """择优: 全触线 > 规范排布优先级 > 钉向匹配 > 最差距离. 返回 (tag, placed, fails, worst)."""
     n = len(items)
     gx = sum(it[1] for it in items) / n
     gy = sum(it[2] for it in items) / n
@@ -602,9 +622,9 @@ def place_station(items, segs_of):
             px, py = pin_of[ln]
             ql = ((px - gx) ** 2 + (py - gy) ** 2) ** 0.5 or 1.0
             dirscore += ((cx - gx) / pl) * ((px - gx) / ql) + ((cy - gy) / pl) * ((py - gy) / ql)
-        scored.append((len(fails) == 0, dirscore, worst, tag, placed, fails))
-    scored.sort(key=lambda x: (not x[0], -x[1], x[2]))
-    ok, dirscore, worst, tag, placed, fails = scored[0]
+        scored.append((len(fails) == 0, _pattern_prio(tag, n), dirscore, worst, tag, placed, fails))
+    scored.sort(key=lambda x: (not x[0], x[1], -x[2], x[3]))
+    ok, prio, dirscore, worst, tag, placed, fails = scored[0]
     for a in range(len(placed)):
         for b in range(a + 1, len(placed)):
             ra = (placed[a][1] - placed[a][3] / 2, placed[a][2] - H / 2, placed[a][3], H)
@@ -637,6 +657,7 @@ def gen_network(codes, report):
             pins.setdefault(nm, []).append((ln, cx, cy))
 
     chips = []   # (nm, line, cx, cy, w)
+    layout_review = []
     for nm, lst in pins.items():
         items = []
         for ln, cx, cy in lst:
@@ -654,6 +675,13 @@ def gen_network(codes, report):
         if fails:
             report['touch_fail'].append('%s[%s]: %s' % (nm, tag, ','.join(fails)))
         report['layout_tags'][tag] = report['layout_tags'].get(tag, 0) + 1
+        # 集中review(2026-10-23 六轮): 2线须V(上下叠), 3线须P3/P3D(T字/品字), 4线须G4
+        n = len(items)
+        if n >= 2:
+            layout_review.append('%d线 %s %s' % (n, tag, nm))
+            ok_pat = (tag == 'V') if n == 2 else (tag in ('P3', 'P3D')) if n == 3 else (tag == 'G4')
+            if not ok_pat:
+                report['layout_violations'].append('%d线站%s用了%s(退化)' % (n, nm, tag))
 
     # 跨站牌重叠 -> 沿本线走廊推让(牌滑线, 触线保持)
     def rect_of(c):
@@ -810,7 +838,8 @@ def gen_network(codes, report):
 def main():
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     codes = load_codes()
-    report = {'no_code': [], 'line_chips': {}, 'touch_fail': [], 'chip_overlaps': [], 'layout_tags': {}}
+    report = {'no_code': [], 'line_chips': {}, 'touch_fail': [], 'chip_overlaps': [], 'layout_tags': {},
+              'layout_violations': []}
     for line in ORDER:
         gen_line_card(line, codes, report)
     gen_network(codes, report)
@@ -820,6 +849,7 @@ def main():
     print('无码站(留圆):', report['no_code'])
     print('触线FAIL:', report['touch_fail'])
     print('牌重叠:', report['chip_overlaps'])
+    print('排布review:', report['layout_tags'], '违规:', report['layout_violations'] if report['layout_violations'] else '无')
 
 
 if __name__ == '__main__':

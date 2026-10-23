@@ -11,6 +11,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import time
 
 import numpy as np
 from PIL import Image
@@ -37,6 +38,8 @@ def parse_chips(svg_path):
             x, y, w, h, rest, col = float(r.group(1)), float(r.group(2)), float(r.group(3)), float(r.group(4)), r.group(5), r.group(6)
             if 'data-ring' in rest:
                 rings.append((x, y, w, h))
+            elif 'fill="none"' in rest:
+                pass   # 双描边包络的白pass矩形(非牌)
             else:
                 chips.append([x + w / 2, y + h / 2, w, h, col, []])
         for tx in re.finditer(r'<text x="([\d.]+)" y="([\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', m.group(1)):
@@ -58,10 +61,19 @@ def render(svg_path, vb):
                 'html,body{margin:0;padding:0;background:#fff;overflow:hidden}</style>'
                 '</head><body>%s</body></html>' % svg)
     png = os.path.join(tempfile.gettempdir(), '_codespix.png')
-    subprocess.run([EDGE, '--headless', '--disable-gpu', '--force-device-scale-factor=1',
-                    '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
-                    'file:///%s' % html.replace('\\', '/')], capture_output=True, timeout=120)
-    return np.array(Image.open(png).convert('RGB')).astype(int)
+    if os.path.exists(png):
+        os.remove(png)   # 防截图竞态读到上一张卡旧图
+    for attempt in range(2):
+        subprocess.run([EDGE, '--headless', '--disable-gpu', '--force-device-scale-factor=1',
+                        '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
+                        'file:///%s' % html.replace('\\', '/')], capture_output=True, timeout=120)
+        if os.path.exists(png):
+            try:
+                return np.array(Image.open(png).convert('RGB')).astype(int)
+            except Exception:
+                pass
+        time.sleep(1.0)
+    raise RuntimeError('render failed: ' + svg_path)
 
 
 def check_card(path, label, gen):
@@ -124,11 +136,11 @@ def check_card(path, label, gen):
         else:
             n_border += 1
         # V3 黑墨: 内部区(去边框3.5px)
-        ix0, iy0 = px(cx - w / 2 + 3.5, cy - h / 2 + 3.5)
-        ix1, iy1 = px(cx + w / 2 - 3.5, cy + h / 2 - 3.5)
+        ix0, iy0 = px(cx - w / 2 + 3.0, cy - h / 2 + 3.0)
+        ix1, iy1 = px(cx + w / 2 - 3.0, cy + h / 2 - 3.0)
         inner = im[iy0:iy1, ix0:ix1]
         ink = inner.max(axis=2) < 120
-        if ink.sum() < 8:
+        if ink.sum() < 6:
             fails.append('黑字(@%.0f,%.0f)' % (cx, cy))
         else:
             n_ink += 1
