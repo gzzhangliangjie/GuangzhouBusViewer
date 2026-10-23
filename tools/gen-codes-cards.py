@@ -184,6 +184,11 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     超宽文本(APM线号/支线序号)小字号+textLength 压入标准格 -> 全牌同大."""
     x0, y0 = cx - w / 2, cy - h / 2
     ca = cell_a(line_disp, card)
+    if line_disp == 'APM':
+        # 十一轮末 用户: APM竖线右移给三字母多点空间——线号格=牌宽-边距-分隔-两位小字序号格,
+        # 序号两位小字自然宽即可, APM以95%近原生宽渲染(旧: 压入7.3格=73%重压)
+        sfs0 = APM_FONT_CARD if card else APM_FONT
+        ca = w - 2 * PADX - SEPW - part_w('00', sfs0)
     cb = w - 2 * PADX - ca - SEPW   # 序号格=余量(1位数字线号竖线左移后序号格变宽)
     xline = x0 + PADX + ca / 2
     xsep = x0 + PADX + ca + SEPW / 2
@@ -385,12 +390,13 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
         # ⚠️必须精确距离筛选——中点±70预筛会漏掉中点在远处的长线段(3号线竖段中点距嘉禾望岗
         # 标签223pt但线段本体贴着标签), 十一轮标签被推上走廊的根因
         near_segs = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
-        corr_viol = min(near_segs, key=lambda s: rect_seg_dist(box, s)) if near_segs else None
+        dense = max(l2['fs'] for l2 in g) < 7.0   # 密集档小字(底图逐档缩小): 允许压线, 走廊豁免
+        corr_viol = None if dense else (min(near_segs, key=lambda s: rect_seg_dist(box, s)) if near_segs else None)
         corr_d = rect_seg_dist(box, corr_viol) if corr_viol is not None else 9e9
         chip_viol = min(all_chip_rects, key=lambda r: _gap(box, r), default=None)
         chip_d = _gap(box, chip_viol) if chip_viol is not None else 9e9
         if chip_d >= LABEL_CHIP_GAP and corr_d >= LABEL_CORR_GAP:
-            continue   # 牌与走廊都净(十一轮: 走廊违规也触发——底图遗留的天河南压1号线边0.7pt)
+            continue   # 牌与走廊都净(fs>=7的标签走廊违规也触发; 小字档只查牌)
         # 推移基准方向: 远离最近违规者(牌或走廊线段的最近点)
         if chip_d < corr_d and chip_viol is not None:
             vcx, vcy = chip_viol[0] + chip_viol[2] / 2, chip_viol[1] + chip_viol[3] / 2
@@ -516,7 +522,8 @@ def nudge_labels(svg_text, pin_by_name, chips_by_station, segs, report, tag, ali
             l = (ux * ux + uy * uy) ** 0.5 or 1.0
             ux, uy = ux / l, uy / l
             g = groups[nm]
-            near_segs = [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
+            dense = max(l2['fs'] for l2 in groups[nm]) < 7.0   # 密集档小字: 压线允许, 贴近不受走廊限
+            near_segs = [] if dense else [s for s in segs if rect_seg_dist((bcx - 35, bcy - 35, 70, 70), s) < 70]
             near_lbls = [cur_boxes[n2] for n2 in cur_boxes if n2 != nm
                          and abs(cur_boxes[n2][0] - box[0]) < 60 and abs(cur_boxes[n2][1] - box[1]) < 60]
             others = [r for nm3, lst in chips_by_station.items() if nm3 != nm for r in lst]
@@ -997,16 +1004,8 @@ def gen_network(codes, report):
     # 对齐组心: 全部有牌站(多牌=新组形; 单牌=斜走廊标签45°摆位两轴都偏, 十轮用户三报)
     align_centers = {nm: (rs[0][0] + rs[0][2] / 2, rs[0][1] + rs[0][3] / 2)
                      for nm, rs in obstacles.items()}
-    # APM九站标签统一7.5px(十一轮 用户: APM站点文字大小不一——底图密集区6px档在编号版不齐;
-    # 先改盘再解析, 几何校验/发射同口径)
-    apm_names = {nm for nm, lst in pins.items() if any(ln == 'APM线' for ln, _x, _y in lst)}
-    lm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-    if lm:
-        seg2 = lm.group(1)
-        for nm in apm_names:
-            seg2 = re.sub(r'(<text [^>]*font-size=")[\d.]+("[^>]*>%s</text>)' % re.escape(nm),
-                          lambda mm: mm.group(1) + '7.5' + mm.group(2), seg2)
-        t = t[:lm.start(1)] + seg2 + t[lm.end(1):]
+    # (十一轮末撤APM统一7.5px: 用户约定=密集档小字(fs<7, 底图逐档缩小6/5/4.2)允许压线,
+    # APM夹缝站保持底图6px; 7.5px常规标签才强制走廊净距)
     new_labels = nudge_labels(t, pin_center, obstacles, all_segs, report, '全网', align_centers)
     if new_labels is not None:
         t = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
