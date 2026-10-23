@@ -31,6 +31,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES_DIR = os.path.join(ROOT, 'assets', 'lines')
 CSV_PATH = os.path.join(ROOT, 'data', 'station-codes-official.csv')
 REPORT = os.path.join(ROOT, 'data', '_codes-cards-report.json')
+# 终稿锚定层(单线卡): data/codes-final-pins.json 的 cards 段, 缺文件=空表
+_final_pins_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
+_fp = json.load(open(_final_pins_path, encoding='utf-8')) if os.path.exists(_final_pins_path) else {}
+CARD_FINAL = _fp.get('cards', {})
 
 ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号线', '8号线',
          '9号线', '10号线', '11号线', '12号线', '13号线', '14号线', '18号线',
@@ -706,6 +710,14 @@ def gen_line_card(line, codes, report):
         t2 = re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
                     lambda mm: mm.group(1) + new_labels + mm.group(2), t2, count=1, flags=re.S)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t2, re.S)
+    # 终稿锚定层(单线卡, 同全网): 底图已回写终版站名组, 整组钉定保重跑逐字节一致
+    _cfin = CARD_FINAL.get(line)
+    if _cfin and _cfin.get('labels_inner'):
+        t2 = t2[:mn.start()] + \
+             re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
+                    lambda mm: mm.group(1) + _cfin['labels_inner'] + mm.group(2), mn.group(0), count=1, flags=re.S) + \
+             t2[mn.end():]
+        mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t2, re.S)
     t2 = t2[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + chips_svg + '</g>' + t2[mn.end():]
     out = os.path.join(LINES_DIR, 'line-%s.codes.svg' % line)
     open(out, 'w', encoding='utf-8').write(
@@ -1373,12 +1385,9 @@ def gen_network(codes, report):
             chips = [(a, b, cx + fx, cy + fy, w) if a == nm else (a, b, cx, cy, w)
                      for a, b, cx, cy, w in chips]
         lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-        if lm4:
-            inner4 = lm4.group(1)
-            for nm, (lx, ly) in fin.get('labels', {}).items():
-                inner4 = re.sub(r'<text x="[-\d.]+" y="[-\d.]+"([^>]*)>' + re.escape(nm) + r'</text>',
-                                r'<text x="%s" y="%s"\1>%s</text>' % (lx, ly, nm), inner4, count=1)
-            t = t[:lm4.start(1)] + inner4 + t[lm4.end(1):]
+        if lm4 and fin.get('labels_inner'):
+            # 整组钉定(切换两模式一套文字布局: 底图已回写终版站名组, 此处保证重跑逐字节一致)
+            t = t[:lm4.start(1)] + fin['labels_inner'] + t[lm4.end(1):]
         trs = fin.get('badges', [])
         _bi = [0]
         def _pin_badge(mm):
