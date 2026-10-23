@@ -49,8 +49,16 @@ def csv_line_to_card(ln):
 
 
 # ---------- 编号数据 ----------
+def norm_name(nm):
+    """站名归一: 東->东(繁简) + 去尾'站'(兜底口径; 广州南站等'站'尾真名由原名优先保住)."""
+    nm = nm.replace('東', '东')
+    if nm.endswith('站') and len(nm) > 2:
+        return nm[:-1]
+    return nm
+
+
 def load_codes():
-    """-> codes[(站名, 卡线名)] = (显示线号, 序号). 原名优先, 去尾'站'兜底."""
+    """-> codes[(站名, 卡线名)] = (显示线号, 序号). 原名优先, 归一兜底(東圃站->东圃)."""
     codes = {}
     with open(CSV_PATH, encoding='utf-8-sig') as f:
         for r in csv.DictReader(f):
@@ -60,8 +68,8 @@ def load_codes():
                 continue
             if (nm, card) not in codes:
                 codes[(nm, card)] = (disp, r['编号'])
-            stripped = nm[:-1] if nm.endswith('站') and len(nm) > 2 else None
-            if stripped and (stripped, card) not in codes:
+            stripped = norm_name(nm)
+            if stripped != nm and (stripped, card) not in codes:
                 codes[(stripped, card)] = (disp, r['编号'])
     return codes
 
@@ -835,11 +843,52 @@ def gen_network(codes, report):
     return chips
 
 
+def cross_check_master(report):
+    """数据门禁(2026-10-23 固化): CSV ↔ 总表 data/station-codes-master.json 全量核对.
+    总表=用户整理的权威源(320站/402码, 与广州地铁车站编号总表.pdf同源);
+    口径: 站名 norm_name 归一(東->东+去站尾), 广佛线/GF 与 APM 线名映射一致.
+    - D1 CSV 每行在总表中有同编号记录(防编造);
+    - D2 总表每条(在图上线集合内)在 CSV 中有同编号记录(防漏采);
+    违例写入 report['csv_vs_master']."""
+    master_path = os.path.join(ROOT, 'data', 'station-codes-master.json')
+    if not os.path.exists(master_path):
+        report['csv_vs_master'] = ['master json 缺失']
+        return
+    m = json.load(open(master_path, encoding='utf-8'))
+    LN = {'广佛': '广佛线', 'GF': '广佛线', 'APM': 'APM线', 'F2': None}
+    master = {}
+    for s in m['stations']:
+        nm = norm_name(s['name'])
+        for c in s['codes']:
+            ln = LN.get(c['line'], None if c['line'] in ('F2',) else c['line'] + '号线')
+            if ln is None:
+                continue   # 佛山2号线(F2)图上无走廊, 不入核对域
+            master[(nm, ln)] = c['serial']
+    rows = list(csv.DictReader(open(CSV_PATH, encoding='utf-8-sig')))
+    csvset = {}
+    for r in rows:
+        card, _ = csv_line_to_card(r['线路'])
+        if card is None:
+            continue   # 佛山2号线等图外线不入核对域
+        csvset[(norm_name(r['站名']), card)] = r['编号']
+    bad = []
+    for k, v in csvset.items():
+        if k not in master:
+            bad.append('D1 CSV多出: %s@%s=%s' % (k[0], k[1], v))
+        elif master[k] != v:
+            bad.append('D1 编号不同: %s@%s CSV=%s 总表=%s' % (k[0], k[1], v, master[k]))
+    for k, v in master.items():
+        if k not in csvset:
+            bad.append('D2 总表有CSV缺: %s@%s=%s' % (k[0], k[1], v))
+    report['csv_vs_master'] = bad
+
+
 def main():
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
     codes = load_codes()
     report = {'no_code': [], 'line_chips': {}, 'touch_fail': [], 'chip_overlaps': [], 'layout_tags': {},
               'layout_violations': []}
+    cross_check_master(report)   # 数据门禁先行: CSV↔总表核对不过=数据源有问题
     for line in ORDER:
         gen_line_card(line, codes, report)
     gen_network(codes, report)
