@@ -679,67 +679,39 @@ def _separate(placed):
 
 
 def layout_candidates(items):
-    """items=[(line, pinx, piny, w)] -> [(tag, [(line, cx, cy, w)])].
-    槽位初始化=各线钉位(触线天然成立), 再最小间距推开; 模式随线数与钉形自适应."""
+    """标准几何候选(十三轮 用户: 都说了要标准的T和品字, 不要乱搞):
+    槽位一律以组心(钉均值)为中心的对称标准形——行内等隙((w+GAP)/2)、行距恒定(H+GAP)、
+    单牌槽正对牌对中心; 组心恒=钉质心(模式切换锚点); 单牌槽沿用自己钉x是旧版歪T/偏左根因, 已改居中。
+    线->槽配对一律由 place_station 置换搜索按方向匹配决定。"""
     n = len(items)
     if n == 1:
         ln, px, py, w = items[0]
         return [('S', [(ln, px, py, w)])]
+    gx = sum(it[1] for it in items) / n
+    gy = sum(it[2] for it in items) / n
+    # 组心=钉质心锚定(十三轮 用户: 槽位要对齐钉位, 两模式切换位置稳定/便于扩展)
+    dx = (items[0][3] + GAP) / 2   # 行内半距(全牌等宽)
+    dy = (H + GAP) / 2             # 行半距
+    ws = [it[3] for it in items]
     cands = []
-    # 纵叠(官图2线模式): 同列紧排——列x=钉x均值(平行走廊站两线各距~12<半宽+走廊半宽, 触线成立)
-    mx = sum(it[1] for it in items) / n
-    pts = push_apart([(mx, it[2]) for it in items], [1] * n, H + GAP, 'y')
-    cands.append(('V', [(items[i][0], pts[i][0], pts[i][1], items[i][3]) for i in range(n)]))
-    # 横排
-    pts = push_apart([(it[1], it[2]) for it in items], [it[3] for it in items], 0, 'x')
-    cands.append(('H', [(items[i][0], pts[i][0], pts[i][1], items[i][3]) for i in range(n)]))
-    if n == 3:
-        # 三角排布两种朝向显式生成(八轮: 旧实现用max/min钉y定单牌行, 共y钉时P3/P3D退化成
-        # 同一候选=真T字(单牌行在下)从未被生成——大学城南上12/7下4做不出来的根因):
-        # P3=T字(单牌行在下), P3D=品字(单牌行在上); 单牌成员仅做几何初始化, 线-槽配对由置换搜索定
-        for tag, single_top in (('P3', False), ('P3D', True)):
-            single = max(range(n), key=lambda i: items[i][2])
-            pair = sorted([i for i in range(n) if i != single], key=lambda i: items[i][1])
-            pair_y = (items[pair[0]][2] + items[pair[1]][2]) / 2
-            sx, sy = items[single][1], items[single][2]
-            if abs(sy - pair_y) < H + GAP:
-                sh = (H + GAP - abs(sy - pair_y)) / 2
-                if single_top:       # 品字: 单牌行在上
-                    pair_y += sh
-                    sy -= sh
-                else:                # T字: 单牌行在下
-                    pair_y -= sh
-                    sy += sh
-            elif single_top and sy > pair_y:
-                sy, pair_y = pair_y - (H + GAP) / 2, pair_y + 0  # 钉形与朝向冲突时按朝向放
-            elif not single_top and sy < pair_y:
-                sy = pair_y + (H + GAP) / 2
-            pts = push_apart([(items[pair[0]][1], pair_y), (items[pair[1]][1], pair_y)],
-                             [items[pair[0]][3], items[pair[1]][3]], 0, 'x')
-            place = {pair[0]: pts[0], pair[1]: pts[1], single: (sx, sy)}
-            cands.append((tag, [(items[i][0], place[i][0], place[i][1], items[i][3]) for i in range(n)]))
-    if n == 4:
-        # 田字: 列=x排序对半分; 列内同x(=列钉x均值)竖排推开, 列间再推开
-        order = sorted(range(4), key=lambda i: items[i][1])
-        left, right = sorted(order[:2], key=lambda i: items[i][2]), sorted(order[2:], key=lambda i: items[i][2])
-        cells = {}
-        for col in (left, right):
-            mx = sum(items[i][1] for i in col) / 2.0
-            pts = push_apart([(mx, items[i][2]) for i in col], [1] * len(col), H + GAP, 'y')
-            for i, p in zip(col, pts):
-                cells[i] = p
-        wL = max(items[i][3] for i in left)
-        wR = max(items[i][3] for i in right)
-        lx = cells[left[-1]][0]
-        rx = cells[right[0]][0]
-        if rx - lx < (wL + wR) / 2 + GAP:
-            d = ((wL + wR) / 2 + GAP - (rx - lx)) / 2
-            for i in left:
-                cells[i] = (cells[i][0] - d, cells[i][1])
-            for i in right:
-                cells[i] = (cells[i][0] + d, cells[i][1])
-        cands.append(('G4', [(items[i][0], cells[i][0], cells[i][1], items[i][3]) for i in range(4)]))
-    return [(tag, _separate(placed)) for tag, placed in cands]
+    if n == 2:
+        cands.append(('V', [(items[0][0], gx, gy - dy, ws[0]), (items[1][0], gx, gy + dy, ws[1])]))
+        cands.append(('H', [(items[0][0], gx - dx, gy, ws[0]), (items[1][0], gx + dx, gy, ws[1])]))
+    elif n == 3:
+        cands.append(('P3', [(items[0][0], gx - dx, gy - dy, ws[0]), (items[1][0], gx + dx, gy - dy, ws[1]),
+                             (items[2][0], gx, gy + dy, ws[2])]))
+        cands.append(('P3D', [(items[0][0], gx, gy - dy, ws[0]), (items[1][0], gx - dx, gy + dy, ws[1]),
+                              (items[2][0], gx + dx, gy + dy, ws[2])]))
+        cands.append(('V', [(items[0][0], gx, gy - (H + GAP), ws[0]), (items[1][0], gx, gy, ws[1]),
+                            (items[2][0], gx, gy + (H + GAP), ws[2])]))
+        cands.append(('H', [(items[0][0], gx - (items[0][3] + GAP), gy, ws[0]), (items[1][0], gx, gy, ws[1]),
+                            (items[2][0], gx + (items[2][3] + GAP), gy, ws[2])]))
+    elif n == 4:
+        cands.append(('G4', [(items[0][0], gx - dx, gy - dy, ws[0]), (items[1][0], gx + dx, gy - dy, ws[1]),
+                             (items[2][0], gx - dx, gy + dy, ws[2]), (items[3][0], gx + dx, gy + dy, ws[3])]))
+        cands.append(('V', [(items[0][0], gx, gy - 1.5 * (H + GAP), ws[0]), (items[1][0], gx, gy - 0.5 * (H + GAP), ws[1]),
+                            (items[2][0], gx, gy + 0.5 * (H + GAP), ws[2]), (items[3][0], gx, gy + 1.5 * (H + GAP), ws[3])]))
+    return cands
 
 
 def _pattern_prio(tag, n, items=None):
@@ -885,10 +857,47 @@ def gen_network(codes, report):
             if not ok_pat:
                 report['layout_violations'].append('%d线站%s用了%s(退化)' % (n, nm, tag))
 
-    # 跨站牌重叠 -> 沿本线走廊推让(牌滑线, 触线保持)
+    # 牌-他线无歧义(十三轮 用户: 晓港不是10号线的却叠在10号线上): 单牌站若覆盖他线走廊,
+    # 沿本线走廊切向/垂直试移避开(保本线触线+不撞他牌)
     def rect_of(c):
         return (c[2] - c[4] / 2, c[3] - H / 2, c[4], H)
 
+    station_chip_idx = {}
+    for idx4, cc in enumerate(chips):
+        station_chip_idx.setdefault(cc[0], []).append(idx4)
+    amb_fixed = []
+    for nm2, idxs in station_chip_idx.items():
+        if len(idxs) != 1:
+            continue
+        k = idxs[0]
+        nm, ln, cx, cy, w = chips[k]
+        other_segs = [s2 for ln2 in ORDER if ln2 != ln for s2 in segs_of[ln2]
+                      if rect_seg_dist((cx - 20, cy - 20, 40, 40), s2) < 40]
+        if not other_segs or min(rect_seg_dist((cx - w / 2, cy - H / 2, w, H), s2) for s2 in other_segs) >= CORR_HALF - 0.2:
+            continue
+        tx, ty = corridor_tangent(segs_of[ln], cx, cy)
+        dirs = [(tx, ty), (-tx, -ty), (-ty, tx), (ty, -tx)]
+        done2 = False
+        for ux, uy in dirs:
+            for step in range(1, 25):
+                d2 = step * 0.5
+                nx, ny = cx + ux * d2, cy + uy * d2
+                rect = (nx - w / 2, ny - H / 2, w, H)
+                own_touch = min(rect_seg_dist(rect, s2) for s2 in segs_of[ln]) <= CORR_HALF + 0.01
+                other_ok = min(rect_seg_dist(rect, s2) for s2 in other_segs) >= CORR_HALF - 0.2
+                clash = any(o is not chips[k] and o[0] != nm and rects_overlap(rect, rect_of(o)) for o in chips)
+                if own_touch and other_ok and not clash:
+                    chips[k] = (nm, ln, nx, ny, w)
+                    amb_fixed.append('%s:%.1fpt' % (nm, d2))
+                    done2 = True
+                    break
+            if done2:
+                break
+        if not done2:
+            report.setdefault('chip_amb_unresolved', []).append(nm)
+    report['chip_amb_fixed'] = amb_fixed
+
+    # 跨站牌重叠 -> 沿本线走廊推让; 多牌站整组平移保形状(十三轮: 单枚平移曾破坏行对齐=番禺广场18靠上)
     for i in range(len(chips)):
         for j in range(i + 1, len(chips)):
             if chips[i][0] == chips[j][0]:
@@ -899,15 +908,27 @@ def gen_network(codes, report):
             resolved = False
             for k in (j, i):
                 nm, ln, cx, cy, w = chips[k]
+                group = station_chip_idx.get(nm, [k])
+                # 组内代表线取多数(整组同移须各组员保触线): 单牌直接用本线
                 ux, uy = corridor_tangent(segs_of[ln], cx, cy)
                 for step in range(1, 9):
                     for sgn in (1, -1):
-                        nx, ny = cx + sgn * step * 2.0 * ux, cy + sgn * step * 2.0 * uy
-                        rect = (nx - w / 2, ny - H / 2, w, H)
-                        clash = any(o is not chips[k] and o[0] != nm and rects_overlap(rect, rect_of(o)) for o in chips)
-                        touch = min(rect_seg_dist(rect, s) for s in segs_of[ln]) <= CORR_HALF + 0.01
-                        if not clash and touch:
-                            chips[k] = (nm, ln, nx, ny, w)
+                        ddx, ddy = sgn * step * 2.0 * ux, sgn * step * 2.0 * uy
+                        ok_all = True
+                        trial = []
+                        for k2 in group:
+                            nm3, ln3, cx3, cy3, w3 = chips[k2]
+                            nx, ny = cx3 + ddx, cy3 + ddy
+                            rect = (nx - w3 / 2, ny - H / 2, w3, H)
+                            clash = any(o[0] != nm3 and rects_overlap(rect, rect_of(o)) for o in chips)
+                            touch = min(rect_seg_dist(rect, s2) for s2 in segs_of[ln3]) <= CORR_HALF + 0.01
+                            if clash or not touch:
+                                ok_all = False
+                                break
+                            trial.append((k2, (nm3, ln3, nx, ny, w3)))
+                        if ok_all:
+                            for k2, val in trial:
+                                chips[k2] = val
                             resolved = True
                             break
                     if resolved:
@@ -993,9 +1014,91 @@ def gen_network(codes, report):
     report['ring_fix'] = resolved
     report['ring_overlaps'] = leftover
 
+    # 徽标pass(十三轮): 清距=8pt(底图规范: 徽标视觉净距>=8px, verify-badges-pixel.py口径——
+    # 首版用0.5pt被用户打脸"12号线徽标直接贴一块, 距离定过没遵守"):
+    # a) 与牌/圈净距<8 -> 沿远离违规者方向推到>=8; b) 离本线终点牌净距>25 -> 拉近但不破8
+    badge_moves = []
+    badge_rects = []   # (线名, rect, transform串)
+
+    def _badge_parse(svg_text):
+        out = []
+        for mm in re.finditer(r'<g data-badge="header" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)"([^>]*)>(.*?)</g>', svg_text, re.S):
+            tx, ty, sc = float(mm.group(1)), float(mm.group(2)), float(mm.group(3))
+            num = re.search(r'font-size="25"[^>]*>([^<]+)<', mm.group(5))
+            key = num.group(1) if num else '?'
+            out.append({'tx': tx, 'ty': ty, 'ox': tx, 'oy': ty, 'sc': sc, 'key': key, 'inner': mm.group(5), 'span': (mm.start(), mm.end())})
+        return out
+
+    _svg_src = open(os.path.join(LINES_DIR, 'network-全网.svg'), encoding='utf-8').read()
+    badges = _badge_parse(_svg_src)
+    KEY2LN = {'GF': '广佛线', 'APM': 'APM线'}
+
+    def _ln_of_key(key):
+        if key in KEY2LN:
+            return KEY2LN[key]
+        cand = key + '号线'
+        return cand if cand in ORDER else None
+
+    chip_rects_all = [(cc[2] - cc[4] / 2, cc[3] - H / 2, cc[4], H) for cc in chips]
+    ring_rects_all = [r for rs in obstacles.values() for r in rs]
+    BADGE_GAP = 8.0   # 底图规范: 徽标视觉净距>=8px
+    for bd in badges:
+        ln = _ln_of_key(bd['key'])
+        bw, bh = 80 * bd['sc'], 43 * bd['sc']
+        rect = (bd['tx'], bd['ty'], bw, bh)
+        # a) 避让: 推到与全部牌/圈净距>=8
+        viol = [r for r in chip_rects_all + ring_rects_all if _gap(rect, r) < BADGE_GAP]
+        moved = False
+        if viol:
+            vcx = min(viol, key=lambda r: _gap(rect, r))
+            vx, vy = rect[0] + rect[2] / 2 - (vcx[0] + vcx[2] / 2), rect[1] + rect[3] / 2 - (vcx[1] + vcx[3] / 2)
+            l2 = (vx * vx + vy * vy) ** 0.5 or 1.0
+            ux, uy = vx / l2, vy / l2
+            for step in range(1, 61):
+                d2 = step * 0.5
+                r2 = (rect[0] + ux * d2, rect[1] + uy * d2, bw, bh)
+                if all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all):
+                    bd['tx'], bd['ty'] = r2[0], r2[1]
+                    rect = r2
+                    badge_moves.append('%s:避让%.0fpt' % (bd['key'], d2))
+                    moved = True
+                    break
+        # b) 拉近终点牌: 目标净距25, 任何牌/圈净距<8即停
+        if ln:
+            own = [(cc, r) for cc, r in zip(chips, chip_rects_all) if cc[1] == ln]
+            if own:
+                near_cc, near_r = min(own, key=lambda z: _gap(rect, z[1]))
+                gap0 = _gap(rect, near_r)
+                if gap0 > 25:
+                    vx = near_r[0] + near_r[2] / 2 - (rect[0] + rect[2] / 2)
+                    vy = near_r[1] + near_r[3] / 2 - (rect[1] + rect[3] / 2)
+                    l2 = (vx * vx + vy * vy) ** 0.5 or 1.0
+                    ux, uy = vx / l2, vy / l2
+                    for step in range(1, 121):
+                        d2 = step * 0.5
+                        if d2 >= gap0 - 25:
+                            break
+                        r2 = (rect[0] + ux * d2, rect[1] + uy * d2, bw, bh)
+                        if any(_gap(r2, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all if r is not near_r):
+                            break
+                        rect = r2
+                        bd['tx'], bd['ty'] = r2[0], r2[1]
+                        moved = True
+                    if moved:
+                        badge_moves.append('%s:拉近->%.0fpt' % (bd['key'], _gap(rect, near_r)))
+        badge_rects.append((bd['key'], rect))
+    report['badge_moves'] = badge_moves
+
     # 组装 SVG
     path = os.path.join(LINES_DIR, 'network-全网.svg')
     t = open(path, encoding='utf-8').read()
+    # 应用徽标新位(与 _svg_src 同源, 按 span 逆序替换)
+    for bd in sorted(badges, key=lambda b: -b['span'][0]):
+        if abs(bd['tx'] - bd['ox']) > 0.01 or abs(bd['ty'] - bd['oy']) > 0.01:
+            seg = t[bd['span'][0]:bd['span'][1]]
+            seg = seg.replace('translate(%s %s)' % (('%g' % bd['ox']), ('%g' % bd['oy'])),
+                              'translate(%.2f %.2f)' % (bd['tx'], bd['ty']), 1)
+            t = t[:bd['span'][0]] + seg + t[bd['span'][1]:]
     for gid in ('站圆', '换乘标记'):
         m = re.search(r'<g id="%s">.*?</g>' % gid, t, re.S)
         t = t[:m.start()] + t[m.end():]
