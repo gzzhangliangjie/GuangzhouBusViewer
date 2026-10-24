@@ -605,15 +605,24 @@ def _place_ok(rect, own_ln, skip_idx=-1):
     """落位合法性(2026-10-24统一口径, 用户: 10号线徽标紧贴路线/11号线离线远——
     本线他线走廊一律>=6.5, 旧"本线可贴可盖"豁免废除: 文字轴落位下横向贴线视觉不可接受;
     终版标签盒不叠/他徽标>=6/站圆胶囊>=3/编号胶囊>=3(下方_chip数据, 整合进计算流程)。
-    文字盒=placed_boxes(已锚定为labels_inner终版)。"""
+    文字盒=placed_boxes(已锚定为labels_inner终版)。
+    角点检查: 像素门禁在四边外扩3px扫描, 斜走廊贴近rect角点时rect边距6.5合格但
+    角点+3px扫描点距斜线可<3.5(APM林和西判例)——4个外扩角点须距所有走廊>=3.6。"""
+    _corners = [(rect[0] - 3.0, rect[1] - 3.0),
+                (rect[0] + rect[2] + 3.0, rect[1] - 3.0),
+                (rect[0] - 3.0, rect[1] + rect[3] + 3.0),
+                (rect[0] + rect[2] + 3.0, rect[1] + rect[3] + 3.0)]
     for nm2, ax, ay, bx, by, _c in corridors:
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < 6.5:
             return False
+        for cpt in _corners:
+            if seg_point_dist(cpt, (ax, ay), (bx, by)) < 4.2:
+                return False
     for r9 in _chip_obstacles:
         if _rgap(rect, r9) < 0.3:
             return False
     for _nm2, _x2, _y2, _w2, _h2 in placed_boxes:
-        if _rgap(rect, (_x2, _y2, _w2, _h2)) < 0.0:
+        if _rgap(rect, (_x2, _y2, _w2, _h2)) < 0.3:
             return False
     for _j2, (_nm2, _bx2, _by2, _bw2, _bh2) in enumerate(badges):
         if _j2 == skip_idx:
@@ -684,7 +693,7 @@ for name in ORDER:
         rect = (_cx - bw / 2, _cy - bh / 2, bw, bh)
         if not _place_ok(rect, name):
             _fixed = None
-            for _st in range(1, 121):
+            for _st in range(1, 241):
                 _dd = _st * 0.5
                 for _k in range(16):
                     import math as _mm
@@ -842,15 +851,25 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
         continue
     _vx, _vy = _stn_c[0] - _bc[0], _stn_c[1] - _bc[1]
     _vn = (_vx * _vx + _vy * _vy) ** 0.5 or 1.0
-    if _d > 30.0:          # 拉近站台
-        for _target in (30.0, 35.0, 40.0, 45.0, 55.0, 65.0, 80.0):
-            if _target >= _d:
+    if _d > 30.0:          # 拉近站台: 极角搜索——R阶梯×角偏移(0/±25/±50...180), 首个合法位;
+                           # 直线档被终点文字挡死时(万顷沙/南沙客运港判例)绕角落到站旁空位
+        import math as _m2
+        _th0 = _m2.atan2(_bc[1] - _stn_c[1], _bc[0] - _stn_c[0])
+        _done2 = False
+        for _R in (30.0, 35.0, 40.0, 45.0, 55.0, 65.0, 80.0):
+            if _R >= _d:
                 break
-            _trect = ((_bc[0] + _vx / _vn * (_d - _target)) - _bw / 2,
-                      (_bc[1] + _vy / _vn * (_d - _target)) - _bh / 2, _bw, _bh)
-            if _place_ok(_trect, _nm, skip_idx=_i):
-                badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
-                print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx' % (_nm, _d, _target))
+            for _dth in (0.0, 25.0, -25.0, 50.0, -50.0, 75.0, -75.0, 100.0, -100.0,
+                         125.0, -125.0, 150.0, -150.0, 180.0):
+                _th = _th0 + _m2.radians(_dth)
+                _trect = ((_stn_c[0] + _m2.cos(_th) * _R) - _bw / 2,
+                          (_stn_c[1] + _m2.sin(_th) * _R) - _bh / 2, _bw, _bh)
+                if _place_ok(_trect, _nm, skip_idx=_i):
+                    badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
+                    print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx(角偏%.0f°)' % (_nm, _d, _R, _dth))
+                    _done2 = True
+                    break
+            if _done2:
                 break
     else:                  # 侵入站体, 反向推出
         for _target in (_r_out + 2.0, _r_out + 5.0, _r_out + 9.0):
@@ -860,6 +879,62 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
                 badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
                 print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx(推出)' % (_nm, _d, _target))
                 break
+
+# 文字轴合规复查(2026-10-24 用户: 徽标跟终点文字的距离和居中 批量检查 不符合规范的调整):
+# 违规 = 文字盒净距<0.3(压字, 万顷沙/南沙客运港判例) 或 文字中心距>45(远离, 站距钳制推出判例);
+# 主轴偏移不作为判据(西塱类枢纽站旁斜位为已验收态, 偏移判据会误推)。
+# 调整 = 重走文字轴候选阶梯(8向×gap按文字距离升序), 过滤=合法+文字盒净距>=0.3+
+#        站距<=40(两级: 有解带站距过滤, 无解退纯文字轴——文字规则优先于站距);
+# 环线(home=None)跳过。放在站距钳制之后: 两规则冲突时文字轴结果为准。
+def _text_cands(lx, lcy, lw, lhh, bw, bh, sx, sy):
+    _cands = []
+    for _gap in (5.0, 9.0, 14.0, 20.0, 32.0, 50.0, 72.0, 100.0):
+        for _sgx, _sgy in ((sx, 0), (0, sy), (-sx, 0), (0, -sy),
+                           (sx, sy), (-sx, sy), (sx, -sy), (-sx, -sy)):
+            _cx2 = lx + _sgx * (lw / 2 + _gap + bw / 2)
+            _cy2 = lcy + _sgy * (lhh / 2 + _gap + bh / 2)
+            _dt = dist((_cx2, _cy2), (lx, lcy))
+            _cands.append((_dt, (_cx2 - bw / 2, _cy2 - bh / 2, bw, bh)))
+    _cands.sort(key=lambda t2: t2[0])
+    return _cands
+
+for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
+    if badge_home[_i] is None:
+        continue
+    _stn_nm, _stn_c = badge_stn[_i]
+    _bl = lab_by_nm.get(_stn_nm)
+    if not _bl:
+        continue
+    _fs = _bl[2]
+    _lw = sum(_fs if ord(ch) > 0x2E80 else 0.56 * _fs for ch in _stn_nm)
+    _lx, _lcy, _lhh = _bl[0], _bl[1], _fs + 1.0
+    _bc = (_bx + _bw / 2, _by + _bh / 2)
+    _dt0 = dist(_bc, (_lx, _lcy))
+    _sd0 = dist(_bc, _stn_c)
+    if _sd0 <= 35.0:
+        continue   # 站距<=35=已靠站(用户: 不要远——靠站优先于贴文字, 站文分离站不复议)
+    _g0 = _rgap((_bx, _by, _bw, _bh), (_lx - _lw / 2, _lcy - _lhh / 2, _lw, _lhh))
+    if _g0 >= 0.3 and _dt0 <= 45.0:
+        continue
+    _sx = 1 if (_bc[0] - _stn_c[0]) * (_lx - _stn_c[0]) >= 0 else -1
+    _sy = 1 if (_bc[1] - _stn_c[1]) * (_lcy - _stn_c[1]) >= 0 else -1
+    _new = None
+    for _stage in (40.0, None):
+        for _dt2, _rect2 in _text_cands(_lx, _lcy, _lw, _lhh, _bw, _bh, _sx, _sy):
+            if not _place_ok(_rect2, _nm, skip_idx=_i):
+                continue
+            if _rgap(_rect2, (_lx - _lw / 2, _lcy - _lhh / 2, _lw, _lhh)) < 0.3:
+                continue
+            if _stage is not None and dist((_rect2[0] + _bw / 2, _rect2[1] + _bh / 2), _stn_c) > _stage:
+                continue
+            _new = _rect2
+            break
+        if _new:
+            break
+    if _new and (abs(_new[0] - _bx) > 0.3 or abs(_new[1] - _by) > 0.3):
+        badges[_i] = (_nm, _new[0], _new[1], _bw, _bh)
+        print('  徽标 %s 文字轴复查调整: (%g,%g)->(%g,%g) [压字%s 距文字%.0f]'
+              % (_nm, _bx, _by, _new[0], _new[1], _g0 < 0.3, _dt0))
 
 # ---------- 画布 ----------
 xs = [v for c in corridors for v in (c[1], c[3])]

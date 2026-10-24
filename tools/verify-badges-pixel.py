@@ -107,4 +107,35 @@ for nm, bx, by in badges:
         bad += 1
         print('!! %s (%.0f,%.0f) 穿透%d处: %s' % (nm, bx, by, len(hits), hits[:3]))
 print('徽标像素审计: %d/%d 穿透' % (bad, len(badges)))
+
+# V8 徽标不压文字(2026-10-24 用户: 万顷沙/南沙客运港徽标压文字为什么没检查出来——
+# V5只查文字vs胶囊, 徽标vs文字无门): 站名标注文本盒(中文+英文)与徽标盒净距>=0.3, 纯几何硬算。
+svg_txt = open(SVG, encoding='utf-8').read()
+_lm8 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', svg_txt, re.S)
+text_boxes = []
+if _lm8:
+    for _t8 in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', _lm8.group(1)):
+        _fs8 = float(_t8.group(3))
+        _w8 = sum(_fs8 if ord(ch) > 0x2E80 else 0.56 * _fs8 for ch in _t8.group(4))
+        _hh8 = _fs8 + 1.0
+        _cy8 = float(_t8.group(2)) - 0.8 * _fs8 + _hh8 / 2
+        text_boxes.append((float(_t8.group(1)) - _w8 / 2, _cy8 - _hh8 / 2, _w8, _hh8, _t8.group(4)))
+
+def _gap8(r1, r2):
+    dx = max(r2[0] - (r1[0] + r1[2]), r1[0] - (r2[0] + r2[2]), 0.0)
+    dy = max(r2[1] - (r1[1] + r1[3]), r1[1] - (r2[1] + r2[3]), 0.0)
+    return (dx * dx + dy * dy) ** 0.5
+
+v8_bad = 0
+for nm, bx, by in badges:
+    bw, bh = size[nm]
+    for tb in text_boxes:
+        g8 = _gap8((bx, by, bw, bh), tb[:4])
+        if g8 < 0.3:
+            v8_bad += 1
+            print('!! V8 徽标 %s 压文字 %s: 净距%.2f' % (nm, tb[4], g8))
+print('V8 徽标-文字: %d/%d 重叠' % (v8_bad, len(badges)))
+if v8_bad:
+    bad += v8_bad
+
 sys.exit(1 if bad else 0)

@@ -1425,7 +1425,7 @@ def gen_network(codes, report):
                 break
         if not viol6:
             for r6 in lab_boxes:
-                if _rect_gap(rect6, r6) < 0.0:
+                if _rect_gap(rect6, r6) < 0.3:
                     viol6 = '压标签'
                     break
         if not viol6:
@@ -1447,7 +1447,7 @@ def gen_network(codes, report):
         def _ok6(r6, own_lim, pin_lim):
             if any(rect_seg_dist(r6, s2) < CORR_CLEAR for ln2 in ORDER if ln2 != ln for s2 in segs_of[ln2]):
                 return False
-            if any(_rect_gap(r6, r7) < 0.0 for r7 in lab_boxes):
+            if any(_rect_gap(r6, r7) < 0.3 for r7 in lab_boxes):
                 return False
             if any(_rect_gap(r6, r7) < 0.3 for r7 in chip_rects_all + ring_rects_all):
                 return False
