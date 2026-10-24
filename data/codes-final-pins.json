@@ -1,25 +1,46 @@
 {
  "badges": [
-  "translate(1039 1231)",
-  "translate(1369 1517.4)",
-  "translate(1470.5 37.65)",
-  "translate(2633 1805.15)",
-  "translate(2496.5 1169.6)",
-  "translate(2345 725.15)",
-  "translate(2062 671.15)",
-  "translate(1146.5 451.6)",
-  "translate(858.5 185.2)",
-  "translate(1150 1288)",
-  "translate(1191 907)",
-  "translate(1894.9 1382)",
-  "translate(2676.50 857.26)",
-  "translate(2022.90 39.46)",
-  "translate(2554.3 1859.2)",
-  "translate(2795 347.15)",
-  "translate(1799 1671)",
-  "translate(923.45 1588.95)",
-  "translate(1677.45 1109.25)",
-  "translate(1409.8 764.6)"
+  "translate(1153.03 1270.30)",
+  "translate(1675.72 882.21)",
+  "translate(1321.48 1583.20)",
+  "translate(1506.88 539.04)",
+  "translate(1485.94 59.70)",
+  "translate(2139.43 1566.96)",
+  "translate(1788.84 796.60)",
+  "translate(2596.94 1830.40)",
+  "translate(1927.33 896.81)",
+  "translate(2511.94 1166.60)",
+  "translate(962.19 966.40)",
+  "translate(2315.69 750.40)",
+  "translate(1081.84 750.40)",
+  "translate(1020.24 1592.00)",
+  "translate(2123.19 696.40)",
+  "translate(1161.94 473.70)",
+  "translate(1999.84 1155.40)",
+  "translate(917.94 210.40)",
+  "translate(1508.55 268.71)",
+  "translate(1128.93 1294.61)",
+  "translate(1617.44 988.40)",
+  "translate(1206.44 915.30)",
+  "translate(1081.84 718.40)",
+  "translate(2005.84 1416.00)",
+  "translate(1425.24 761.60)",
+  "translate(1539.94 1088.00)",
+  "translate(2691.94 878.70)",
+  "translate(1824.04 988.40)",
+  "translate(2038.34 60.90)",
+  "translate(2326.64 340.50)",
+  "translate(1286.64 777.40)",
+  "translate(2526.44 1884.40)",
+  "translate(1734.69 984.40)",
+  "translate(2755.19 372.40)",
+  "translate(1824.04 1020.40)",
+  "translate(1867.15 1615.24)",
+  "translate(1064.17 1111.89)",
+  "translate(894.04 1614.40)",
+  "translate(1670.69 1353.35)",
+  "translate(1620.02 915.61)",
+  "translate(1620.02 1114.71)"
  ],
  "chip_shift": {
   "坑口": [
@@ -86,5 +107,107 @@
   "APM线": {
    "labels_inner": "<text x=\"1660.50\" y=\"1116.86\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">广州塔</text><text x=\"1660.50\" y=\"1124.36\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Canton Tower</text><text x=\"1710.90\" y=\"1075.03\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">海心沙</text><text x=\"1710.90\" y=\"1082.53\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Haixinsha</text><text x=\"1658.25\" y=\"1048.38\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">大剧院</text><text x=\"1658.25\" y=\"1055.88\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Guangzhou</text><text x=\"1658.25\" y=\"1062.38\" text-anchor=\"middle\" font-size=\"5.5\" fill=\"#444444\">Opera House</text><text x=\"1721.90\" y=\"1027.13\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">花城大道</text><text x=\"1721.90\" y=\"1034.63\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Huacheng Dadao</text><text x=\"1643.15\" y=\"999.28\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">妇儿中心</text><text x=\"1643.15\" y=\"1006.78\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Guangzhou Women and</text><text x=\"1643.15\" y=\"1013.28\" text-anchor=\"middle\" font-size=\"5.5\" fill=\"#444444\">Children's Medical Center</text><text x=\"1721.25\" y=\"978.03\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">黄埔大道</text><text x=\"1721.25\" y=\"985.53\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Huangpu Dadao</text><text x=\"1659.00\" y=\"953.43\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">天河南</text><text x=\"1659.00\" y=\"960.93\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Tianhenan</text><text x=\"1730.15\" y=\"929.93\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">体育中心南</text><text x=\"1730.15\" y=\"937.43\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Tianhe Sports Center South</text><text x=\"1632.00\" y=\"897.63\" text-anchor=\"middle\" font-size=\"10.5\" font-weight=\"500\" fill=\"#1a1a1a\">林和西</text><text x=\"1632.00\" y=\"905.13\" text-anchor=\"middle\" font-size=\"5.5\" font-family=\"Arial, sans-serif\" fill=\"#444444\">Linhexi</text>"
   }
- }
+ },
+ "network_badge_anchors": [
+  {
+   "ln": "1号线",
+   "x": 1039.0,
+   "y": 1231.0
+  },
+  {
+   "ln": "2号线",
+   "x": 1369.0,
+   "y": 1517.4
+  },
+  {
+   "ln": "3号线",
+   "x": 1470.5,
+   "y": 37.65
+  },
+  {
+   "ln": "4号线",
+   "x": 2633.0,
+   "y": 1805.15
+  },
+  {
+   "ln": "5号线",
+   "x": 2496.5,
+   "y": 1169.6
+  },
+  {
+   "ln": "6号线",
+   "x": 2345.0,
+   "y": 725.15
+  },
+  {
+   "ln": "7号线",
+   "x": 2062.0,
+   "y": 671.15
+  },
+  {
+   "ln": "8号线",
+   "x": 1146.5,
+   "y": 451.6
+  },
+  {
+   "ln": "9号线",
+   "x": 858.5,
+   "y": 185.2
+  },
+  {
+   "ln": "10号线",
+   "x": 1150.0,
+   "y": 1288.0
+  },
+  {
+   "ln": "11号线",
+   "x": 1191.0,
+   "y": 907.0
+  },
+  {
+   "ln": "12号线",
+   "x": 1894.9,
+   "y": 1382.0
+  },
+  {
+   "ln": "13号线",
+   "x": 2676.5,
+   "y": 857.26
+  },
+  {
+   "ln": "14号线",
+   "x": 2022.9,
+   "y": 39.46
+  },
+  {
+   "ln": "18号线",
+   "x": 2554.3,
+   "y": 1859.2
+  },
+  {
+   "ln": "21号线",
+   "x": 2795.0,
+   "y": 347.15
+  },
+  {
+   "ln": "22号线",
+   "x": 1799.0,
+   "y": 1671.0
+  },
+  {
+   "ln": "广佛线",
+   "x": 923.45,
+   "y": 1588.95
+  },
+  {
+   "ln": "APM线",
+   "x": 1677.45,
+   "y": 1109.25
+  },
+  {
+   "ln": "12号线",
+   "x": 1409.8,
+   "y": 764.6
+  }
+ ]
 }

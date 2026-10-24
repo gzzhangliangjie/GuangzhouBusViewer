@@ -61,7 +61,8 @@ def render(card_path):
                 'html,body{margin:0;padding:0;background:#fff;overflow:hidden}</style>'
                 '</head><body>%s</body></html>' % svg)
     png = os.path.join(tempfile.gettempdir(), '_cardpix.png')
-    subprocess.run([EDGE, '--headless', '--disable-gpu', '--force-device-scale-factor=1',
+    subprocess.run([EDGE, '--headless', '--disable-gpu', '--disable-lcd-text',
+                    '--force-color-profile=srgb', '--force-device-scale-factor=1',
                     '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
                     'file:///%s' % html.replace('\\', '/')], capture_output=True, timeout=60)
     im = np.array(Image.open(png).convert('RGB')).astype(int)

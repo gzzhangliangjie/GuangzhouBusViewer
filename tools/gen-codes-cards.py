@@ -221,6 +221,10 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
 
 
 # ---------- 矩形-线段距离 ----------
+def dist_pts(a, b):
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
+
+
 def rect_seg_dist(rect, seg):
     rx, ry, rw, rh = rect
     a, b = (seg[0], seg[1]), (seg[2], seg[3])
@@ -1141,14 +1145,25 @@ def gen_network(codes, report):
         out = []
         for mm in re.finditer(r'<g data-badge="header" transform="translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)"([^>]*)>(.*?)</g>', svg_text, re.S):
             tx, ty, sc = float(mm.group(1)), float(mm.group(2)), float(mm.group(3))
-            num = re.search(r'font-size="25"[^>]*>([^<]+)<', mm.group(5))
-            key = num.group(1) if num else '?'
+            _ts5 = re.findall(r'>([^<>]+)</text>', mm.group(5))
+            num_val = _ts5[0].strip() if _ts5 else '?'
+            # 徽标文字=卡上线路名: 数字/APM/'广佛线'(15号字, 不以"号线"结尾, 25号字正则抓不到)
+            num = num_val if (num_val.isdigit() or num_val in ('APM', '广佛线')) else '?'
+            key = num
             out.append({'tx': tx, 'ty': ty, 'ox': tx, 'oy': ty, 'sc': sc, 'key': key, 'inner': mm.group(5), 'span': (mm.start(), mm.end())})
         return out
 
     _svg_src = open(os.path.join(LINES_DIR, 'network-全网.svg'), encoding='utf-8').read()
     badges = _badge_parse(_svg_src)
     KEY2LN = {'GF': '广佛线', 'APM': 'APM线'}
+    # 各线徽标实际尺寸(卡header rect, 广佛73/APM 102.2 与其余80不同, 碰撞盒必须用实尺寸;
+    # 2026-10-24 起全网徽标高=2×序号胶囊18pt, scale由底图transform携带)
+    _bsz = {}
+    for _ln2 in ORDER:
+        _src2 = open(os.path.join(LINES_DIR, 'line-%s.svg' % _ln2), encoding='utf-8').read()
+        _m2 = re.search(r'<g data-badge="header"[^>]*>(.*?)</g>', _src2, re.S)
+        _r2 = re.search(r'<rect x="([\d.-]+)" y="([\d.-]+)" width="([\d.]+)" height="([\d.]+)"', _m2.group(1))
+        _bsz[_ln2] = (float(_r2.group(3)), float(_r2.group(4)))
 
     def _ln_of_key(key):
         if key in KEY2LN:
@@ -1219,7 +1234,10 @@ def gen_network(codes, report):
     BADGE_MIN = 1.0
     for bd in badges:
         ln = _ln_of_key(bd['key'])
-        bw, bh = 80 * bd['sc'], 43 * bd['sc']
+        if ln:
+            bw, bh = _bsz[ln][0] * bd['sc'], _bsz[ln][1] * bd['sc']
+        else:                       # 未知key兜底(历史缺省80x43)
+            bw, bh = 80 * bd['sc'], 43 * bd['sc']
         rect = (bd['tx'], bd['ty'], bw, bh)
         if not ln:
             badge_rects.append((bd['key'], rect))
@@ -1348,32 +1366,155 @@ def gen_network(codes, report):
                         mm.group(4) + '>' + inner + '</g>')
         return mm.group(0)
 
-    # 延长线正交居中pass(十八轮末 用户无数次强调2/5/12/13/14/18——实测偏差12~40pt全部偏轴):
-    # 横/纵走廊轴居中已彻底废(把底图位从走廊旁拽到走廊正上方=压线根因,
-    # 底图位本身就在正确位置不需要居中); 仅保留45°斜线终点标签x居中
-    lm3 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-    for bd in badges:
-        ln = _ln_of_key(bd['key'])
-        if not ln:
-            continue
-        bw5 = 80 * bd['sc']
-        bcx5 = bd['tx'] + bw5 / 2
-        tpts5 = [p for nm5, lst in pins.items() for p in lst if p[0] == ln]
-        if not tpts5:
-            continue
-        tp5 = min(tpts5, key=lambda p: (p[1] - bcx5) ** 2 + (p[2] - (bd['ty'] + 21.5 * bd['sc'])) ** 2)
-        tpx5, tpy5 = tp5[1], tp5[2]
-        tx5, ty5 = corridor_tangent(segs_of[ln], tpx5, tpy5)
-        if abs(tx5) <= abs(ty5) * 1.5 and abs(ty5) <= abs(tx5) * 1.5:
-            # 45°斜线 -> 徽标中心x = 终点标签x
-            tname5 = next((nm5 for nm5, lst in pins.items()
-                          if any(p[0] == ln and p[1] == tpx5 and p[2] == tpy5 for p in lst)), None)
-            if tname5 and lm3:
-                for tx6 in re.finditer(r'<text x="([-\d.]+)" y="[-\d.]+"[^>]*>' + re.escape(tname5) + r'</text>', lm3.group(1)):
-                    bd['tx'] = float(tx6.group(1)) - bw5 / 2
-                    break
+    # 延长线正交居中pass已整体废除(2026-10-24 用户: 已验收的如果要挪说明规则有问题):
+    # 本pass按"徽标中心x=终点标签x"重居中, 但已验收位(如2号线广州南站 中心x=1397)与
+    # 终版标签x(1366.6)根本不对齐——该规则前提与验收态矛盾, 且标签随锚表变化会反复
+    # 搬动徽标(曾把锚定保留的2/5/11/广佛/APM重拽38/27/70pt)。45°斜线徽标的文字居中
+    # 由底图放置时的45°分支一次性完成, 此处不再二次重居中。
     t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                _sub_badge, t, flags=re.S)
+    # 徽标终检挪移(2026-10-24 双端小徽标41枚, 站名定稿后逐枚复检):
+    # 底图徽标碰撞检查用的是底图算法标签, codes终版标签(nudge_labels+锚表)位置不同,
+    # 直接回写会产生徽标压标签/APM压体育西路等新碰撞。阈值=与已验收位置自洽的硬底线
+    # (验收态曾0/20像素穿透的事实口径, 不设白名单——规则必须让已验收位自然合法):
+    #   他线走廊中心线>=6.5(描边半宽3.5+像素门禁3px外扫)  本线走廊不限(可盖延长线, 判例)
+    #   终版标签仅真叠压(近似盒gap<0)  牌/圈>=3.0(像素门禁口径)  他徽标>=6(旧rect_why口径)
+    # 违规者16向螺旋0.5pt步进找最小位移合法位(<=40pt), 找不到保持原位并上报。
+    import math as _m6
+    # 他线走廊净距阈值(与已验收位置自洽的迭代结果): 盒边到走廊中心线>=6.5
+    # = 走廊描边半宽3.5 + 像素门禁四边外扩3px扫描口径。旧验收位全部满足(曾0/20穿透),
+    # 2026-10-24曾误收至9.0比验收态更严 -> 把合法老位判违规大挪移(用户打回), 迭代回6.5。
+    CORR_CLEAR = 6.5
+
+    def _final_label_boxes2():
+        boxes = []
+        lm5 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+        if not lm5:
+            return boxes
+        for mm in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', lm5.group(1)):
+            cx_, cy_bl, fs_, nm_ = float(mm.group(1)), float(mm.group(2)), float(mm.group(3)), mm.group(4)
+            w_ = sum(fs_ if ord(ch) > 0x2E80 else 0.56 * fs_ for ch in nm_)
+            hh_ = fs_ + 1.0
+            cy_ = cy_bl - 0.8 * fs_ + hh_ / 2
+            boxes.append((cx_ - w_ / 2, cy_ - hh_ / 2, w_, hh_))
+        return boxes
+
+    def _rect_gap(r1, r2):
+        dx = max(r2[0] - (r1[0] + r1[2]), r1[0] - (r2[0] + r2[2]), 0.0)
+        dy = max(r2[1] - (r1[1] + r1[3]), r1[1] - (r2[1] + r2[3]), 0.0)
+        return (dx * dx + dy * dy) ** 0.5
+
+    lab_boxes = _final_label_boxes2()
+    fin_bad_boxes = []
+    for _i6, bd in enumerate(badges):
+        ln = _ln_of_key(bd['key'])
+        if ln:
+            bw6, bh6 = _bsz[ln][0] * bd['sc'], _bsz[ln][1] * bd['sc']
+        else:
+            bw6, bh6 = 80 * bd['sc'], 43 * bd['sc']
+        rect6 = (bd['tx'], bd['ty'], bw6, bh6)
+        if not ln:
+            fin_bad_boxes.append(rect6)
+            continue
+        viol6 = None
+        for ln2 in ORDER:
+            if ln2 == ln:
+                continue
+            if any(rect_seg_dist(rect6, s2) < CORR_CLEAR for s2 in segs_of[ln2]):
+                viol6 = '他线走廊%s' % ln2
+                break
+        if not viol6:
+            for r6 in lab_boxes:
+                if _rect_gap(rect6, r6) < 0.0:
+                    viol6 = '压标签'
+                    break
+        if not viol6:
+            for r6 in chip_rects_all + ring_rects_all:
+                if _rect_gap(rect6, r6) < 3.0:
+                    viol6 = '近牌圈'
+                    break
+        if not viol6:
+            for _j6, (_k6, r6) in enumerate(badge_rects):
+                if _j6 != _i6 and _rect_gap(rect6, r6) < 6.0:
+                    viol6 = '近他徽标'
+                    break
+        if not viol6:
+            fin_bad_boxes.append(rect6)
+            continue
+        fixed6, dd6 = None, 0.0
+        own_pins6 = [p for nm3, lst in pins.items() for p in lst if p[0] == ln]
+
+        def _ok6(r6, own_lim, pin_lim):
+            if any(rect_seg_dist(r6, s2) < CORR_CLEAR for ln2 in ORDER if ln2 != ln for s2 in segs_of[ln2]):
+                return False
+            if any(_rect_gap(r6, r7) < 0.0 for r7 in lab_boxes):
+                return False
+            if any(_rect_gap(r6, r7) < 3.0 for r7 in chip_rects_all + ring_rects_all):
+                return False
+            if any(_rect_gap(r6, r7) < 6.0 for _j7, (_k7, r7) in enumerate(badge_rects) if _j7 != _i6):
+                return False
+            if own_lim is not None:
+                if min((rect_seg_dist(r6, s2) for s2 in segs_of[ln]), default=9e9) > own_lim:
+                    return False
+            c6 = (r6[0] + bw6 / 2, r6[1] + bh6 / 2)
+            if own_pins6:
+                dp6 = min(dist_pts(c6, (p[1], p[2])) for p in own_pins6)
+                if pin_lim is not None and dp6 > pin_lim:
+                    return False
+                if dp6 > 60.0 and min((rect_seg_dist(r6, s2) for s2 in segs_of[ln]), default=9e9) > 90.0:
+                    return False   # 离钉远时必须贴本线走廊(不得飘到别线旁)
+            return True
+
+        for st6 in range(1, 201):     # pass1: 原位螺旋, 距本线走廊<=90
+            dd6 = st6 * 0.5
+            for k6 in range(16):
+                ra6 = _m6.radians(k6 * 22.5)
+                ux6, uy6 = _m6.cos(ra6), _m6.sin(ra6)
+                r6 = (rect6[0] + ux6 * dd6, rect6[1] + uy6 * dd6, bw6, bh6)
+                if _ok6(r6, 90.0, None):
+                    fixed6 = r6
+                    break
+            if fixed6:
+                break
+        if not fixed6 and own_pins6:  # pass2: 终点钉环形搜索(脱离卡死区): 全候选评分取最优
+            # 评分=本线走廊过远罚 + 他徽标扎堆罚(混淆规避R2) + 离钉过远罚; 合法性同pass1口径
+            tp6 = min(own_pins6, key=lambda p: dist_pts((rect6[0] + bw6 / 2, rect6[1] + bh6 / 2), (p[1], p[2])))
+            best7 = None
+            for st7 in range(4, 25):
+                rr7 = st7 * 6.25
+                for k7 in range(16):
+                    ra7 = _m6.radians(k7 * 22.5)
+                    cx7 = tp6[1] + _m6.cos(ra7) * rr7
+                    cy7 = tp6[2] + _m6.sin(ra7) * rr7
+                    r7 = (cx7 - bw6 / 2, cy7 - bh6 / 2, bw6, bh6)
+                    if not _ok6(r7, None, 150.0):
+                        continue
+                    own_d7 = min((rect_seg_dist(r7, s2) for s2 in segs_of[ln]), default=9e9)
+                    gap_badge7 = min((_rect_gap(r7, r8) for _j8, (_k8, r8) in enumerate(badge_rects) if _j8 != _i6),
+                                     default=9e9)
+                    dp7 = dist_pts((cx7, cy7), (tp6[1], tp6[2]))
+                    score7 = max(0.0, own_d7 - 45.0) + 2.0 * max(0.0, 24.0 - min(gap_badge7, 24.0)) + 0.2 * dp7
+                    if best7 is None or score7 < best7[0]:
+                        best7 = (score7, r7)
+            if best7 is not None:
+                fixed6 = best7[1]
+                dd6 = dist_pts((rect6[0], rect6[1]), fixed6[:2])
+        if fixed6:
+            bd['tx'], bd['ty'] = fixed6[0], fixed6[1]
+            badge_moves.append('%s(%g,%g):终检挪移%.1fpt(%s)' % (bd['key'], rect6[0], rect6[1], dd6, viol6))
+        else:
+            badge_moves.append('%s(%g,%g):终检无解保持(%s)' % (bd['key'], rect6[0], rect6[1], viol6))
+        fin_bad_boxes.append(fixed6 if fixed6 else rect6)
+    report['badge_final_moves'] = [m for m in badge_moves if '终检' in m]
+    # 终检后的transform写回(此时t中的徽标transform还是底图位; _sub_badge只写了挪移过的子集)
+    _fb = [0]
+    def _rw_final(mm):
+        i = _fb[0]
+        _fb[0] += 1
+        if i < len(fin_bad_boxes):
+            return mm.group(1) + '"translate(%.2f %.2f)' % (fin_bad_boxes[i][0], fin_bad_boxes[i][1]) + mm.group(2) + '"'
+        return mm.group(0)
+    t = re.sub(r'(<g data-badge="header" transform=)"translate\([-\d.]+ [-\d.]+\)([^>]*)"', _rw_final, t)
     # 终稿锚定层(2026-10-23 用户定稿同步): 逐枚审定的徽标/站名/牌偏移持久化到
     # data/codes-final-pins.json —— 重跑=算法产出+锚表覆盖, 输出与已验收SVG逐字节一致。
     # 徽标按文档序配对(与提取序同源); 牌偏移在全部排布pass后应用(不回灌算法);
