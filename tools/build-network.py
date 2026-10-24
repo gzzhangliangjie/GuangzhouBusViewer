@@ -610,7 +610,7 @@ def _place_ok(rect, own_ln, skip_idx=-1):
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < 6.5:
             return False
     for r9 in _chip_obstacles:
-        if _rgap(rect, r9) < 3.0:
+        if _rgap(rect, r9) < 0.3:
             return False
     for _nm2, _x2, _y2, _w2, _h2 in placed_boxes:
         if _rgap(rect, (_x2, _y2, _w2, _h2)) < 0.0:
@@ -672,13 +672,44 @@ for name in ORDER:
 
     ends = [p for p in ends if not _on_seg_interior(p)]
     line_ends[name] = ends
+    # L1 已验收锚位(用户架构: 锚表=终稿持久化, 同0eff3db): 中心不变按13.5pt重算top-left,
+    # 必须通过与所有元件相同的规则检查(_place_ok)——锚位不是豁免, 是规则合法解中的在选解;
+    # 不合法才由规则(L2文字轴)重推。胶囊净距口径=不重叠(0.3pt), 3pt过严口径已废除
+    # (正是它把浔峰岗/西塱徽标推远的)。
+    _osc = _OLD_SC.get(name, 0.7)
+    _ow, _oh = badge_size[name][0] * _osc, badge_size[name][1] * _osc
+    covered = []
+    for _ax, _ay in badge_anchors.get(name, []):
+        _cx, _cy = _ax + _ow / 2, _ay + _oh / 2
+        rect = (_cx - bw / 2, _cy - bh / 2, bw, bh)
+        if not _place_ok(rect, name):
+            _fixed = None
+            for _st in range(1, 121):
+                _dd = _st * 0.5
+                for _k in range(16):
+                    import math as _mm
+                    _ra = _mm.radians(_k * 22.5)
+                    _r2 = (rect[0] + _mm.cos(_ra) * _dd, rect[1] + _mm.sin(_ra) * _dd, bw, bh)
+                    if _place_ok(_r2, name):
+                        _fixed = _r2
+                        break
+                if _fixed:
+                    break
+            if _fixed:
+                print('  徽标 %s 锚位微调 %.1fpt' % (name, _dd))
+                rect = _fixed
+            else:
+                print('  !! 徽标 %s 锚位违规且无解, 弃锚改文字轴规则' % name)
+                continue
+        badges.append((name, rect[0], rect[1], bw, bh))
+        _ce = min(ends, key=lambda q: dist((rect[0] + bw / 2, rect[1] + bh / 2), q)) if ends else None
+        if _ce and dist((rect[0] + bw / 2, rect[1] + bh / 2), _ce) <= 120:
+            badge_home.append(_ce)
+            covered.append(_ce)
+        else:
+            badge_home.append(None)
     # 环线(无真终点, 如11号线): 无文字规则对象, 沿用验收锚位; 无锚贴本体网格全域搜
     if not ends:
-        _osc = _OLD_SC.get(name, 0.7)
-        for _ax, _ay in badge_anchors.get(name, []):
-            badges.append((name, _ax + badge_size[name][0] * _osc / 2 - bw / 2,
-                           _ay + badge_size[name][1] * _osc / 2 - bh / 2, bw, bh))
-            badge_home.append(None)
         if badge_anchors.get(name):
             continue
         _xs2 = [v for c in segs for v in (c[0], c[2])]
@@ -703,8 +734,9 @@ for name in ORDER:
             badge_fail.append(name)
             print('  !! 徽标 %s 环线无合法位' % name)
         continue
-    # 终点: 文字轴线居中外侧
-    for c in sorted(ends, key=lambda q: -dist(q, (gx, gy))):
+    # 终点: 文字轴线居中外侧(锚位已覆盖的端跳过——L1已在验收位落位)
+    for c in sorted((e for e in ends if not any(dist(e, q) <= 1.0 for q in covered)),
+                    key=lambda q: -dist(q, (gx, gy))):
         base = wadj[c][0]
         dx, dy = c[0] - base[0], c[1] - base[1]
         n = (dx * dx + dy * dy) ** 0.5 or 1.0
@@ -782,11 +814,52 @@ for name in ORDER:
 for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
     if not _place_ok((_bx, _by, _bw, _bh), _nm, skip_idx=_i):
         print('  !! 徽标 %s 复检撞' % _nm)
-    _own = [c for c in corridors if c[0] == _nm]
-    if _own:
-        _d = min(rect_seg_dist((_bx, _by, _bw, _bh), (c[1], c[2]), (c[3], c[4])) for c in _own)
-        if _d > 110.0:
-            print('  !! 徽标 %s 偏离本体 %.0fpx' % (_nm, _d))
+
+# 站距钳制(2026-10-24 用户: 10和11要算的是到站点的距离——徽标属于终点站, 视觉的远=离站远;
+# 旧锚位中心距站44~82px, 大盒时代盒缘够到站体, 缩到13.5pt后同中心小盒脱站):
+# 每枚徽标归属站点(终点=走廊端点最近站圆; 环线=本线最近站圆), 中心到站钉距离
+# 钳到[r+4, 30]区间——超30沿中心->站方向拉回(30/35/40/45/55/65取首个合法档),
+# 侵入站体(r+4内)沿反向推出。合法性=_place_ok同口径(走廊6.5/胶囊牌标签不叠)。
+badge_stn = []           # 与badges同序: (站名, 站钉中心)
+_mk_by_name = {m['name']: m for m in markers}
+for (_nm, _bx, _by, _bw, _bh), _home in zip(badges, badge_home):
+    _c = (_bx + _bw / 2, _by + _bh / 2)
+    if _home is not None:
+        _st = min(markers, key=lambda m: dist(_home, m['center']))
+    else:
+        _own_marks = [m for m in markers if _nm in m['lines']]
+        _st = min(_own_marks, key=lambda m: dist(_c, m['center'])) if _own_marks else None
+    badge_stn.append((_st['name'], _st['center']) if _st else (None, None))
+for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
+    _stn_nm, _stn_c = badge_stn[_i]
+    if not _stn_c:
+        continue
+    _mk = _mk_by_name[_stn_nm]
+    _r_out = (_mk['r'] if _mk['kind'] != 'capsule' else CAP_W / 2 + CAP_RING) + 4.0
+    _bc = (_bx + _bw / 2, _by + _bh / 2)
+    _d = dist(_bc, _stn_c)
+    if _r_out <= _d <= 30.0:
+        continue
+    _vx, _vy = _stn_c[0] - _bc[0], _stn_c[1] - _bc[1]
+    _vn = (_vx * _vx + _vy * _vy) ** 0.5 or 1.0
+    if _d > 30.0:          # 拉近站台
+        for _target in (30.0, 35.0, 40.0, 45.0, 55.0, 65.0, 80.0):
+            if _target >= _d:
+                break
+            _trect = ((_bc[0] + _vx / _vn * (_d - _target)) - _bw / 2,
+                      (_bc[1] + _vy / _vn * (_d - _target)) - _bh / 2, _bw, _bh)
+            if _place_ok(_trect, _nm, skip_idx=_i):
+                badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
+                print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx' % (_nm, _d, _target))
+                break
+    else:                  # 侵入站体, 反向推出
+        for _target in (_r_out + 2.0, _r_out + 5.0, _r_out + 9.0):
+            _trect = ((_stn_c[0] + _vx / _vn * _target) - _bw / 2,
+                      (_stn_c[1] + _vy / _vn * _target) - _bh / 2, _bw, _bh)
+            if _place_ok(_trect, _nm, skip_idx=_i):
+                badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
+                print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx(推出)' % (_nm, _d, _target))
+                break
 
 # ---------- 画布 ----------
 xs = [v for c in corridors for v in (c[1], c[3])]

@@ -1430,7 +1430,7 @@ def gen_network(codes, report):
                     break
         if not viol6:
             for r6 in chip_rects_all + ring_rects_all:
-                if _rect_gap(rect6, r6) < 3.0:
+                if _rect_gap(rect6, r6) < 0.3:
                     viol6 = '近牌圈'
                     break
         if not viol6:
@@ -1449,7 +1449,7 @@ def gen_network(codes, report):
                 return False
             if any(_rect_gap(r6, r7) < 0.0 for r7 in lab_boxes):
                 return False
-            if any(_rect_gap(r6, r7) < 3.0 for r7 in chip_rects_all + ring_rects_all):
+            if any(_rect_gap(r6, r7) < 0.3 for r7 in chip_rects_all + ring_rects_all):
                 return False
             if any(_rect_gap(r6, r7) < 6.0 for _j7, (_k7, r7) in enumerate(badge_rects) if _j7 != _i6):
                 return False

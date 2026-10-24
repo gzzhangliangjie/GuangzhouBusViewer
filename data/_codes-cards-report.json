@@ -1010,7 +1010,13 @@
   "天河客运站:推让长湴"
  ],
  "ring_overlaps": [],
- "badge_moves": [],
+ "badge_moves": [
+  "3:挤让0.5pt",
+  "4:挤让0.5pt",
+  "8:挤让0.5pt",
+  "12:挤让0.5pt",
+  "APM:挤让0.5pt"
+ ],
  "badge_final_moves": [],
  "net_chips": 400,
  "net_multi_stations": 72
