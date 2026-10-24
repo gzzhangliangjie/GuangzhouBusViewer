@@ -576,6 +576,15 @@ for _lb in labels:
 # 且端点30px内须有站圆(广佛线0.1-2.3px裂隙端点掉mid-line教训)。
 # 环线锚位(11号线贴本体验收位, 无文字规则对象故持久化保留); 终点徽标一律文字轴规则
 _OLD_SC = {'APM线': 0.5}   # 锚位尺寸口径: 旧版缩放(0.7/APM0.5), 用于中心换算
+# 编号胶囊rect(codes层持久化的确定性数据, 见gen-codes-cards落盘说明): 底图落位即考虑胶囊
+_chip_obstacles = []
+_chip_path = os.path.join(ROOT, 'data', '_chip-rects.json')
+if os.path.exists(_chip_path):
+    try:
+        _cr = json.load(open(_chip_path, encoding='utf-8'))
+        _chip_obstacles = [tuple(r) for r in _cr.get('chips', []) + _cr.get('rings', [])]
+    except (ValueError, KeyError):
+        _chip_obstacles = []
 _anc_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
 badge_anchors = {}
 if os.path.exists(_anc_path):
@@ -593,12 +602,15 @@ def _rgap(r1, r2):
 
 
 def _place_ok(rect, own_ln, skip_idx=-1):
-    """落位合法性(与codes终检同口径): 他线走廊>=6.5(本线不限可盖延长线)/终版标签盒不叠/
-    他徽标>=6/站圆胶囊>=3。文字盒=placed_boxes(已锚定为labels_inner终版)。"""
+    """落位合法性(2026-10-24统一口径, 用户: 10号线徽标紧贴路线/11号线离线远——
+    本线他线走廊一律>=6.5, 旧"本线可贴可盖"豁免废除: 文字轴落位下横向贴线视觉不可接受;
+    终版标签盒不叠/他徽标>=6/站圆胶囊>=3/编号胶囊>=3(下方_chip数据, 整合进计算流程)。
+    文字盒=placed_boxes(已锚定为labels_inner终版)。"""
     for nm2, ax, ay, bx, by, _c in corridors:
-        if nm2 == own_ln:
-            continue
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < 6.5:
+            return False
+    for r9 in _chip_obstacles:
+        if _rgap(rect, r9) < 3.0:
             return False
     for _nm2, _x2, _y2, _w2, _h2 in placed_boxes:
         if _rgap(rect, (_x2, _y2, _w2, _h2)) < 0.0:
@@ -739,7 +751,7 @@ for name in ORDER:
                 cx2 = tm['center'][0] + ux * d
                 cy2 = tm['center'][1] + uy * d
                 rect = (cx2 - bw / 2, cy2 - bh / 2, bw, bh)
-                if badge_rect_ok(rect, badges, ignore_corridor=True, own_line=name):
+                if _place_ok(rect, name):
                     badges.append((name, rect[0], rect[1], bw, bh))
                     badge_home.append(c)
                     done = True

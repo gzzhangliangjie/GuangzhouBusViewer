@@ -1556,6 +1556,14 @@ def gen_network(codes, report):
         for nm, ln, cx, cy, w in chips)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t, re.S)
     t = t[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + rings_svg + chips_svg + '</g>' + t[mn.end():]
+    # 胶囊rect持久化(2026-10-24 用户: 计算位置需要考虑胶囊要整合进流程):
+    # 胶囊位只依赖钉位/走廊(与徽标无关)=确定性, 底图生成器(build-network)读取后
+    # 落位即考虑胶囊, 终检响应式微调归零。胶囊随底图几何变化时, verify-all的
+    # 两轮重跑自收敛(第一轮更新本文件, 第二轮底图即用新值)。
+    _chip_rects_out = {'chips': [[cx - w / 2, cy - H / 2, w, H] for nm, ln, cx, cy, w in chips],
+                       'rings': [[x, y, w, h] for rs in obstacles.values() for x, y, w, h in rs]}
+    json.dump(_chip_rects_out, open(os.path.join(ROOT, 'data', '_chip-rects.json'), 'w',
+                                    encoding='utf-8'), ensure_ascii=False)
     open(os.path.join(LINES_DIR, 'network-全网.codes.svg'), 'w', encoding='utf-8').write(
         expand_viewbox(t, [r for rs in obstacles.values() for r in rs]
                        + [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
