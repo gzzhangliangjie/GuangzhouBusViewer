@@ -639,8 +639,8 @@
   },
   "全网": {
    "downgraded": [],
-   "moved": 1,
-   "max_shift": 1.0,
+   "moved": 2,
+   "max_shift": 8.0,
    "relaxed": [],
    "unresolved": [],
    "aligned": [
