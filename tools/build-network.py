@@ -504,7 +504,7 @@ if _fin_labels_inner:
     _new_labels = []
     for _mm in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*font-size="([\d.]+)"[^>]*>([^<]+)</text>', _fin_labels_inner):
         _new_labels.append((_mm.group(4), float(_mm.group(1)), float(_mm.group(2)), float(_mm.group(3)), False))
-    if len(_new_labels) == len(markers):
+    if len(_new_labels) >= len(markers):   # >=: 多行英文标签(如广州南站三行)文本数可超站数
         labels = _new_labels
         placed_boxes = []
         for _nm, _cx, _cy_bl, _fs, _stk in labels:
