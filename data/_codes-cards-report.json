@@ -224,7 +224,9 @@
    "max_shift": 0,
    "relaxed": [],
    "unresolved": [],
-   "aligned": [],
+   "aligned": [
+    "植物园"
+   ],
    "approached": [
     "香雪:槽位",
     "萝岗:槽位",
@@ -1006,8 +1008,7 @@
   "天河南:4.5pt"
  ],
  "ring_fix": [
-  "珠江新城:推让海心沙",
-  "天河客运站:推让长湴"
+  "珠江新城:推让海心沙"
  ],
  "ring_overlaps": [],
  "badge_moves": [
