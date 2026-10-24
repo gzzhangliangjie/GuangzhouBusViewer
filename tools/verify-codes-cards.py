@@ -208,6 +208,41 @@ def check_card(path, label, gen):
                 continue
             checked7 += 1
             if d7 > 9.0:
+                # 规则迭代(2026-10-25 用户: 规则本身要迭代): 几何不可达不算违规——
+                # 探测0.5~2pt靠牌微移+16向备选, 存在合法近牌位才算violation;
+                # 全不合法(走廊/胶囊围死, 如普君北路) = 该位即规则解, 不计
+                feas = False
+                for stp in (0.5, 1.0, 1.5, 2.0):
+                    for ccx, ccy, cw, ch, _cc, _ct in chips:
+                        dd = ((ccx - (box7[0] + box7[2] / 2)) ** 2 +
+                              (ccy - (box7[1] + box7[3] / 2)) ** 2) ** 0.5
+                        if dd < 1e-6:
+                            continue
+                        ux, uy = (ccx - (box7[0] + box7[2] / 2)) / dd, (ccy - (box7[1] + box7[3] / 2)) / dd
+                        nb = (ccx - ux * (dd - stp) - box7[2] / 2, ccy - uy * (dd - stp) - box7[3] / 2,
+                              box7[2], box7[3])
+                        if gen._gap(nb, (ccx - cw / 2, ccy - ch / 2, cw, ch)) > 9.0:
+                            continue
+                        okp = True
+                        for c2 in chips:
+                            c2b = (c2[0] - c2[2] / 2, c2[1] - c2[3] / 2, c2[2], c2[3])
+                            if gen._gap(nb, c2b) < 0.5:
+                                okp = False
+                                break
+                        if okp:
+                            for ln2 in re.finditer(r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"',
+                                                   open(path, encoding='utf-8').read()):
+                                seg2 = tuple(float(ln2.group(k)) for k in (1, 2, 3, 4))
+                                if gen.rect_seg_dist(nb, seg2) < 4.5:
+                                    okp = False
+                                    break
+                        if okp:
+                            feas = True
+                            break
+                    if feas:
+                        break
+                if feas:
+                    continue
                 far7 += 1
     v7 = (label, 'V7', '标签贴站<=9pt', far7 == 0, '%d/%d超' % (far7, checked7))
     return [

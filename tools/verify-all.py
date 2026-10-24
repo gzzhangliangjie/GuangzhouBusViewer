@@ -49,6 +49,13 @@ if '--quick' not in sys.argv:
     if (m1, c1) != (md5(BASE), md5(CODES)):
         fails.append('幂等破坏: 两轮重跑产物md5不一致')
 
+# 1.5) 基线锁: 相对验收基线的回归检查(未accept确认的元件变动=REGRESSION)
+rc, out = run(['python', 'tools/baseline-lock.py', 'check'])
+print(out.strip().splitlines()[-1] if out.strip() else '(无输出)')
+if rc != 0:
+    fails.append('基线锁REGRESSION(未经accept的元件变动): ' +
+                 ' | '.join(out.splitlines()[:40]))
+
 # 2) codes验证器 V1-V7
 print('== 2) verify-codes-cards (V1-V7) ==')
 rc, out = run(['python', 'tools/verify-codes-cards.py'])
