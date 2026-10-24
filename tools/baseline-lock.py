@@ -9,6 +9,11 @@ import io, os, re, sys, json, hashlib
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
+sys.path.insert(0, os.path.join(ROOT, 'tools'))
+import importlib.util as _ilu
+_spec = _ilu.spec_from_file_location('gen', os.path.join(ROOT, 'tools', 'gen-codes-cards.py'))
+gen = _ilu.module_from_spec(_spec)
+_spec.loader.exec_module(gen)
 BASE = 'data/_accepted-baseline.json'
 KEY_FILES = ['assets/lines/network-全网.svg', 'assets/lines/network-全网.codes.svg']
 
@@ -19,18 +24,15 @@ def md5(p):
 
 def snapshot():
     labels = {}
-    for f in ('data/codes-final-pins.json',):
-        d = json.load(open(f, encoding='utf-8'))
-        li = d.get('labels_inner', '')
-        for mm in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*>([^<]+)</text>', li):
+    _csvg = open('assets/lines/network-全网.codes.svg', encoding='utf-8').read()
+    _clm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _csvg, re.S)
+    if _clm:
+        for mm in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*>([^<]+)</text>', _clm.group(1)):
             labels[mm.group(3)] = [float(mm.group(1)), float(mm.group(2))]
     badges = []
     t = open(KEY_FILES[1], encoding='utf-8').read()
-    for mm in re.finditer(r'<g data-badge="header" transform="translate\([-\d.]+ ([-\d.]+)\) scale\(([\d.]+)\)"[^>]*>(.*?)</g>', t, re.S):
-        tr = re.search(r'translate\(([-\d.]+) ([-\d.]+)\)', mm.group(0))
-        txt = re.findall(r'>([^<>]+)</text>', mm.group(3))
-        badges.append([txt[0].strip() if txt else '?', float(tr.group(1)), float(tr.group(2)),
-                       float(mm.group(2))])
+    for e in gen.badge_elements(t):
+        badges.append([e['key'], e['x'], e['y'], e['scale']])
     return {'labels': labels, 'badges': badges,
             'md5': {f: md5(f) for f in KEY_FILES}}
 
@@ -58,7 +60,7 @@ def main():
             regs.append('文字 %s 新出现' % nm)
     for i, b in enumerate(base['badges']):
         if i >= len(cur['badges']):
-            regs.append('徽标 #%d 消失' % b[0])
+            regs.append('徽标 %s 消失' % b[0])
             continue
         if cur['badges'][i][:2] != b[:2]:
             regs.append('徽标 %s 移位: (%g,%g) -> (%g,%g)' % (b[0], b[1], b[2], cur['badges'][i][1], cur['badges'][i][2]))

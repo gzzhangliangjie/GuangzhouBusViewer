@@ -25,6 +25,18 @@ def run(cmd):
 
 fails = []
 
+# 0) XML 语法检查(2026-10-25 用户: 这个问题出了无数次——文本替换吃掉标签前缀/闭合,
+#    渲染时才炸; 放最前端坏文件秒FAIL)
+import xml.etree.ElementTree as ET0
+print('== 0) XML 语法检查 ==')
+for f in ('assets/lines/network-全网.svg', 'assets/lines/network-全网.codes.svg'):
+    try:
+        ET0.fromstring(open(f, encoding='utf-8').read())
+        print('  %s OK' % f)
+    except ET0.ParseError as e:
+        fails.append('XML语法错误 %s: %s' % (f, e))
+        print('  %s FAIL: %s' % (f, e))
+
 # 1) 全链重跑 + 幂等
 if '--quick' not in sys.argv:
     print('== 1) 重跑 build-network / gen-codes-cards / sync ==')

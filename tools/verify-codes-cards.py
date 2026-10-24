@@ -208,10 +208,16 @@ def check_card(path, label, gen):
                 continue
             checked7 += 1
             if d7 > 9.0:
-                # 规则迭代(2026-10-25 用户: 规则本身要迭代): 几何不可达不算违规——
-                # 探测0.5~2pt靠牌微移+16向备选, 存在合法近牌位才算violation;
-                # 全不合法(走廊/胶囊围死, 如普君北路) = 该位即规则解, 不计
+                # 规则迭代(2026-10-25 用户: 规则本身要迭代): 能贴牌却没贴=违规;
+                # 几何不可达(全方向被胶囊/环/走廊/徽标/他文字围死, 探测无合法近牌位)
+                # = 该位即规则解, 不计违。探针口径=完整门禁(环0.5/他牌0.5/走廊4.5/徽标0.3/他文字1.0)。
                 feas = False
+                _bboxes = []
+                for _bm in re.finditer(r'<g data-badge="header"[^>]*transform="translate\([-\d.]+ ([-\d.]+)\) scale\(([\d.]+)\)"[^>]*>(.*?)</g>', t, re.S):
+                    _bw = 80.0 * float(_bm.group(2))
+                    _bh = 43.0 * float(_bm.group(2))
+                    _bboxes.append((float(_bm.group(0).split('translate(')[1].split(')')[0].split()[0]),
+                                    float(_bm.group(1)), _bw, _bh))
                 for stp in (0.5, 1.0, 1.5, 2.0):
                     for ccx, ccy, cw, ch, _cc, _ct in chips:
                         dd = ((ccx - (box7[0] + box7[2] / 2)) ** 2 +
@@ -224,7 +230,7 @@ def check_card(path, label, gen):
                         if gen._gap(nb, (ccx - cw / 2, ccy - ch / 2, cw, ch)) > 9.0:
                             continue
                         okp = True
-                        for c2 in chips:
+                        for c2 in chips + rings:
                             c2b = (c2[0] - c2[2] / 2, c2[1] - c2[3] / 2, c2[2], c2[3])
                             if gen._gap(nb, c2b) < 0.5:
                                 okp = False
@@ -237,13 +243,25 @@ def check_card(path, label, gen):
                                     okp = False
                                     break
                         if okp:
+                            for b2 in _bboxes:
+                                if gen._gap(nb, b2) < 0.3:
+                                    okp = False
+                                    break
+                        if okp:
+                            for o2 in zh_lbl.values():
+                                ob2 = gen.text_box({'x': o2[0], 'y': o2[1], 'fs': o2[2], 'content': ''})
+                                if gen._gap(nb, ob2) < 1.0:
+                                    okp = False
+                                    break
+                        if okp:
                             feas = True
                             break
                     if feas:
                         break
                 if feas:
+                    far7 += 1   # 有合法近牌位却没贴=违规
                     continue
-                far7 += 1
+                # 几何不可达(全方向被围死) = 该位即规则解, 不计违
     v7 = (label, 'V7', '标签贴站<=9pt', far7 == 0, '%d/%d超' % (far7, checked7))
     return [
         (label, 'V1', '编号牌数=%d' % len(chips), True, ''),

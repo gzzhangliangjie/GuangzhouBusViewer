@@ -31,10 +31,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES_DIR = os.path.join(ROOT, 'assets', 'lines')
 CSV_PATH = os.path.join(ROOT, 'data', 'station-codes-official.csv')
 REPORT = os.path.join(ROOT, 'data', '_codes-cards-report.json')
-# 终稿锚定层(单线卡): data/codes-final-pins.json 的 cards 段, 缺文件=空表
-_final_pins_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
-_fp = json.load(open(_final_pins_path, encoding='utf-8')) if os.path.exists(_final_pins_path) else {}
-CARD_FINAL = _fp.get('cards', {})
+# 终稿锚定层(单线卡)已自锚定: 站名组锚=已有 line-*.codes.svg 自身, JSON cards 段废弃
 
 ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号线', '8号线',
          '9号线', '10号线', '11号线', '12号线', '13号线', '14号线', '18号线',
@@ -53,6 +50,89 @@ def csv_line_to_card(ln):
 
 
 # ---------- 编号数据 ----------
+def badge_text_to_line(txt):
+    """徽标文字 -> 线名(底层统一逻辑, 2026-10-25: 此前散落多处且漏数字归一化):
+    裸数字+'号线' / APM / GF / 广佛线 原样; 其他原样返回。"""
+    if txt.isdigit():
+        return txt + '号线'
+    if txt == 'APM':
+        return 'APM线'
+    if txt == 'GF':
+        return '广佛线'
+    return txt
+
+
+def badge_elements(svg_text):
+    """解析SVG全部header徽标(底层统一逻辑, 属性无序安全——不假设transform是首属性):
+    -> [{'key':线名, 'term':终点站名或None, 'x':, 'y':, 'w':, 'h':, 'scale':,
+        'tr_attr':transform属性全值, 'tr_only':'translate(x y)', 'inner':元素内html}]"""
+    out = []
+    for mm in re.finditer(r'<g\s([^>]*data-badge="header"[^>]*)>(.*?)</g>', svg_text, re.S):
+        attrs, inner = mm.group(1), mm.group(2)
+        trm = re.search(r'translate\(([-\d.]+) ([-\d.]+)\) scale\(([\d.]+)\)', attrs)
+        if not trm:
+            continue
+        _ts = re.findall(r'>([^<>]+)</text>', inner)
+        key = badge_text_to_line(_ts[0].strip() if _ts else '?')
+        tm2 = re.search(r'data-term="([^"]+)"', attrs)
+        rm = re.search(r'<rect [^>]*width="([\d.]+)" height="([\d.]+)"', inner)
+        out.append({'key': key,
+                    'term': tm2.group(1) if tm2 else None,
+                    'x': float(trm.group(1)), 'y': float(trm.group(2)),
+                    'scale': float(trm.group(3)),
+                    'w': (float(rm.group(1)) if rm else 80.0) * float(trm.group(3)),
+                    'h': (float(rm.group(2)) if rm else 43.0) * float(trm.group(3)),
+                    'tr_attr': trm.group(0),
+                    'tr_only': 'translate(%s %s)' % (trm.group(1), trm.group(2)),
+                    'inner': inner})
+    return out
+
+
+def text_elements(svg_text):
+    """解析站名标注组全部文字(属性无序安全):
+    -> [{'nm':文字, 'x':, 'y':基线, 'fs':字号, 'en':是否英文,
+        'box':(x,y,w,h) gen.text_box同源盒, 'attrs':属性串, 'el':完整元素}]"""
+    out = []
+    lm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', svg_text, re.S)
+    if not lm:
+        return out
+    for mm in re.finditer(r'<text ([^>]*)>([^<]+)</text>', lm.group(1)):
+        at, content = mm.group(1), mm.group(2)
+        mx = re.search(r'\bx="([-\d.]+)"', at)
+        my = re.search(r'\by="([-\d.]+)"', at)
+        mfs = re.search(r'font-size="([\d.]+)"', at)
+        if not (mx and my and mfs):
+            continue
+        x, y, fs = float(mx.group(1)), float(my.group(1)), float(mfs.group(1))
+        out.append({'nm': content, 'x': x, 'y': y, 'fs': fs, 'en': content.isascii(),
+                    'box': text_box({'x': x, 'y': y, 'fs': fs, 'content': content}),
+                    'attrs': at, 'el': mm.group(0)})
+    return out
+
+
+def chip_elements(svg_text):
+    """解析编号牌组: -> (chips=[(x,y,w,h)], rings=[(x,y,w,h)], group_span=(start,end)).
+    区分依据: ring 带 data-ring / fill=none; chip 为 fill=#FFFFFF 实底。"""
+    chips, rings = [], []
+    m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', svg_text, re.S)
+    span = (m.start(), m.end()) if m else (0, 0)
+    if m:
+        for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"([^>]*)stroke="(#[0-9A-Fa-f]{6})"', m.group(1)):
+            x, y, w, h = (float(r.group(k)) for k in (1, 2, 3, 4))
+            rest = r.group(5)
+            if 'data-ring' in rest or 'fill="none"' in rest:
+                rings.append((x, y, w, h))
+            elif 'fill="#FFFFFF"' in rest:
+                chips.append((x, y, w, h))
+    return chips, rings, span
+
+
+def corridor_segments(svg_text):
+    """解析走廊组全部线段: -> [(x1,y1,x2,y2), ...]"""
+    return [tuple(float(m.group(k)) for k in (1, 2, 3, 4))
+            for m in re.finditer(r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"', svg_text)]
+
+
 def norm_name(nm):
     """站名归一: 東->东(繁简) + 去尾'站'(兜底口径; 广州南站等'站'尾真名由原名优先保住)."""
     nm = nm.replace('東', '东')
@@ -715,12 +795,17 @@ def gen_line_card(line, codes, report):
                     lambda mm: mm.group(1) + new_labels + mm.group(2), t2, count=1, flags=re.S)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t2, re.S)
     # 终稿锚定层(单线卡, 同全网): 底图已回写终版站名组, 整组钉定保重跑逐字节一致
-    _cfin = CARD_FINAL.get(line)
-    if _cfin and _cfin.get('labels_inner'):
-        t2 = t2[:mn.start()] + \
-             re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
-                    lambda mm: mm.group(1) + _cfin['labels_inner'] + mm.group(2), mn.group(0), count=1, flags=re.S) + \
-             t2[mn.end():]
+    # 单线卡自锚定(2026-10-25, 同全网): 站名组锚 = 已有 line-%s.codes.svg 自身(已验收状态),
+    # JSON cards 段废弃。手改单线卡codes SVG = 更新锚。
+    _cprev_path = os.path.join(LINES_DIR, 'line-%s.codes.svg' % line)
+    if os.path.exists(_cprev_path):
+        _cprev = open(_cprev_path, encoding='utf-8').read()
+        _cplm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _cprev, re.S)
+        if _cplm:
+            t2 = t2[:mn.start()] + \
+                 re.sub(r'(<g id="站名标注"[^>]*>).*?(</g>)',
+                        lambda mm: mm.group(1) + _cplm.group(1) + mm.group(2), mn.group(0), count=1, flags=re.S) + \
+                 t2[mn.end():]
         mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t2, re.S)
     t2 = t2[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + chips_svg + '</g>' + t2[mn.end():]
     out = os.path.join(LINES_DIR, 'line-%s.codes.svg' % line)
@@ -1371,8 +1456,8 @@ def gen_network(codes, report):
     # 终版标签x(1366.6)根本不对齐——该规则前提与验收态矛盾, 且标签随锚表变化会反复
     # 搬动徽标(曾把锚定保留的2/5/11/广佛/APM重拽38/27/70pt)。45°斜线徽标的文字居中
     # 由底图放置时的45°分支一次性完成, 此处不再二次重居中。
-    t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
-               _sub_badge, t, flags=re.S)
+    # (_sub_badge 的 t 写回已删, 2026-10-25 写入架构迭代: 徽标transform唯一写入点=文末锚定层)
+    _n_badge = len(re.findall(r'<g data-badge="header"', t))
     # 徽标终检挪移(2026-10-24 双端小徽标41枚, 站名定稿后逐枚复检):
     # 底图徽标碰撞检查用的是底图算法标签, codes终版标签(nudge_labels+锚表)位置不同,
     # 直接回写会产生徽标压标签/APM压体育西路等新碰撞。阈值=与已验收位置自洽的硬底线
@@ -1505,40 +1590,63 @@ def gen_network(codes, report):
         else:
             badge_moves.append('%s(%g,%g):终检无解保持(%s)' % (bd['key'], rect6[0], rect6[1], viol6))
         fin_bad_boxes.append(fixed6 if fixed6 else rect6)
-    report['badge_final_moves'] = [m for m in badge_moves if '终检' in m]
-    # 终检后的transform写回(此时t中的徽标transform还是底图位; _sub_badge只写了挪移过的子集)
-    _fb = [0]
-    def _rw_final(mm):
-        i = _fb[0]
-        _fb[0] += 1
-        if i < len(fin_bad_boxes):
-            return mm.group(1) + '"translate(%.2f %.2f)' % (fin_bad_boxes[i][0], fin_bad_boxes[i][1]) + mm.group(2) + '"'
-        return mm.group(0)
-    t = re.sub(r'(<g data-badge="header" transform=)"translate\([-\d.]+ [-\d.]+\)([^>]*)"', _rw_final, t)
-    # 终稿锚定层(2026-10-23 用户定稿同步): 逐枚审定的徽标/站名/牌偏移持久化到
-    # data/codes-final-pins.json —— 重跑=算法产出+锚表覆盖, 输出与已验收SVG逐字节一致。
-    # 徽标按文档序配对(与提取序同源); 牌偏移在全部排布pass后应用(不回灌算法);
-    # 站名按站名串替换。锚表=终稿持久化(同 _network-audit 性质), 非放置算法。
+    # (2026-10-25 写入架构迭代, 用户: 多处写文件互相覆盖非常不合理——
+    #  _sub_badge/_rw_final 两处中间写回已删除, 徽标transform唯一写入点=文末锚定层
+    #  key匹配套fin.badges; 中间pass只更新报告, 不碰t。)
+    # 终稿锚定层(2026-10-25 自锚定架构终版, 用户: SVG本身就是锚表 为什么另外记一份;
+    # 多了站点怎么办→人工确认修不了错位):
+    # 锚定来源 = 现有 codes SVG 本身(它就是已验收状态); 锚的键 = (线名, 终点站名)——
+    # 站名是天然稳定标识: 新增终点无锚走算法位, 已有终点锚自动跟站名走, 增删都不错位。
+    # 站名组同样自锚定(上一版文字组整体钉定)。chip_shift 仍走 JSON。
+    # JSON 的 badges/labels_inner 自此废弃不再读取。
     fin_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
     if os.path.exists(fin_path):
         fin = json.load(open(fin_path, encoding='utf-8'))
         for nm, (fx, fy) in fin.get('chip_shift', {}).items():
             chips = [(a, b, cx + fx, cy + fy, w) if a == nm else (a, b, cx, cy, w)
                      for a, b, cx, cy, w in chips]
-        lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
-        if lm4 and fin.get('labels_inner'):
-            # 整组钉定(切换两模式一套文字布局: 底图已回写终版站名组, 此处保证重跑逐字节一致)
-            t = t[:lm4.start(1)] + fin['labels_inner'] + t[lm4.end(1):]
-        trs = fin.get('badges', [])
-        _bi = [0]
+    _prev_path = os.path.join(ROOT, 'assets', 'lines', 'network-全网.codes.svg')
+    if os.path.exists(_prev_path):
+        _prev = open(_prev_path, encoding='utf-8').read()
+        _plm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _prev, re.S)
+        if _plm:
+            lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
+            if lm4:
+                t = t[:lm4.start(1)] + _plm.group(1) + t[lm4.end(1):]
+        # 锚应用(文档序, 极简): 上一版codes SVG的徽标transform按文档序套新t——
+        # 同一生成器枚举确定; 数量变化=结构变化, 硬报错转人工(不静默错位)。
+        import xml.etree.ElementTree as _ET
+        _prev_trs = [e['tr_only'] for e in badge_elements(_prev)]
+        _n_cur = len(re.findall(r'<g data-badge="header"', t))
+        if len(_prev_trs) != _n_cur:
+            print('!! 徽标数%d != 上一版%d: 终点结构变化, 拒绝静默错位(处理后再跑)' % (_n_cur, len(_prev_trs)))
+            sys.exit(1)
+        _pi = [0]
         def _pin_badge(mm):
-            i = _bi[0]
-            _bi[0] += 1
-            if i < len(trs):
-                return mm.group(1) + '"' + trs[i] + mm.group(4) + '>' + mm.group(5) + '</g>'
-            return mm.group(0)
-        t = re.sub(r'(<g data-badge="header" transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
+            i = _pi[0]
+            _pi[0] += 1
+            return mm.group(1) + '"' + _prev_trs[i] + mm.group(4) + '>' + mm.group(5) + '</g>'
+        t = re.sub(r'(<g data-badge="header"[^>]* transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                    _pin_badge, t, flags=re.S)
+        # 写前校验: XML损坏拒绝落盘
+        try:
+            _ET.fromstring(t)
+        except _ET.ParseError as _pe:
+            print('!! gen_network 产出XML损坏, 拒绝落盘:', _pe)
+            sys.exit(1)
+        # chips自锚定: 上一版编号牌组中fill="#FFFFFF"的牌rect按文档序取位移增量
+        # (坑口-5与手改自动携带); 数量变化=结构变化, 硬报错。
+        _pchip = re.findall(
+            r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#FFFFFF" stroke="#[0-9A-Fa-f]{6}"',
+            _prev)
+        if len(_pchip) != len(chips):
+            print('!! 牌数%d != 上一版%d: 结构变化, 拒绝静默错位' % (len(chips), len(_pchip)))
+            sys.exit(1)
+        for _i2, (_nm2, _ln2, _cx2, _cy2, _w2) in enumerate(chips):
+            _px, _py, _pw, _ph = (float(v) for v in _pchip[_i2])
+            _dx, _dy = _px + _pw / 2 - _cx2, _py + _ph / 2 - _cy2
+            if abs(_dx) > 0.05 or abs(_dy) > 0.05:
+                chips[_i2] = (_nm2, _ln2, _cx2 + _dx, _cy2 + _dy, _w2)
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
     for nm, pad in ring_pads.items():
