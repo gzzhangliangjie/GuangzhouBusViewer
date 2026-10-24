@@ -61,7 +61,7 @@ def main():
             regs.append('徽标 #%d 消失' % b[0])
             continue
         if cur['badges'][i][:2] != b[:2]:
-            regs.append('徽标 %s 移位: (%g,%g) -> (%g,%g)' % (b[0], b[1], b[2], cur['badges'][i][0], cur['badges'][i][1]))
+            regs.append('徽标 %s 移位: (%g,%g) -> (%g,%g)' % (b[0], b[1], b[2], cur['badges'][i][1], cur['badges'][i][2]))
         elif cur['badges'][i][3] != b[3]:
             regs.append('徽标 %s 缩放变化: %s -> %s' % (b[0], b[3], cur['badges'][i][3]))
     if len(cur['badges']) > len(base['badges']):
