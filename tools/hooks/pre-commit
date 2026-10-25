@@ -1,0 +1,6 @@
+#!/bin/sh
+# pre-commit 分级门禁(2026-10-25): 按staged内容分级——
+#   T1 纯文档放行 / T2 产物+生成器链verify-all全量+accept基线 / T3 纯脚本XML+基线快检。
+# 提交=人肉确认动作(agent不得自主commit); 基线=最后一次经用户确认的全绿提交。
+cd "$(git rev-parse --show-toplevel)"
+exec python tools/precommit-gate.py

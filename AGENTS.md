@@ -27,6 +27,7 @@
 - 迭代期单站调整: 改 codes SVG（SVG 即锚表）→ `python tools/sync-base.py` → `python tools/verify-station.py 站名` 局部验证（秒级）。批量归一工具（normalize-*.py）跑完仍须全量。
 - **提交=人肉确认动作（2026-10-25 用户定稿）**: agent 不得自主 `git commit`，用户确认后才执行。pre-commit 全绿自动 `baseline-lock.py accept` 并随提交入库——**基线=最后一次经用户确认的全绿提交**；verify-all 的基线检查只报告漂移不拦截。
 - 提交分级门禁（pre-commit 按 staged 内容分级, `tools/precommit-gate.py`）: **T1** 纯文档（*.md, docs/）放行; **T2** 产物/数据（assets/**, data/*.json）或生成器链（build-network/gen-codes-cards/sync-base）→ verify-all 全量（生成器链变更升级非 quick：重跑链+幂等，重跑输出与 staged 不一致=拒绝——产物必须随生成器变更同 commit 入库）+ accept 基线; **T3** 纯脚本 → 工具自测（`tools/selftest.py`: gen共享接口单元+产物数字金丝+快照沙箱）+ XML/基线快检。钩子不过=修复后重试; `--no-verify` 仅限用户明示。
+- ⚠️钩子文件已入库: `tools/hooks/pre-commit`（`.git/hooks/` 不受 git 版本保护）。**克隆或换机后必须安装**: `cp tools/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`——不装=全部门禁静默失效。
 - **产物数字金丝**（selftest.py, 定稿冻结值: 41徽标/318文字/400牌/16胶囊/302圆/scale统一0.314/transform无链）随定稿变更须有意识更新——与基线 accept 同理, 不许静默漂移。
 - **每批提交前过"三文档同步"（2026-10-26 用户令, 防废弃用例复发）**: ①selftest 金丝数字 ②AGENTS.md 条文 ③docs/network-map-spec.md——逐条对照本批改动, 冲突即改; 规范正文只写现行规则, 过期判例移"大坑档案"或标注历史。
 - **测试体系终版（2026-10-26）**: 唯一测试执行器 = `tools/selftest.py`（A.gen共享接口单元 / B.产物数字金丝 / C.快照沙箱 / D.基线锁突变自检——污染沙箱断言门禁必然翻红, 防假绿）; 产物验收不用测试框架, 由 verify-all+基线锁承担（比逐用例断言更严）。旧 pytest 套件已删除（单线卡时代过期锚, 思想已移植 selftest）, **模块被 import 时禁再包 sys.stdout**（重复包装会关底层流, rewrap 只放 `__main__`）。
