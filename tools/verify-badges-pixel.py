@@ -85,17 +85,34 @@ for _nm in size:
     if _m3:
         own_color[_nm] = tuple(int(_m3.group(1)[i:i + 2], 16) for i in (1, 3, 5))
 bad = 0
+# 他徽标rect不算穿透目标: 像素门禁职责=徽标不压走廊; 徽标间净距由锚表+几何门禁管
+# (西塱1上10下叠排=用户定稿, 间距2.0<3px外扫, 互扫必然命中对方底色——不计)。
+all_rects = []
 for nm, bx, by in badges:
+    bw, bh = size[nm]
+    all_rects.append((bx, by, bx + bw, by + bh))
+
+def in_other_badge(x, y, own_idx):
+    for j, (jx0, jy0, jx1, jy1) in enumerate(all_rects):
+        if j != own_idx and jx0 <= x <= jx1 and jy0 <= y <= jy1:
+            return True
+    return False
+
+for bi, (nm, bx, by) in enumerate(badges):
     bw, bh = size[nm]
     own_ok = make_own_ok(own_color[nm]) if nm in own_color else (lambda p: False)
     hits = []
     for xi in range(int(bx) - 3, int(bx + bw) + 4):
         for yy in (by - 3, by + bh + 3):
+            if in_other_badge(xi, yy, bi):
+                continue
             smp = sample(xi, yy)
             if is_line_color(smp) and not own_ok(smp):
                 hits.append(('T' if yy < by else 'B', xi, yy, smp))
     for yi in range(int(by) - 3, int(by + bh) + 4):
         for xx in (bx - 3, bx + bw + 3):
+            if in_other_badge(xx, yi, bi):
+                continue
             smp = sample(xx, yi)
             if is_line_color(smp) and not own_ok(smp):
                 hits.append(('L' if xx < bx else 'R', xx, yi, smp))

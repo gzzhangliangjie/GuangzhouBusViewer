@@ -14,6 +14,11 @@
 - `build-network.py` 徽标输出必须携带 `data-term="终点站名"`；`gen-codes-cards.py` codes SVG 徽标同样携带。
 - 锚定/归一化脚本以 `(线名, 终点站名)` 为锚定键（data-term + badge_text_to_line 线名归一），**禁止文档序匹配**（顺序无关，增删不错位）。
 
+## 1.7 SVG 数据提取必须走 gen 共享接口（禁止自行写解析正则）
+- 所有需要读取 SVG 徽标/文字/胶囊/走廊信息的脚本，必须调用 `gen.badge_elements()` / `gen.text_elements()` / `gen.chip_elements()` / `gen.corridor_segments()`。
+- **一次性脚本（`_*` 前缀）同样适用**——写新脚本时 import gen 用共享接口，禁止复制粘贴旧正则。
+- 原因：每个绕过共享接口的脚本都自带一套正则假设（属性顺序、精度格式、坐标含义），一次不匹配就静默出错。已发生：`_norm-closed` 群体偏移、`_spread-4` 精度不匹配、`_gap-fix` 函数签名错乱。
+
 ## 2. 管道截断雷
 - `python 生成器.py | head -N` 会 SIGPIPE 杀掉生成器——SVG 没写盘, 后续门禁读陈旧文件。跑生成器一律 `> 文件 2>&1` 后再 tail；`| grep` 安全。
 

@@ -30,15 +30,17 @@ m_b = re.search(r'(<g id="站名标注"[^>]*>).*?(</g>)', base, re.S)
 base = base[:m_b.start(1) + len(m_b.group(1))] + labels_src + base[m_b.start(2):]
 
 # 2) 徽标transform回写(自锚定: transform源=codes SVG, 文档序一一对应)
+#    整值替换: 旧实现只吃掉base侧translate、把codes的translate+scale拼在链头、旧scale链
+#    尾巴保留——每轮sync叠一层, 入库版曾达16连scale(乘积≈6e-9, 底图徽标整体渲染不可见,
+#    像素门禁vacuous pass)。codes tr_attr就是完整transform值, 必须整体替换。
 seq = [e['tr_attr'] for e in gen.badge_elements(codes)]
 _it = [0]
 def _rw(mm):
     i = _it[0]; _it[0] += 1
     if i < len(seq):
-        return mm.group(1) + '"' + seq[i] + mm.group(2) + '>' + mm.group(3) + '</g>'
+        return mm.group(1) + '"' + seq[i] + '"' + mm.group(2)
     return mm.group(0)
-base = re.sub(r'(<g data-badge="header"[^>]*? transform=)"translate\([-\d.]+ [-\d.]+\)([^>]*)>(.*?)</g>',
-              _rw, base, flags=re.S)
+base = re.sub(r'(<g data-badge="header"[^>]*? transform=)"[^"]*"(>)', _rw, base)
 assert _it[0] == len(seq), '徽标回写数不符: %d/%d' % (_it[0], len(seq))
 
 open(BASE, 'w', encoding='utf-8').write(base)
