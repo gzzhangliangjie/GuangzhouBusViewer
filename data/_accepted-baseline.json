@@ -1288,8 +1288,8 @@
   ],
   [
    "2号线",
-   1481.56,
-   1585.3,
+   1393.94,
+   1555.9,
    0.314
   ],
   [
@@ -1522,7 +1522,7 @@
   ]
  ],
  "md5": {
-  "assets/lines/network-全网.svg": "3be704889c22333272321eee31f56458",
-  "assets/lines/network-全网.codes.svg": "c2abd65a4cd7c32899b62fe6a31845db"
+  "assets/lines/network-全网.svg": "f87b061a6f155df3a23dd75e08caff68",
+  "assets/lines/network-全网.codes.svg": "9a0bf43a3793a73347e6fd8aa89261a2"
  }
 }
