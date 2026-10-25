@@ -6,7 +6,8 @@ check   = 当前态 vs 验收基线, 任何元件(文字坐标/徽标坐标/产�
 用法: python tools/baseline-lock.py accept|check
 """
 import io, os, re, sys, json, hashlib
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+if __name__ == '__main__':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.chdir(ROOT)
 sys.path.insert(0, os.path.join(ROOT, 'tools'))
@@ -15,6 +16,7 @@ _spec = _ilu.spec_from_file_location('gen', os.path.join(ROOT, 'tools', 'gen-cod
 gen = _ilu.module_from_spec(_spec)
 _spec.loader.exec_module(gen)
 BASE = 'data/_accepted-baseline.json'
+CODES = 'assets/lines/network-全网.codes.svg'
 KEY_FILES = ['assets/lines/network-全网.svg', 'assets/lines/network-全网.codes.svg']
 
 
@@ -24,13 +26,13 @@ def md5(p):
 
 def snapshot():
     labels = {}
-    _csvg = open('assets/lines/network-全网.codes.svg', encoding='utf-8').read()
+    _csvg = open(CODES, encoding='utf-8').read()
     _clm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _csvg, re.S)
     if _clm:
         for mm in re.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"[^>]*>([^<]+)</text>', _clm.group(1)):
             labels[mm.group(3)] = [float(mm.group(1)), float(mm.group(2))]
     badges = []
-    t = open(KEY_FILES[1], encoding='utf-8').read()
+    t = open(CODES, encoding='utf-8').read()
     for e in gen.badge_elements(t):
         badges.append([e['key'], e['x'], e['y'], e['scale']])
     return {'labels': labels, 'badges': badges,
