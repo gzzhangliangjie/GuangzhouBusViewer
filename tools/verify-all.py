@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
-"""全量验证链: 提交前必跑(pre-commit钩子强制), 不允许按改动范围挑门禁。
-链路: 重跑两生成器+sync -> 幂等md5 -> verify-codes-cards(V1-V7) -> verify-badges-pixel
-     -> 文字/胶囊重叠审计(V5已含, 此处对底图再全量复核)。
+"""全量验证链: 提交时pre-commit钩子强制, 不允许按改动范围挑门禁。
+链路: 重跑两生成器+sync -> 幂等md5 -> 基线漂移报告(仅报告, 提交时pre-commit自动accept)
+     -> verify-codes-cards(V1-V7) -> verify-badges-pixel(V8+像素)。
 任一环FAIL即退出码1。用法: python tools/verify-all.py [--quick]  (--quick跳过重跑只验产物)
 """
 import io, os, sys, subprocess, hashlib
@@ -61,12 +61,19 @@ if '--quick' not in sys.argv:
     if (m1, c1) != (md5(BASE), md5(CODES)):
         fails.append('幂等破坏: 两轮重跑产物md5不一致')
 
-# 1.5) 基线锁: 相对验收基线的回归检查(未accept确认的元件变动=REGRESSION)
+# 1.5) 基线漂移报告(2026-10-25 用户定稿: 提交=人肉确认动作, pre-commit全绿自动accept——
+#      基线=最后一次经用户确认的全绿提交。此处只报告相对上次确认提交的漂移, 不FAIL:
+#      迭代期工作区相对上次提交必然漂移, 硬拦=假告警源; 漂移清单用于人工发现意外回退)
 rc, out = run(['python', 'tools/baseline-lock.py', 'check'])
-print(out.strip().splitlines()[-1] if out.strip() else '(无输出)')
 if rc != 0:
-    fails.append('基线锁REGRESSION(未经accept的元件变动): ' +
-                 ' | '.join(out.splitlines()[:40]))
+    drift = [l for l in out.splitlines() if l.startswith('  ')]
+    print('== 1.5) 基线漂移(相对上次确认提交, 仅报告不拦截) ==')
+    for l in drift[:20]:
+        print(l)
+    if len(drift) > 20:
+        print('  ...共%d项' % len(drift))
+else:
+    print(out.strip().splitlines()[-1] if out.strip() else '基线: 一致')
 
 # 2) codes验证器 V1-V7
 print('== 2) verify-codes-cards (V1-V7) ==')

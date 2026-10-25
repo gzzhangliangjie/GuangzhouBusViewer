@@ -22,14 +22,14 @@
 ## 2. 管道截断雷
 - `python 生成器.py | head -N` 会 SIGPIPE 杀掉生成器——SVG 没写盘, 后续门禁读陈旧文件。跑生成器一律 `> 文件 2>&1` 后再 tail；`| grep` 安全。
 
-## 3. 提交前全量验证链（pre-commit 钩子强制, 不许挑门禁）
-- `python tools/verify-all.py --quick`：verify-codes-cards(V1–V7, 含V5文字压胶囊) + verify-badges-pixel(徽标穿透) + 幂等md5。
-- **任何锚表数据编辑**（`data/codes-final-pins.json` 的 labels_inner / network_badge_anchors / badges）后必须跑全量——文字与徽标流入两层, 不许按"看起来只改了X"筛选门禁（2026-10-24 事故: 改文字未跑V5, 文字压编号胶囊入库被用户抓）。
-- 钩子不过 = 修复后重试; `--no-verify` 仅限用户明示。
+## 3. 验证与提交纪律（pre-commit 钩子强制）
+- 迭代期单站调整: 改 codes SVG（SVG 即锚表）→ `python tools/sync-base.py` → `python tools/verify-station.py 站名` 局部验证（秒级）。批量归一工具（normalize-*.py）跑完仍须全量。
+- **提交=人肉确认动作（2026-10-25 用户定稿）**: agent 不得自主 `git commit`，用户确认后才执行。pre-commit 全绿自动 `baseline-lock.py accept` 并随提交入库——**基线=最后一次经用户确认的全绿提交**；verify-all 的基线检查只报告漂移不拦截。
+- 提交时 pre-commit 强制 `python tools/verify-all.py --quick` 全量（V1–V7 + V8徽标不压文字 + 像素四边扫描 + 幂等md5），不许挑门禁；钩子不过 = 修复后重试; `--no-verify` 仅限用户明示。
 
 ## 4. 规则与位置必须互相匹配
 - 已验收位置若被规则判违规 → 迭代规则阈值本身, **禁止白名单/免疫豁免**（用户明令）。
 - 校准基准 = 验收态的客观口径（如徽标-走廊净距6.5=描边3.5+像素门禁3px外扫）。
 
-## 5. 用户点名微调走锚表链路
-- 点名改文字/徽标位置 → 改 `data/codes-final-pins.json` 对应锚 → 重跑生成器（规则自动带联动元件跟位）→ **跑全量验证链** → 渲染 codes 终稿亲自核验重叠 → 汇报数字。
+## 5. 用户点名微调走自锚定链路
+- 点名改文字/徽标位置 → 文字用 `tools/move-label.py 站名 方向`（或直接改 codes SVG 对应元素），徽标直接改 codes SVG transform（SVG 即锚表，重跑自动沿用；量净距用 gen.text_box/badge_elements 禁手算）→ `sync-base.py` → `verify-station.py 站名` 局部验证 → 渲染核验 → 汇报数字 → **用户确认后提交**（pre-commit 自动全量+accept基线）。
