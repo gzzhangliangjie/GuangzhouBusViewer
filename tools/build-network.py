@@ -1017,9 +1017,12 @@ for mk in markers:
             out.append('<path d="%s" style="fill:none;stroke:#FFFFFF;stroke-width:%s;stroke-linejoin:round"/>' % (d, fmt(CAP_W)))
 out.append('</g>')
 out.append('<g id="线路徽标">')
-for nm, bx, by, bw, bh in badges:
-    out.append('<g data-badge="header" transform="translate(%s %s) scale(%s)">%s</g>'
-               % (fmt(bx), fmt(by), fmt4(BADGE_H / badge_size[nm][1]), badge_inner[nm]))
+for _bi2, (nm, bx, by, bw, bh) in enumerate(badges):
+    # data-term=终点站名(下游gen-codes锚定键=(线名,终点站), 消除文档序依赖)
+    _term = badge_stn[_bi2][0] if _bi2 < len(badge_stn) else None
+    _tattr = ' data-term="%s"' % _term if _term else ''
+    out.append('<g data-badge="header"%s transform="translate(%s %s) scale(%s)">%s</g>'
+               % (_tattr, fmt(bx), fmt(by), fmt4(BADGE_H / badge_size[nm][1]), badge_inner[nm]))
 out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
            'font-weight="700" fill="%s">' % INK)
