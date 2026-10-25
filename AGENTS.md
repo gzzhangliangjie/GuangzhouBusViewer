@@ -12,7 +12,8 @@
 
 ## 1.6 徽标 data-term 属性全链贯通
 - `build-network.py` 徽标输出必须携带 `data-term="终点站名"`；`gen-codes-cards.py` codes SVG 徽标同样携带。
-- 锚定/归一化脚本以 `(线名, 终点站名)` 为锚定键（data-term + badge_text_to_line 线名归一），**禁止文档序匹配**（顺序无关，增删不错位）。
+- 解析/定位/校验一律走 `gen.badge_elements()` 的 `(线名, 终点站名)` 键（badge_text_to_line 线名归一），**禁止对裸 transform 串做文档序断言**。
+- ⚠️锚定**值的存储/同步** = 自锚定架构（2026-10-25 用户定稿"SVG 本身即锚表"）：徽标锚 = 上一版 codes SVG 按 **(线名, 终点站名) 键配对**（新增终点无锚走算法位并提示, 键重复硬报错, 无文档序）；编号牌 chips 位移增量仍按文档序 + 数量硬报错（牌无廉价身份标识, 唯一残余文档序通道）。
 
 ## 1.7 SVG 数据提取必须走 gen 共享接口（禁止自行写解析正则）
 - 所有需要读取 SVG 徽标/文字/胶囊/走廊信息的脚本，必须调用 `gen.badge_elements()` / `gen.text_elements()` / `gen.chip_elements()` / `gen.corridor_segments()`。
@@ -25,11 +26,15 @@
 ## 3. 验证与提交纪律（pre-commit 钩子强制）
 - 迭代期单站调整: 改 codes SVG（SVG 即锚表）→ `python tools/sync-base.py` → `python tools/verify-station.py 站名` 局部验证（秒级）。批量归一工具（normalize-*.py）跑完仍须全量。
 - **提交=人肉确认动作（2026-10-25 用户定稿）**: agent 不得自主 `git commit`，用户确认后才执行。pre-commit 全绿自动 `baseline-lock.py accept` 并随提交入库——**基线=最后一次经用户确认的全绿提交**；verify-all 的基线检查只报告漂移不拦截。
-- 提交时 pre-commit 强制 `python tools/verify-all.py --quick` 全量（V1–V7 + V8徽标不压文字 + 像素四边扫描 + 幂等md5），不许挑门禁；钩子不过 = 修复后重试; `--no-verify` 仅限用户明示。
+- 提交分级门禁（pre-commit 按 staged 内容分级, `tools/precommit-gate.py`）: **T1** 纯文档（*.md, docs/）放行; **T2** 产物/数据（assets/**, data/*.json）或生成器链（build-network/gen-codes-cards/sync-base）→ verify-all 全量（生成器链变更升级非 quick：重跑链+幂等，重跑输出与 staged 不一致=拒绝——产物必须随生成器变更同 commit 入库）+ accept 基线; **T3** 纯脚本 → 工具自测（`tools/selftest.py`: gen共享接口单元+产物数字金丝+快照沙箱）+ XML/基线快检。钩子不过=修复后重试; `--no-verify` 仅限用户明示。
+- **产物数字金丝**（selftest.py, 定稿冻结值: 41徽标/318文字/400牌/16胶囊/302圆/scale统一0.314/transform无链）随定稿变更须有意识更新——与基线 accept 同理, 不许静默漂移。
+- **每批提交前过"三文档同步"（2026-10-26 用户令, 防废弃用例复发）**: ①selftest 金丝数字 ②AGENTS.md 条文 ③docs/network-map-spec.md——逐条对照本批改动, 冲突即改; 规范正文只写现行规则, 过期判例移"大坑档案"或标注历史。
+- **测试体系终版（2026-10-26）**: 唯一测试执行器 = `tools/selftest.py`（A.gen共享接口单元 / B.产物数字金丝 / C.快照沙箱 / D.基线锁突变自检——污染沙箱断言门禁必然翻红, 防假绿）; 产物验收不用测试框架, 由 verify-all+基线锁承担（比逐用例断言更严）。旧 pytest 套件已删除（单线卡时代过期锚, 思想已移植 selftest）, **模块被 import 时禁再包 sys.stdout**（重复包装会关底层流, rewrap 只放 `__main__`）。
 
 ## 4. 规则与位置必须互相匹配
 - 已验收位置若被规则判违规 → 迭代规则阈值本身, **禁止白名单/免疫豁免**（用户明令）。
 - 校准基准 = 验收态的客观口径（如徽标-走廊净距6.5=描边3.5+像素门禁3px外扫）。
 
 ## 5. 用户点名微调走自锚定链路
-- 点名改文字/徽标位置 → 文字用 `tools/move-label.py 站名 方向`（或直接改 codes SVG 对应元素），徽标直接改 codes SVG transform（SVG 即锚表，重跑自动沿用；量净距用 gen.text_box/badge_elements 禁手算）→ `sync-base.py` → `verify-station.py 站名` 局部验证 → 渲染核验 → 汇报数字 → **用户确认后提交**（pre-commit 自动全量+accept基线）。
+- 点名改文字/徽标位置 → 文字用 `tools/move-label.py 站名 方向`，徽标用 `tools/move-badge.py 终点站名 方向 [线号] [--dry]`（同终点多枚用线号消歧；也可直改 codes SVG 对应元素——SVG 即锚表，重跑自动沿用；量净距一律走 gen 接口禁手算）→ `sync-base.py` → `verify-station.py 站名` 局部验证 → 渲染核验 → 汇报数字 → **用户确认后提交**（pre-commit 自动全量+accept基线）。
+- ⚠️ 两份 SVG 的还原**禁用 `git checkout`**（autocrlf 改写换行致 md5 漂移、基线假告警，还会回退未提交工作）。还原优先级: ①重跑生成器链 build→gen→gen→sync（幂等，形态真源）②`python tools/svg-snapshot.py restore`（字节级快照; move-badge/move-label 写盘前自动 save 一版，试验性改动随时可回滚）。
