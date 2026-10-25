@@ -133,6 +133,46 @@ def corridor_segments(svg_text):
             for m in re.finditer(r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"', svg_text)]
 
 
+def marker_elements(svg_text):
+    """解析底图站圆+换乘胶囊标记(共享接口, 2026-10-25 move-badge需求新增):
+    -> {'circles': [(cx, cy, r, nm)], 'capsules': [([(x, y), ...], nm)]}
+    范围=站圆/换乘标记两组; 胶囊两种画法同收: 两点线段(黑白双描边端点相同取一次) /
+    多边形path(d="M.. L.. Z")。走廊线在走廊组, 不入此解析。"""
+    circles, capsules = [], []
+    for gid in ('站圆', '换乘标记'):
+        gm = re.search(r'<g id="%s"[^>]*>(.*?)</g>' % gid, svg_text, re.S)
+        if not gm:
+            continue
+        blk = gm.group(1)
+        for m in re.finditer(r'<circle ([^>]*data-nm="([^"]+)"[^>]*)>', blk):
+            at, nm = m.group(1), m.group(2)
+            mc = re.search(r'\bcx="([-\d.]+)"', at)
+            my = re.search(r'\bcy="([-\d.]+)"', at)
+            mr = re.search(r'\br="([-\d.]+)"', at)
+            if mc and my and mr:
+                circles.append((float(mc.group(1)), float(my.group(1)), float(mr.group(1)), nm))
+        seen = {}
+        for m in re.finditer(r'<line ([^>]*data-nm="([^"]+)"[^>]*)>', blk):
+            at, nm = m.group(1), m.group(2)
+            g = [re.search(r'\b%s="([-\d.]+)"' % k, at) for k in ('x1', 'y1', 'x2', 'y2')]
+            if all(g):
+                seen[(nm, tuple(float(x.group(1)) for x in g))] = None
+        for nm, pts in seen:
+            capsules.append(([(pts[0], pts[1]), (pts[2], pts[3])], nm))
+        for m in re.finditer(r'<path d="M([^"]*)" data-nm="([^"]+)"', blk):
+            body = m.group(1).strip()
+            if body.endswith('Z'):
+                body = body[:-1].strip()
+            pts = []
+            for pair in body.split('L'):
+                xs = pair.split()
+                if len(xs) >= 2:
+                    pts.append((float(xs[0]), float(xs[1])))
+            if len(pts) >= 3:
+                capsules.append((pts, m.group(2)))
+    return {'circles': circles, 'capsules': capsules}
+
+
 def norm_name(nm):
     """站名归一: 東->东(繁简) + 去尾'站'(兜底口径; 广州南站等'站'尾真名由原名优先保住)."""
     nm = nm.replace('東', '东')
@@ -1613,21 +1653,36 @@ def gen_network(codes, report):
             lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
             if lm4:
                 t = t[:lm4.start(1)] + _plm.group(1) + t[lm4.end(1):]
-        # 锚应用(文档序, 极简): 上一版codes SVG的徽标transform按文档序套新t——
-        # 同一生成器枚举确定; 数量变化=结构变化, 硬报错转人工(不静默错位)。
+        # 锚应用((线名,终点)键配对, 2026-10-26兑现注释承诺——此前实现是文档序+数量硬报错):
+        # 上一版codes SVG的徽标transform按(线名,终点)键套新t; 新增终点无锚→保留算法位并提示,
+        # 已有终点锚自动跟站名走, 增删均不错位。重复键=结构异常, 硬报错转人工。
         import xml.etree.ElementTree as _ET
-        _prev_trs = [e['tr_only'] for e in badge_elements(_prev)]
-        _n_cur = len(re.findall(r'<g data-badge="header"', t))
-        if len(_prev_trs) != _n_cur:
-            print('!! 徽标数%d != 上一版%d: 终点结构变化, 拒绝静默错位(处理后再跑)' % (_n_cur, len(_prev_trs)))
-            sys.exit(1)
-        _pi = [0]
+        _anchor = {}
+        for _e in badge_elements(_prev):
+            _k = (_e['key'], _e['term'])
+            if _k in _anchor:
+                print('!! 上一版徽标键重复%s: 结构异常, 拒绝静默错位' % (_k,))
+                sys.exit(1)
+            _anchor[_k] = _e['tr_only']
+        _miss = []
+        _hit = [0]
+
         def _pin_badge(mm):
-            i = _pi[0]
-            _pi[0] += 1
-            return mm.group(1) + '"' + _prev_trs[i] + mm.group(4) + '>' + mm.group(5) + '</g>'
+            attrs, inner = mm.group(1), mm.group(5)
+            _tm = re.search(r'data-term="([^"]+)"', attrs)
+            _ts = re.findall(r'>([^<>]+)</text>', inner)
+            _k = (badge_text_to_line(_ts[0].strip() if _ts else '?'), _tm.group(1) if _tm else None)
+            _tr = _anchor.get(_k)
+            if _tr is None:
+                _miss.append(_k)
+                return mm.group(0)
+            _hit[0] += 1
+            return mm.group(1) + '"' + _tr + mm.group(4) + '>' + mm.group(5) + '</g>'
+
         t = re.sub(r'(<g data-badge="header"[^>]* transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                    _pin_badge, t, flags=re.S)
+        if _miss:
+            print('  徽标锚: 命中%d, 无锚走算法位: %s' % (_hit[0], '、'.join(str(k) for k in _miss)))
         # 写前校验: XML损坏拒绝落盘
         try:
             _ET.fromstring(t)
