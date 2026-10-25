@@ -16,9 +16,10 @@
 - ⚠️锚定**值的存储/同步** = 自锚定架构（2026-10-25 用户定稿"SVG 本身即锚表"）：徽标锚 = 上一版 codes SVG 按 **(线名, 终点站名) 键配对**（新增终点无锚走算法位并提示, 键重复硬报错, 无文档序）；编号牌 chips 位移增量仍按文档序 + 数量硬报错（牌无廉价身份标识, 唯一残余文档序通道）。
 
 ## 1.7 SVG 数据提取必须走 gen 共享接口（禁止自行写解析正则）
-- 所有需要读取 SVG 徽标/文字/胶囊/走廊信息的脚本，必须调用 `gen.badge_elements()` / `gen.text_elements()` / `gen.chip_elements()` / `gen.corridor_segments()`。
+- 所有需要读取 SVG 徽标/文字/胶囊/走廊信息的脚本，必须调用 `gen.badge_elements()` / `gen.text_elements()` / `gen.chip_elements()` / `gen.corridor_segments()` / `gen.marker_elements()` / `gen.ring_elements()` / `gen.corridor_colors()`（后三者为共享接口增量：站圆+胶囊标记 / 圈环带 data-ring 身份 / 走廊色分布）。
 - **一次性脚本（`_*` 前缀）同样适用**——写新脚本时 import gen 用共享接口，禁止复制粘贴旧正则。
 - 原因：每个绕过共享接口的脚本都自带一套正则假设（属性顺序、精度格式、坐标含义），一次不匹配就静默出错。已发生：`_norm-closed` 群体偏移、`_spread-4` 精度不匹配、`_gap-fix` 函数签名错乱。
+- **下游消费链（2026-10-26）**：`data/quiz-network-data.js`（地铁拼图官方棋盘配对数据）由 `tools/gen-quiz-data.py` 从产品图生成——318 站名双射 + 400 牌全局唯一指派 + 圈环逐枚对齐，校验不过即拒绝写出；**改 network SVG / 编号 CSV 后必须重跑**，否则 App 端 `metro-board.js` 装载时按坐标对不上 DOM 会 fail-loud 拒绝渲染。
 
 ## 2. 管道截断雷
 - `python 生成器.py | head -N` 会 SIGPIPE 杀掉生成器——SVG 没写盘, 后续门禁读陈旧文件。跑生成器一律 `> 文件 2>&1` 后再 tail；`| grep` 安全。

@@ -127,6 +127,32 @@ def chip_elements(svg_text):
     return chips, rings, span
 
 
+def ring_elements(svg_text):
+    """解析编号牌组圈环(含 data-ring 站名身份): -> [(nm, x, y, w, h), ...]。
+    圈环=多牌站外描边圈, 是编号牌组里唯一带站名身份的元素(牌本体无身份标识)。"""
+    out = []
+    m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', svg_text, re.S)
+    if not m:
+        return out
+    for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)"[^>]*data-ring="([^"]+)"', m.group(1)):
+        x, y, w, h = (float(r.group(k)) for k in (1, 2, 3, 4))
+        out.append((r.group(5), x, y, w, h))
+    return out
+
+
+def corridor_colors(svg_text):
+    """解析走廊组全部线段颜色: -> {颜色大写: 段数}。单线模式按色淡化其他线走廊用
+    (全网走廊色与线一一对应, 由 gen-quiz-data.py 校验后落数据文件)。"""
+    cols = {}
+    m = re.search(r'<g id="走廊"[^>]*>(.*?)</g>', svg_text, re.S)
+    if not m:
+        return cols
+    for cm in re.finditer(r'stroke:(#[0-9A-Fa-f]{6})', m.group(1)):
+        c = cm.group(1).upper()
+        cols[c] = cols.get(c, 0) + 1
+    return cols
+
+
 def corridor_segments(svg_text):
     """解析走廊组全部线段: -> [(x1,y1,x2,y2), ...]"""
     return [tuple(float(m.group(k)) for k in (1, 2, 3, 4))
