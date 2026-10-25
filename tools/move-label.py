@@ -58,6 +58,10 @@ new_attrs = re.sub(r'\bx="[-\d.]+"', 'x="%.2f"' % nx, e['attrs'])
 new_attrs = re.sub(r'\by="[-\d.]+"', 'y="%.2f"' % ny, new_attrs)
 new_el = '<text %s>%s</text>' % (new_attrs, NM)
 t = t.replace(e['el'], new_el)
+import subprocess
+subprocess.run(['python', 'tools/svg-snapshot.py', 'save',
+                'auto:move-label %s %s' % (NM, DIR)], check=True)
 open(F, 'w', encoding='utf-8').write(t)
 print('规则平移: %s (%g,%g) -> (%g,%g) [%s %gpt] 全门禁合法' % (NM, e['x'], e['y'], nx, ny, DIR, step))
-print('下一步: python tools/sync-base.py && python tools/verify-all.py --quick 全链确认')
+print('回滚: python tools/svg-snapshot.py restore')
+print('下一步: python tools/sync-base.py && python tools/verify-station.py %s' % NM)
