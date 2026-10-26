@@ -134,6 +134,94 @@ def flatten_photo(im, thresh):
     return Image.fromarray(a)
 
 
+def dewarp_legend(im):
+    """褶皱去弯: 底部图例带用线路色块自身当标轨 — 色块中心相对理想行列网格的
+    残差拟合成分段线性位移场 dx(x)/dy(x), cv2.remap 把整条带(图例/促销/底框/
+    符号列)统一搬正; 色块不足 12 块或残差可忽略时原样返回。"""
+    try:
+        import cv2
+    except ImportError:
+        return im, '', None
+    a = np.asarray(im)
+    h, w = a.shape[:2]
+    hsv = cv2.cvtColor(a, cv2.COLOR_RGB2HSV)
+    mask = ((hsv[:, :, 1] > 80) & (hsv[:, :, 2] > 60)).astype(np.uint8) * 255
+    n, _, stats, cent = cv2.connectedComponentsWithStats(mask, 8)
+    band_y = h * 0.70  # 图例带下限: 再高会把地图底部的彩色元素混进标轨
+    chips = []
+    for i in range(1, n):
+        x, y, sw, sh, area = stats[i]
+        cx, cy = cent[i]
+        if cy < band_y or not (30 <= sw <= 180) or not (12 <= sh <= 70):
+            continue
+        if sh >= sw or area < 0.55 * sw * sh:  # 色块 = 横向实心矩形
+            continue
+        chips.append((cx, cy, x, y, sw, sh))
+    if len(chips) < 12:
+        return im, '', None
+    chips.sort(key=lambda t: t[1])
+    rows, cur = [], [chips[0]]
+    for c in chips[1:]:
+        if c[1] - cur[-1][1] > 45:
+            rows.append(cur)
+            cur = []
+        cur.append(c)
+    rows.append(cur)
+    rows = [r for r in rows if len(r) >= 3]  # 色块行至少 3 块, 孤点不入轨
+    if len(rows) < 2:
+        return im, '', None
+    rows.sort(key=lambda r: sorted(c[1] for c in r)[len(r) // 2])
+    row_y = [sorted(c[1] for c in r)[len(r) // 2] for r in rows]
+    if max(b - a for a, b in zip(row_y, row_y[1:])) > 240:  # 行距异常 → 检测不可靠
+        return im, '', None
+    xs = sorted(c[0] for r in rows for c in r)
+    cols, cur = [], [xs[0]]
+    for x in xs[1:]:
+        if x - cur[-1] > 90:
+            cols.append(sorted(cur)[len(cur) // 2])
+            cur = []
+        cur.append(x)
+    cols.append(sorted(cur)[len(cur) // 2])
+    if len(cols) < 4:
+        return im, '', None
+    dxs, dys = [], []
+    for r, ry in zip(rows, row_y):
+        for c in r:
+            k = min(range(len(cols)), key=lambda t: abs(cols[t] - c[0]))
+            dxs.append((k, c[0] - cols[k]))
+            dys.append((k, c[1] - ry))
+    dx = np.array([sorted(e for kk, e in dxs if kk == k)[len([1 for kk, e in dxs if kk == k]) // 2]
+                   for k in range(len(cols))])
+    dy = np.array([sorted(e for kk, e in dys if kk == k)[len([1 for kk, e in dys if kk == k]) // 2]
+                   for k in range(len(cols))])
+    if float(np.abs(dx).max() + np.abs(dy).max()) < 6:
+        return im, '', None
+    cols_a = np.array(cols, dtype=np.float32)
+    band_top = max(0, int(min(c[1] for r in rows for c in r) - 160))
+    xs_line = np.arange(w, dtype=np.float32)
+    dx_line = np.interp(xs_line, cols_a, dx).astype(np.float32)
+    dy_line = np.interp(xs_line, cols_a, dy).astype(np.float32)
+    map_x = np.tile(xs_line, (h - band_top, 1)) - dx_line[None, :]
+    map_y = (np.arange(band_top, h, dtype=np.float32)[:, None]
+             - dy_line[None, :] * np.ones((1, w), dtype=np.float32))
+    out = cv2.remap(a, map_x, map_y, cv2.INTER_CUBIC,
+                    borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+    full = np.full_like(a, 255)
+    full[:band_top] = a[:band_top]
+    full[band_top:] = out
+    # 标轨 (去皱后坐标): 行轴/列轴 + 色块中位尺寸 — 供组装期逐格合成图例
+    rails_rows = []
+    for r, ry in zip(rows, row_y):
+        ks = [min(range(len(cols)), key=lambda t: abs(cols[t] - c[0])) for c in r]
+        k = max(set(ks), key=ks.count)
+        rails_rows.append(ry - dy[k])
+    rails_cols = [cols[k] - dx[k] for k in range(len(cols))]
+    rails = (sorted(rails_rows), sorted(rails_cols),
+             int(np.median([c[4] for c in chips])), int(np.median([c[5] for c in chips])))
+    return Image.fromarray(full), '图例带去皱(Δx≤%d Δy≤%dpx)' % (
+        int(np.abs(dx).max()), int(np.abs(dy).max())), rails
+
+
 def rectify_poster(im):
     """海报四点透视矫正: 地铁线网图统一彩框, 用饱和色边框环做四角检测,
     兜底近白大四边形。检测不到 / 面积占比异常 / 已基本摆正(<1.2°)时原样返回。"""
@@ -213,6 +301,7 @@ def prep_image(src, colors, binary, upscale, flatten_white=None, no_deskew=False
         im = im.convert('RGB')
 
     log = []
+    rails_dw = None
     if not no_deskew:
         im, skew = auto_deskew(im)
         if skew:
@@ -223,6 +312,10 @@ def prep_image(src, colors, binary, upscale, flatten_white=None, no_deskew=False
         im = flatten_photo(im, flatten_white)
         log.append('照片模式(flat-field+拍白%d)' % flatten_white)
         im2, msg = rectify_poster(im)
+        if msg:
+            im = im2
+            log.append(msg)
+        im2, msg, rails_dw = dewarp_legend(im)
         if msg:
             im = im2
             log.append(msg)
@@ -255,7 +348,7 @@ def prep_image(src, colors, binary, upscale, flatten_white=None, no_deskew=False
         im = q.convert('RGB')
     else:
         palette = None
-    return im, orig_size, (factor if factor > 1 else 0), ' + '.join(log), palette
+    return im, orig_size, (factor if factor > 1 else 0), ' + '.join(log), palette, rails_dw
 
 
 def _quad_metrics(quad):
@@ -424,11 +517,14 @@ def ocr_regions(img, score, scale=1):
 
 
 def mask_text(img, regions):
-    """把文字块从底图抹除 (按四角点外扩画底色多边形), 抹完再描摹, 文字不再变轮廓。"""
+    """把文字块从底图抹除 (按四角点外扩画底色多边形), 抹完再描摹, 文字不再变轮廓。
+    图例带内抹字框加宽 (重采样后字形光晕更散, 抹窄了会留残迹配出重影)。"""
     im = img.copy()
     d = ImageDraw.Draw(im)
+    band_y = img.height * 0.70
     for r in regions:
-        pad = max(3, r['h'] * 0.18)
+        factor = 0.30 if r['cy'] > band_y else 0.18
+        pad = max(3, r['h'] * factor)
         cx, cy = r['cx'], r['cy']
         poly = []
         for px, py in r['quad']:
@@ -486,16 +582,18 @@ def _line_table():
     return _LINE_TABLE
 
 
-def _line_name(hex_color):
-    """最近线路色查线名 (量化吸附有色差, 精确匹配会大面积落空), 容差外不给名。"""
+def _line_name(hex_color, tol_sq=None):
+    """最近线路色查线名 (量化吸附有色差, 精确匹配会大面积落空), 容差外不给名。
+    tol_sq 缺省宽松 (注 data-line 用); 图例色块候选应传紧容差防灰牌撞色。"""
     r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+    tol = tol_sq if tol_sq is not None else 3 * 28 ** 2
     best, bd = None, 1 << 30
     for cs, name in _line_table().items():
         d = ((int(cs[1:3], 16) - r) ** 2 + (int(cs[3:5], 16) - g) ** 2
              + (int(cs[5:7], 16) - b) ** 2)
         if d < bd:
             best, bd = name, d
-    return best if bd <= 3 * 28 ** 2 else None
+    return best if bd <= tol else None
 
 
 def _text_kind(t):
@@ -506,6 +604,114 @@ def _text_kind(t):
     if '号线' in t or (t.endswith('线') and len(t) <= 5) or re.fullmatch(r'(GF|APM|THZ?[0-9]?)', t):
         return 'badge'
     return 'name'
+
+
+def _regularize_legend(chips, regions, H):
+    """图例带统一规整: 纸张褶皱造成图例局部变形 (透视矫正救不了非刚性)。
+    色块 → 行聚类 + 列聚类 → 等距节距网格重排: 行列间距一致、行列对齐、
+    形状统一为全图中位尺寸; 图例文字贴行轴、强制水平。
+    行一致性守卫: 以块数最多的行作列锚, 其余行 ≥3 块且 ≥60% 落列才接纳——
+    地图边缘撞线路色的杂牌小件退回原位, 不产生幽灵网格块。
+    返回 (rect串, 落选色块, 网格参数 or None); 落选件由调用方回普通分类。"""
+    rejected = []
+    if len(chips) < 8:
+        return [], chips, None
+    # 尺寸基准从面积上半区取: 候选池常混小杂牌, 全体中位会被拉偏,
+    # 真图例块 (大件) 反而被尺寸过滤误杀
+    areas = sorted((bb[2] - bb[0]) * (bb[3] - bb[1]) for _, _, bb in chips)
+    area_floor = areas[len(areas) // 2]
+    big = [(p, k, bb) for p, k, bb in chips
+           if (bb[2] - bb[0]) * (bb[3] - bb[1]) >= area_floor]
+    medh = sorted(bb[3] - bb[1] for _, _, bb in big)[len(big) // 2]
+    medw = sorted(bb[2] - bb[0] for _, _, bb in big)[len(big) // 2]
+    keep = []
+    for p, k, bb in chips:
+        if (abs((bb[3] - bb[1]) - medh) <= medh * 0.55
+                and abs((bb[2] - bb[0]) - medw) <= medw * 0.55):
+            keep.append((p, k, bb))
+        else:
+            rejected.append((p, k, bb))
+    chips = keep
+    if len(chips) < 8:
+        return [], rejected + chips, None
+
+    def med(vals):
+        return sorted(vals)[len(vals) // 2]
+
+    def cluster(vals, tol):
+        vals = sorted(vals)
+        out, cur = [], [vals[0]]
+        for v in vals[1:]:
+            if v - cur[-1] > tol:
+                out.append(med(cur))
+                cur = []
+            cur.append(v)
+        out.append(med(cur))
+        return out
+
+    # 行聚类; <3 块的行不可能是图例行 (杂牌), 整行退回
+    chips.sort(key=lambda t: (t[2][1] + t[2][3]) / 2)
+    rows, cur = [], [chips[0]]
+    for item in chips[1:]:
+        c = (item[2][1] + item[2][3]) / 2
+        if c - (cur[-1][2][1] + cur[-1][2][3]) / 2 > max(12, medh * 0.9):
+            rows.append(cur)
+            cur = []
+        cur.append(item)
+    if cur:
+        rows.append(cur)
+    solid = [r for r in rows if len(r) >= 3]
+    for r in rows:
+        if len(r) < 3:
+            rejected.extend(r)
+    if len(solid) < 2:
+        return [], rejected, None
+
+    # 列锚 = 最大行 (真图例行); 其余行 60% 落列才接纳
+    solid.sort(key=lambda r: -len(r))
+    seed = solid[0]
+    cols = cluster([bb[0] for _, _, bb in seed], medw * 0.6)
+    accepted = [seed]
+    for row in solid[1:]:
+        inl = sum(1 for _, _, bb in row
+                  if min(abs(bb[0] - c) for c in cols) <= medw * 0.6)
+        if len(row) >= 3 and inl >= 0.6 * len(row):
+            accepted.append(row)
+            cols = cluster([bb[0] for acc_row in accepted for _, _, bb in acc_row],
+                           medw * 0.6)
+        else:
+            rejected.extend(row)
+    if len(accepted) < 2 or len(cols) < 2:
+        return [], rejected, None
+
+    accepted.sort(key=lambda r: med([(bb[1] + bb[3]) / 2 for _, _, bb in r]))
+    row_c = [med([(bb[1] + bb[3]) / 2 for _, _, bb in r]) for r in accepted]
+    if len(row_c) > 1:
+        pr = med([b - a for a, b in zip(row_c, row_c[1:])])
+        row_c = [row_c[0] + i * pr for i in range(len(row_c))]
+    pitch = med([b - a for a, b in zip(cols, cols[1:])])
+    cols = [cols[0] + i * pitch for i in range(len(cols))]
+
+    def near_col(x):
+        return min(cols, key=lambda c: abs(c - x))
+
+    rects = []
+    for ri, row in enumerate(accepted):
+        for p, key, bb in row:
+            fill = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', p)
+            rects.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" rx="%.2f" '
+                         'fill="%s" data-legend="1"/>'
+                         % (near_col(bb[0]), row_c[ri] - medh / 2, medw, medh,
+                            medh * 0.22, fill.group(1) if fill else key))
+    # 图例文字: 只贴行轴 + 强制水平, x 保持原位 (透视矫正后水平位移仅数像素,
+    # 原位不会压块; 启发式搬移文字反而会配错行/挤叠, 不做)
+    for r in regions or []:
+        ri = min(range(len(row_c)), key=lambda i: abs(row_c[i] - r['cy']), default=None)
+        if ri is None or abs(row_c[ri] - r['cy']) > medh * 0.9:
+            continue
+        r['cy'] = row_c[ri]
+        r['angle'] = 0.0
+    return rects, rejected, (row_c, cols, medw, medh, pitch)
 
 
 def _path_bbox(p):
@@ -522,7 +728,7 @@ def _path_bbox(p):
     return (tx + min(xs), ty + min(ys), tx + max(xs), ty + max(ys))
 
 
-def assemble_svg(traced, regions, work_size, orig_size, palette=None):
+def assemble_svg(traced, regions, work_size, orig_size, palette=None, rails=None):
     """work 空间 = viewBox; 显示尺寸 = 原图像素。
     元件分层 (对齐全库 SVG 组织习惯):
       lines  路线走廊: 长路径按吸附调色板后的颜色分组 (≈每线一层, 挂 data-line)
@@ -559,15 +765,11 @@ def assemble_svg(traced, regions, work_size, orig_size, palette=None):
                    for b in boxes)
 
     small = max(work_size) * 0.025
+    Hw = work_size[1]
     groups, order = {}, []
     gfx = {'badge': [], 'code': [], 'misc': []}
-    for p in re.findall(r'<path\b[^>]*/>', traced[open_end:]):
-        m = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', p)
-        if m:
-            key = _snap_fill(m.group(1).upper(), palette) if palette else m.group(1).upper()
-        else:
-            key = '#000000'
-        bb = _path_bbox(p)
+
+    def classify(p, key, bb):
         w = bb[2] - bb[0] if bb else 0
         h = bb[3] - bb[1] if bb else 0
         # 长路径 or 细长碎片(长宽比>4) 都是走廊件; 紧凑小件才按文字归属分类
@@ -577,7 +779,7 @@ def assemble_svg(traced, regions, work_size, orig_size, palette=None):
                 groups[key] = []
                 order.append(key)
             groups[key].append(re.sub(r'\s*fill="[^"]*"', '', p))
-            continue
+            return
         kind = 'misc'
         if bb:
             for k in ('badge', 'code'):
@@ -585,6 +787,135 @@ def assemble_svg(traced, regions, work_size, orig_size, palette=None):
                     kind = k
                     break
         gfx[kind].append(p)
+
+    allitems = []
+    for p in re.findall(r'<path\b[^>]*/>', traced[open_end:]):
+        m = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', p)
+        if m:
+            key = _snap_fill(m.group(1).upper(), palette) if palette else m.group(1).upper()
+        else:
+            key = '#000000'
+        allitems.append((p, key, _path_bbox(p)))
+
+    legend_rects = []
+    if rails:
+        # 旧坐标微调式图例: 色块保持去皱后的实际位置 (仅压平为轴对齐 rect +
+        # cy 对齐行轴 + 行内统一高), 文字保持原 x (贴行轴 + 水平), 不做网格重排
+        row_ys = sorted(rails[0])
+        medw, medh = rails[2], rails[3]
+
+        def row_of(cy):
+            ri = min(range(len(row_ys)), key=lambda i: abs(row_ys[i] - cy), default=None)
+            if ri is not None and abs(row_ys[ri] - cy) <= 1.2 * medh:
+                return ri
+            return None
+
+        by0, by1 = row_ys[0] - 2.4 * medh, row_ys[-1] + 2.4 * medh
+        frags = []
+        for p, key, bb in allitems:
+            if not bb:
+                classify(p, key, bb)
+                continue
+            cy = (bb[1] + bb[3]) / 2
+            if by0 < cy < by1:
+                ri = row_of(cy)
+                if ri is not None and (bb[2] - bb[0]) <= 2.5 * medw \
+                        and (bb[3] - bb[1]) <= 1.6 * medh:
+                    frags.append([ri, bb, p, key])
+                    continue
+            classify(p, key, bb)
+        # 同行相邻碎片合并 (填充片+描边片间距始终小于块距): 并出整块 bbox,
+        # 取色度最高碎片上色 — 否则一个色块画成几条并列色板
+        frags.sort(key=lambda f: (f[0], f[1][0]))
+        merged = []
+        for ri, bb, p, key in frags:
+            if merged and merged[-1][0] == ri and bb[0] - merged[-1][1][2] <= 0.35 * medw:
+                mb = merged[-1][1]
+                merged[-1][1] = (mb[0], min(mb[1], bb[1]), max(mb[2], bb[2]),
+                                 max(mb[3], bb[3]))
+                merged[-1][2].append((p, key))
+            else:
+                merged.append([ri, bb, [(p, key)]])
+        for ri, (bx0, by0_, bx1, by1_), members in merged:
+            best = None
+            for p2, key2 in members:
+                m2 = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', p2)
+                f = (m2.group(1) if m2 else key2).upper()
+                r_, g_, b_ = int(f[1:3], 16), int(f[3:5], 16), int(f[5:7], 16)
+                ch = max(r_, g_, b_) - min(r_, g_, b_)
+                if best is None or ch > best[0]:
+                    best = (ch, f)
+            legend_rects.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" '
+                                'rx="%.2f" fill="%s" data-legend="1"/>'
+                                % (bx0, row_ys[ri] - medh / 2, bx1 - bx0, medh,
+                                   medh * 0.22, best[1]))
+        name2color = {v: k for k, v in _line_table().items()}
+        for r in regions or []:
+            ri = row_of(r['cy'])
+            if ri is None:
+                continue
+            r['cy'] = row_ys[ri]
+            r['angle'] = 0.0
+            name = next((nm for nm in sorted(name2color, key=len, reverse=True)
+                         if nm in r['text']), None)
+            if not name:
+                continue
+            lx = min(p[0] for p in r['quad'])
+            near = [(i, e) for i, e in enumerate(merged) if e[0] == ri
+                    and -medw * 0.5 <= lx - e[1][2] <= 1.4 * medw]
+            if near:
+                i, e = min(near, key=lambda t: lx - t[1][1][2])
+                legend_rects[i] = re.sub(r'fill="[^"]*"',
+                                         'fill="%s"' % name2color[name],
+                                         legend_rects[i])
+            else:
+                x0 = lx - medw * 0.35 - medw
+                legend_rects.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" '
+                                    'rx="%.2f" fill="%s" data-legend="1"/>'
+                                    % (x0, row_ys[ri] - medh / 2, medw, medh,
+                                       medh * 0.22, name2color[name]))
+    else:
+        cand_chips, others = [], []
+        for p, key, bb in allitems:
+            # 底部图例带的线路色块: 抽出做网格规整; 紧容差防地图杂牌撞色混入
+            if bb and bb[3] > Hw * 0.70 and _line_name(key, 3 * 20 ** 2):
+                cand_chips.append((p, key, bb))
+                continue
+            others.append((p, key, bb))
+        legend_rects, rejected, grid = _regularize_legend(cand_chips, regions, Hw)
+        for item in rejected:
+            classify(*item)
+        if not grid:
+            for item in others:
+                classify(*item)
+        else:
+            # 网格区内的小残件一律弃用 (合成图例层全权负责)
+            row_c, cols, medw, medh, pitch = grid
+            gy0, gy1 = row_c[0] - 2.0 * medh, row_c[-1] + 2.0 * medh
+            gx0, gx1 = cols[0] - 1.5 * medw, cols[-1] + 0.55 * pitch
+            box_right = cols[0] - 1.2 * medw
+            best_box = None
+            for p, key, bb in others:
+                if not bb:
+                    classify(p, key, bb)
+                    continue
+                if bb[1] > gy0 and bb[3] < gy1:
+                    if gx0 < bb[0] and bb[2] < gx1:
+                        continue
+                    if (bb[2] < box_right and bb[2] - bb[0] > 3 * medh
+                            and bb[3] - bb[1] > 2 * medh):
+                        a = (bb[2] - bb[0]) * (bb[3] - bb[1])
+                        if best_box is None or a > best_box[0]:
+                            best_box = (a, p, key, bb)
+                        continue
+                classify(p, key, bb)
+            if best_box:
+                _, p, key, bb = best_box
+                m = re.search(r'fill="(#[0-9a-fA-F]{3,8})"', p)
+                legend_rects.append('<rect x="%.2f" y="%.2f" width="%.2f" height="%.2f" '
+                                    'rx="%.2f" fill="%s" data-box="1"/>'
+                                    % (bb[0], bb[1], bb[2] - bb[0], bb[3] - bb[1],
+                                       medh * 0.35, m.group(1) if m else key))
 
     def text_el(r):
         rot = ''
@@ -611,6 +942,9 @@ def assemble_svg(traced, regions, work_size, orig_size, palette=None):
                  % (FONT_STACK, ''.join(gfx['code']),
                     ''.join(text_el(r) for r in (regions or [])
                             if _text_kind(r['text']) == 'code')))
+    if legend_rects:
+        # 图例合成层贴近顶层: 网格区视觉由它全权负责, 杂件残迹不外露
+        parts.append('<g id="legend">%s</g>' % ''.join(legend_rects))
     parts.append('<g id="text" font-family=\'%s\' text-anchor="middle" '
                  'dominant-baseline="central">%s</g>'
                  % (FONT_STACK, ''.join(text_el(r) for r in (regions or [])
@@ -814,7 +1148,7 @@ def make_compare(src, preview_png, out_png, W, H):
 def process(src, args):
     t0 = time.time()
     out = args.out or os.path.splitext(src)[0] + '.svg'
-    work, orig_size, factor, prelog, palette = prep_image(
+    work, orig_size, factor, prelog, palette, rails = prep_image(
         src, args.colors, args.binary, args.upscale, args.flatten_white, args.no_deskew)
     if prelog:
         print('  预处理: ' + prelog)
@@ -829,7 +1163,7 @@ def process(src, args):
     trace_src = mask_text(work, regions) if regions else work
     svg = trace_svg_text(trace_src, out, args.mode or ('binary' if args.binary is not None else 'spline'),
                          args.speckle, args.layer_diff, args.precision)
-    svg = assemble_svg(svg, regions or [], work.size, orig_size, palette)
+    svg = assemble_svg(svg, regions or [], work.size, orig_size, palette, rails)
     with open(out, 'w', encoding='utf-8') as f:
         f.write(svg)
     paths = svg.count('<path')
