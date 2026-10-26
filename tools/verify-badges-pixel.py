@@ -33,31 +33,38 @@ def is_line_color(p):
     return True
 
 
-def make_own_ok(own_rgb):
+def make_own_ok(own_rgb, ink_rgb=None):
     """本线色豁免(规范: 徽标有底色可盖本线延长线, 12号线北段判例):
-    像素=本线色与白的混色(含AA)不算穿透; 他线色仍FAIL。"""
-    ow, o_x, o_y = 255.0, 255.0, 255.0
-    c_r, c_g, c_b = own_rgb
-    wr, wg, wb = 255.0, 255.0, 255.0
+    像素=本线色与白的混色(含AA)不算穿透; 他线色仍FAIL。
+    2026-10-26 环线描边(官图口径): 11号线墨系=琥珀填充+黑描边, 徽标旁的本线色×墨色
+    AA混色同属本线墨系 → ink_rgb 给定时兼认该族混色(校准基准随墨系扩展, 非点位豁免)。"""
+    def mk(c, w):
+        c_r, c_g, c_b = c
+        w_r, w_g, w_b = w
 
-    def own_ok(p):
-        r, g, b = p
-        # 主通道解混比a, 其余通道残差校验(残差大=混入了别的色)
-        chans = [(c_r, wr, r), (c_g, wg, g), (c_b, wb, b)]
-        dom = max(chans, key=lambda t: abs(t[1] - t[0]))
-        d = dom[1] - dom[0]
-        if abs(d) < 1e-6:
-            return True
-        a = (dom[1] - dom[2]) / d
-        if a < -0.15 or a > 1.15:
-            return False
-        for c, w, q in chans:
-            pred = w + a * (c - w)
-            if abs(q - pred) > 40.0:
+        def ok(p):
+            r, g, b = p
+            # 主通道解混比a, 其余通道残差校验(残差大=混入了别的色)
+            chans = [(c_r, w_r, r), (c_g, w_g, g), (c_b, w_b, b)]
+            dom = max(chans, key=lambda t: abs(t[1] - t[0]))
+            d = dom[1] - dom[0]
+            if abs(d) < 1e-6:
+                return True
+            a = (dom[1] - dom[2]) / d
+            if a < -0.15 or a > 1.15:
                 return False
-        return True
+            for cc, ww, q in chans:
+                pred = ww + a * (cc - ww)
+                if abs(q - pred) > 40.0:
+                    return False
+            return True
+        return ok
 
-    return own_ok
+    base = mk(own_rgb, (255.0, 255.0, 255.0))
+    if ink_rgb is None:
+        return base
+    ext = mk(own_rgb, ink_rgb)
+    return lambda p: base(p) or ext(p)
 
 LINES_DIR = os.path.join(ROOT, 'assets/lines')
 # 徽标清单统一走 gen.badge_elements(底层接口, 属性无序安全+线名归一)
@@ -84,6 +91,8 @@ for _nm in size:
     _m3 = re.search(r'id="走廊".*?stroke:(#[0-9A-Fa-f]{6})', _src, re.S)
     if _m3:
         own_color[_nm] = tuple(int(_m3.group(1)[i:i + 2], 16) for i in (1, 3, 5))
+# 环线黑描边(build-network CASED_LINES 口径): 本线墨系=填充+描边, 描边AA同属本线
+CASED_INK = {'11号线': (0x1a, 0x1a, 0x1a)}
 bad = 0
 # 他徽标rect不算穿透目标: 像素门禁职责=徽标不压走廊; 徽标间净距由锚表+几何门禁管
 # (西塱1上10下叠排=用户定稿, 间距2.0<3px外扫, 互扫必然命中对方底色——不计)。
@@ -100,7 +109,7 @@ def in_other_badge(x, y, own_idx):
 
 for bi, (nm, bx, by) in enumerate(badges):
     bw, bh = size[nm]
-    own_ok = make_own_ok(own_color[nm]) if nm in own_color else (lambda p: False)
+    own_ok = make_own_ok(own_color[nm], CASED_INK.get(nm)) if nm in own_color else (lambda p: False)
     hits = []
     for xi in range(int(bx) - 3, int(bx + bw) + 4):
         for yy in (by - 3, by + bh + 3):

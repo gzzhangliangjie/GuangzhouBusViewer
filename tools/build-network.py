@@ -985,7 +985,23 @@ out = ['<svg xmlns="http://www.w3.org/2000/svg" viewBox="%s %s %s %s" width="%d"
 out.append('<rect x="%s" y="%s" width="%s" height="%s" fill="#ffffff"/>' %
            (fmt(minx), fmt(miny), fmt(maxx - minx), fmt(maxy - miny + LEG_H)))
 out.append('<g id="走廊">')
+# 官图口径(2026-10-26 用户: 环线加描边跟他线区别开): 11号线=琥珀填充+黑描边, 整线垫底——
+# 他线过环线一律上跨(官图"他线连续、环线断开", 华师/燕塘判例)。官图量化: 填充#F1B403,
+# 黑边约1pt@2250pt页(8x切柱两侧各~0.75pt暗带); 本图 7px 填充 + 描边9.6 = 两侧露边1.3。
+# data-case 标记描边元素: gen.corridor_colors 跳过(19线色集不受扰), 拼图单线淡化按线归属处理。
+CASED_LINES = ('11号线',)
+CASING_W = 9.6
+CASING_COLOR = '#1a1a1a'   # 图面墨色(与圈环描边同墨)
 for nm, x1, y1, x2, y2, col in corridors:
+    if nm not in CASED_LINES:
+        continue
+    out.append('<line x1="%s" y1="%s" x2="%s" y2="%s" data-case="%s" style="fill:none;stroke:%s;stroke-width:%s;stroke-linecap:round"/>' %
+               (fmt(x1), fmt(y1), fmt(x2), fmt(y2), nm, CASING_COLOR, fmt(CASING_W)))
+    out.append('<line x1="%s" y1="%s" x2="%s" y2="%s" style="fill:none;stroke:%s;stroke-width:7;stroke-linecap:round"/>' %
+               (fmt(x1), fmt(y1), fmt(x2), fmt(y2), col))
+for nm, x1, y1, x2, y2, col in corridors:
+    if nm in CASED_LINES:
+        continue
     out.append('<line x1="%s" y1="%s" x2="%s" y2="%s" style="fill:none;stroke:%s;stroke-width:7;stroke-linecap:round"/>' %
                (fmt(x1), fmt(y1), fmt(x2), fmt(y2), col))
 out.append('</g>')
