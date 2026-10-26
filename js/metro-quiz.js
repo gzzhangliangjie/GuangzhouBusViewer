@@ -47,6 +47,9 @@ const MetroQuiz = (() => {
 
   function init() {
     if (!MetroData.load()) return;
+    // 配对数据版本戳：设置页副标题上可见，核对窗口跑的是哪版 quiz 数据
+    const headP = document.querySelector('#metro-setup .setup-head p');
+    if (headP && QD() && QD().gen) headP.textContent += ' · 牌配对 v' + QD().gen;
     wireModeNav();
     wireSetup();
     wireGame();

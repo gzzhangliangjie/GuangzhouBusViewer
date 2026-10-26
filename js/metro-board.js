@@ -167,6 +167,8 @@ const MetroBoard = (() => {
         for (const c of QD().chips) {
           const key = c.nm + '|' + c.line;
           if (opts.placedChips && opts.placedChips.has(key)) continue;
+          // 单线模式：非本线编号牌保留为淡化背景（与站名/徽标同口径），本线牌才是谜面
+          if (opts.scope && c.line !== opts.scope) continue;
           const cluster = chipClusters.get(key);
           if (cluster) hide(cluster);   // 圆圈板无 DOM 簇：只建槽位，放置时注入
           makeChipSlot(c);
@@ -383,8 +385,10 @@ const MetroBoard = (() => {
       for (const g of svg.querySelectorAll('[data-badge="header"]')) {
         if (badgeLineOf(g) !== scope) dim(g, 0.18);
       }
-      // 胶囊形式且编号牌非谜面（站名/线号/挑战模式）：非本线牌与圈环淡化为背景
-      if (mode !== 'code' && svg.querySelector('#编号牌')) {
+      // 编号牌背景淡化（所有模式一致）：单线里非本线牌与圈环淡化为背景——
+      // 编号模式本线牌是谜面被收起，他线牌留在原位作参照（2026-10-26 用户令：
+      // 单线展示时本线数字亮、他线数字灰，不得全图收空）
+      if (svg.querySelector('#编号牌')) {
         for (const [key, cluster] of chipClusters) {
           if (key.split('|')[1] !== scope) for (const el of cluster) dim(el, 0.25);
         }
@@ -418,9 +422,11 @@ const MetroBoard = (() => {
       while (container.firstChild) container.removeChild(container.firstChild);
       const cap = document.createElement('div');
       cap.className = 'map-caption';
+      // 牌配对版本戳（QD().gen = quiz 数据生成日）：核对窗口里跑的是哪版配对数据
+      const gen = QD().gen ? ' · 牌配对 v' + QD().gen : '';
       cap.textContent = mode === 'answer'
-        ? '答案图 · 整理版广州地铁线网（2026 · 官方编号）'
-        : '底图：整理版广州地铁线网图 · 官方编号牌';
+        ? '答案图 · 整理版广州地铁线网（2026 · 官方编号）' + gen
+        : '底图：整理版广州地铁线网图 · 官方编号牌' + gen;
       container.appendChild(cap);
 
       map = L.map(container, {

@@ -293,6 +293,65 @@ app.whenReady().then(async () => {
     step11.placedVisible && step11.score === 100 && step11.dock === 399 &&
     step11.formBtn.indexOf('数字胶囊') >= 0, JSON.stringify(step11));
 
+  // ---------- ⑪ 单线×胶囊组合（2026-10-26 用户令：单线展示时本线数字亮、他线数字灰）：
+  //   A 线号模式+胶囊+1号线：400 牌全作背景，换乘站亮牌必须=本线（牌面配对哨兵：
+  //     体育西路 1|14 亮 / 3|11 灰）；B 编号模式+1号线：本线牌全收作谜面，他线牌留作淡化背景 ----------
+  const step12 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#metro-setup .opt-card[data-v="badge"]').click();
+    document.querySelector('#scope-picker .scope-pill[data-v="1"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const it = g.renderer.__internals;
+    const rects = [...it.svg.querySelectorAll('#编号牌 rect[fill="#FFFFFF"]')];
+    const at = (x, y) => rects.find(r => Math.abs(parseFloat(r.getAttribute('x')) - x) < 0.05 &&
+      Math.abs(parseFloat(r.getAttribute('y')) - y) < 0.05);
+    const rec1 = window.QUIZ_NETWORK_DATA.chips.find(c => c.nm === '体育西路' && c.line === '1号线');
+    const rec3 = window.QUIZ_NETWORK_DATA.chips.find(c => c.nm === '体育西路' && c.line === '3号线');
+    const st = r => ({ vis: r.style.visibility !== 'hidden', op: parseFloat(r.style.opacity || '1') });
+    const a = {
+      allKept: rects.every(r => r.style.visibility !== 'hidden'),
+      othersDim: window.QUIZ_NETWORK_DATA.chips.filter(c => c.line !== '1号线')
+        .every(c => parseFloat(at(c.x, c.y).style.opacity || '1') < 0.5),
+      s1: st(at(rec1.x, rec1.y)), s3: st(at(rec3.x, rec3.y)) };
+    // B: 编号模式 + 1号线 —— 本线牌=谜面（收起+槽位），他线牌=淡化背景
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#metro-setup .opt-card[data-v="code"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const it2 = MetroQuiz.__game().renderer.__internals;
+    const rects2 = [...it2.svg.querySelectorAll('#编号牌 rect[fill="#FFFFFF"]')];
+    const at2 = (x, y) => rects2.find(r => Math.abs(parseFloat(r.getAttribute('x')) - x) < 0.05 &&
+      Math.abs(parseFloat(r.getAttribute('y')) - y) < 0.05);
+    const scopeChips = window.QUIZ_NETWORK_DATA.chips.filter(c => c.line === '1号线');
+    const otherChips = window.QUIZ_NETWORK_DATA.chips.filter(c => c.line !== '1号线');
+    const b = { slots: it2.slots.size, dock: document.querySelectorAll('#chip-pool .mchip').length,
+      lineN: scopeChips.length,
+      mineHidden: scopeChips.every(c => at2(c.x, c.y).style.visibility === 'hidden'),
+      othersKept: otherChips.every(c => at2(c.x, c.y).style.visibility !== 'hidden'),
+      othersDim: otherChips.every(c => parseFloat(at2(c.x, c.y).style.opacity || '1') < 0.5),
+      r1Hidden: at2(rec1.x, rec1.y).style.visibility === 'hidden',
+      r3: st(at2(rec3.x, rec3.y)) };
+    return { a, b };
+  })()`);
+  check('⑪A线号模式1号线 400牌全留 他线全淡化',
+    step12.a.allKept && step12.a.othersDim,
+    `留${step12.a.allKept} 淡${step12.a.othersDim}`);
+  check('⑪A体育西路 本线1|14亮 他线3|11灰(牌面配对哨兵)',
+    step12.a.s1.vis && step12.a.s1.op > 0.9 && step12.a.s3.vis && step12.a.s3.op < 0.5,
+    JSON.stringify(step12.a.s1) + ' vs ' + JSON.stringify(step12.a.s3));
+  check('⑪B编号模式1号线 槽/池=本线牌数(他线牌留作背景)',
+    step12.b.slots === step12.b.lineN && step12.b.dock === step12.b.lineN,
+    `槽${step12.b.slots} 池${step12.b.dock} 本线${step12.b.lineN}`);
+  check('⑪B本线牌全收 他线牌全留全淡化',
+    step12.b.mineHidden && step12.b.othersKept && step12.b.othersDim &&
+    step12.b.r1Hidden && step12.b.r3.vis && step12.b.r3.op < 0.5,
+    `收${step12.b.mineHidden} 留${step12.b.othersKept} 淡${step12.b.othersDim} ` +
+    `1|14藏${step12.b.r1Hidden} 3|11灰${step12.b.r3.vis && step12.b.r3.op < 0.5}`);
+
   await win.webContents.executeJavaScript(
     `console.log('_quiz-verify done')`);
   console.log('\\nconsole errors:', errors.length ? errors : 'none');

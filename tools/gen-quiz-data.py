@@ -4,14 +4,17 @@
 只读产品文件, 不改任何 SVG。全部解析走 gen-codes-cards 共享接口(§1.7), 校验不过即退出:
 - V1 站名双射: 基础图 318 个中文站名文字 <-> 站圆302+换乘胶囊16 (data-nm), 无重名;
 - V2 线色双射: 19 条线徽标内色 <-> 走廊组 19 个颜色集合全等, 每线徽标同色;
-- V3 编号牌配对: codes 图 400 枚牌按"最近钉位全局唯一指派"配到 (站,线),
-  与 CSV 官方编号一一对应; 多牌站的牌必须全部落在该站圈环(data-ring)内;
+- V3 编号牌配对: codes 图 400 枚牌按"牌面解码"配到 (站,线)——隔线色+线号字+序号字
+  是绘制端按 (站,线) 画入的权威身份, 解码后经 CSV 唯一反查; 钉位仅用于别名消歧与
+  漂移报告(就近指派在多牌站钉位/落位错位时整站互换, 2026-10-26 实测 63 枚/32 站);
+  多牌站的牌必须全部落在该站圈环(data-ring)内;
 - V4 站覆盖: 每站至少 1 条线(有牌), 每线牌数 == 该线卡片钉位数(CSV 有码);
 用法: python tools/gen-quiz-data.py
 """
 import importlib.util
 import json
 import os
+import re
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -83,7 +86,11 @@ def main():
     check(set(cols) == set(line_color.values()),
           'V2 走廊色集==徽标色集 (走廊 %s)' % (set(cols) ^ set(line_color.values())))
 
-    # ---------- V3 编号牌配对 ----------
+    # ---------- V3 编号牌配对(牌面内容即身份) ----------
+    # codes SVG 绘制端(chip_svg)把隔线色+线号字+序号字按 (站,线) 画进牌面, 牌面即权威
+    # 身份: 解码牌面 -> (线, 序号) -> CSV 唯一反查 (站,线)。旧"就近钉位指派"废弃:
+    # 钉位与牌实际落位在多牌站错位时整站身份互换(2026-10-26 实测 63 枚/32 站)。
+    # 钉位现在只用于: ①别名消歧(归一站名的 codes 双条目取卡片原名) ②漂移报告。
     details = gcc.chip_details(tc)
     chips = [(d['x'], d['y'], d['w'], d['h']) for d in details]
     check(len(details) == 400 and all(
@@ -91,8 +98,7 @@ def main():
         and d['inner'].count('<text') == 2 for d in details),
         'V3 逐牌内标记 line+双text 结构 (实得 %d)' % len(details))
     rings = gcc.ring_elements(tc)
-    ring_of = {nm: (x, y, w, h) for nm, x, y, w, h in rings}
-    pins = {}          # (nm, ln) -> (cx, cy)
+    pins = {}          # (nm, ln) -> (cx, cy)   (别名消歧 + 漂移报告)
     pin_count = {}
     for ln in gcc.ORDER:
         card = gcc.parse_card(ln)
@@ -100,22 +106,44 @@ def main():
         for (nm, cx, cy) in card['pins']:
             if (nm, ln) in codes:
                 pins[(nm, ln)] = (cx, cy)
-    cand = []
-    for ci, (x, y, w, h) in enumerate(chips):
-        c = (x + w / 2, y + h / 2)
-        for (nm, ln), (px, py) in pins.items():
-            d = dist(c, (px, py))
-            if d <= PAIR_RADIUS:
-                cand.append((d, ci, nm, ln))
-    cand.sort()
+    pin_names = {nm for (nm, _ln) in pins}
+    disp2line = {}
+    for (_nm, ln), (disp, _serial) in codes.items():
+        disp2line.setdefault(disp, ln)
+
     chip_key = [None] * len(chips)      # idx -> (nm, ln)
-    used_key = set()
-    for (d, ci, nm, ln) in cand:
-        if chip_key[ci] is None and (nm, ln) not in used_key:
-            chip_key[ci] = (nm, ln)
-            used_key.add((nm, ln))
+    drift = []                          # (距离, (nm, ln)) 钉位漂移报告用
+    for ci, d in enumerate(details):
+        lm = re.search(r'stroke="(#[0-9A-Fa-f]{6})"', d['inner'])
+        texts = re.findall(r'>([^<>]+)</text>', d['inner'])
+        if not lm or len(texts) != 2:
+            fail.append('V3 牌%d 牌面解码失败(缺隔线色或非双text)' % ci)
+            continue
+        stroke, t_disp, t_serial = lm.group(1).upper(), texts[0], texts[1]
+        ln = disp2line.get(t_disp)
+        if ln is None:
+            fail.append('V3 牌%d 线号字 %r 无所属线' % (ci, t_disp))
+            continue
+        ref = line_color.get(ln, '').upper()
+        if ref and ref != stroke:
+            fail.append('V3 牌%d 隔线色 %s != %s 徽标色 %s' % (ci, stroke, ln, ref))
+        hits = sorted(nm for (nm, l2), v in codes.items()
+                      if l2 == ln and v == (t_disp, t_serial) and nm in pin_names)
+        if len(hits) != 1:
+            fail.append('V3 牌%d (%s|%s) CSV 反查命中 %d 义: %s' % (ci, t_disp, t_serial, len(hits), hits))
+            continue
+        chip_key[ci] = (hits[0], ln)
+        pin = pins.get(chip_key[ci])
+        if pin:
+            drift.append((dist((d['x'] + d['w'] / 2, d['y'] + d['h'] / 2), pin), chip_key[ci]))
     check(len(chip_key) == 400 and all(chip_key), 'V3 牌 400 全配对 (实得 %d)' % sum(1 for k in chip_key if k))
-    check(used_key == set(pins), 'V3 (站,线)全覆盖 (差集 %s)' % (used_key ^ set(pins)))
+    check(set(chip_key) == set(pins), 'V3 (站,线)全覆盖 (差集 %s)' % (set(chip_key) ^ set(pins)))
+    if drift:
+        drift.sort(reverse=True)
+        over = [(d, k) for d, k in drift if d > PAIR_RADIUS]
+        print('  info V3 钉位漂移 最大 %.1fpt (%s)%s' % (
+            drift[0][0], '/'.join(drift[0][1]),
+            ('; %d 枚超 %.0fpt 阈(身份已由牌面保证, 仅报告不拦截)' % (len(over), PAIR_RADIUS)) if over else ''))
     # 圈环校验: 圈环与牌同位同尺寸(每枚牌一圈), 逐枚对上; 无圈环站配出多牌=结构异常
     by_nm = {}
     for ci, key in enumerate(chip_key):
@@ -165,6 +193,7 @@ def main():
 
     data = {
         'viewBox': [668, 29.7, 2138, 1937.25],
+        'gen': __import__('datetime').date.today().strftime('%Y%m%d'),
         'lines': lines_out,
         'stations': stations,
         'chips': chips_out
