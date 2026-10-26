@@ -3,13 +3,14 @@
 //   拼图 = 把图上真实元素（站名文字 / 线路徽标 / 编号牌）藏起来，玩家拖回原位
 //   身份 = SVG 自身属性（站圆 data-nm / 徽标 data-term+线名文字 / 编号牌=配对数据文件），
 //          无文档序假设；元素原位复原 = 字节级还原已验收状态
-// 交互: 站点透明热区 + 牌位槽格（扩边命中）、46px 磁吸、悬停高亮、绿成功红扣分
+// 交互: 站点透明热区 + 牌位槽格（扩边命中）、60px 就近磁吸（拖放与点击共用，
+// 点击精确命中槽位/热区时由元素自身处理，落空时容器级就近兜底）、悬停高亮、绿成功红扣分
 // 坐标: L.CRS.Simple，latLng=[-y, x]（图面坐标直通），底图 wrapper 只用 translate+显式尺寸
 //       （不用 scale 变换——GPU 纹理上限会裁掉大 SVG，见 metro-map.js 同款处理）
 
 const MetroBoard = (() => {
   const QD = () => window.QUIZ_NETWORK_DATA;
-  const SNAP_PX = 46;      // 容器级磁吸半径（拖放 UX 规范口径）
+  const SNAP_PX = 60;      // 容器级就近判定半径：拖放磁吸与点击兜底共用（2026-10-26 用户令扩大响应区，46→60）
 
   /* ---------- 棋盘装载 ---------- */
 
@@ -236,7 +237,7 @@ const MetroBoard = (() => {
       for (const [nm, st] of Object.entries(QD().stations)) {
         if (opts.placedNames && opts.placedNames.has(nm)) continue;
         const mk = L.circleMarker(ll(st.x, st.y), {
-          radius: 13, stroke: false, fill: true, fillColor: '#2f7fd1', fillOpacity: 0,
+          radius: 20, stroke: false, fill: true, fillColor: '#2f7fd1', fillOpacity: 0,
           className: 'mst mst-hot'
         }).addTo(map);
         mk.on('mouseover', () => setSnap(mk));
@@ -250,24 +251,24 @@ const MetroBoard = (() => {
       }
     }
 
-    /* ---------- 磁吸：容器级拖动就近吸附（≤46px） ---------- */
+    /* ---------- 就近判定：容器级拖放磁吸 + 点击兜底（≤SNAP_PX） ---------- */
 
-    function nearestTarget(cx, cy, maxPx) {
-      const rect = map.getContainer().getBoundingClientRect();
-      const mx = cx - rect.left, my = cy - rect.top;
+    // mx/my 为地图容器内坐标（拖放从 event.clientX/Y 减容器 rect、点击用 Leaflet containerPoint）
+    function nearestTarget(mx, my, maxPx) {
       let best = null, bd = maxPx;
       const all = [];
       for (const [nm, st] of Object.entries(QD().stations)) {
         if (stationHot.has(nm)) all.push({ kind: 'name', value: nm, station: st });
       }
       for (const [, s2] of slotEls) all.push({ kind: s2.kind, value: s2.value, slot: s2 });
+      const crect = map.getContainer().getBoundingClientRect();
       for (const t of all) {
         let p;
         if (t.kind === 'name') p = px(t.station.x, t.station.y);
         else {
           const r = t.slot.el.getBoundingClientRect();
           if (!r.width) continue;
-          p = { x: r.left + r.width / 2 - rect.left, y: r.top + r.height / 2 - rect.top };
+          p = { x: r.left + r.width / 2 - crect.left, y: r.top + r.height / 2 - crect.top };
         }
         const d = Math.hypot(p.x - mx, p.y - my);
         if (d < bd) {
@@ -293,15 +294,30 @@ const MetroBoard = (() => {
       if (!opts.interactive) return;
       const c = map.getContainer();
       c.addEventListener('dragover', e => {
-        const t = nearestTarget(e.clientX, e.clientY, SNAP_PX);
+        const rect = c.getBoundingClientRect();
+        const t = nearestTarget(e.clientX - rect.left, e.clientY - rect.top, SNAP_PX);
         setSnap(t ? t.ref : null);
       });
       c.addEventListener('drop', e => {
         e.preventDefault();
         const payload = e.dataTransfer.getData('text/plain') || undefined;
-        const t = nearestTarget(e.clientX, e.clientY, SNAP_PX);
+        const rect = c.getBoundingClientRect();
+        const t = nearestTarget(e.clientX - rect.left, e.clientY - rect.top, SNAP_PX);
         if (!t) return;
         (t.kind === 'name' ? stationCb : t.kind === 'badge' ? badgeCb : chipCb)(t.kind, t.value, payload);
+      });
+      // 点击就近兜底：此前点击只认槽位本体/13px 热区，站名文字、牌位旁边点上去全部落空。
+      // 精确命中槽位/热区时元素自身处理已 fire（且槽位置后即移除），这里只接"点在旁边"的近失。
+      map.on('click', e => {
+        const oe = e.originalEvent;
+        const t0 = oe && oe.target;
+        // 双击是缩放，不参与判定；命中交互元素/控件/角标时各自的链路已处理
+        if (t0 && t0.closest && t0.closest('.mb-slot, .leaflet-interactive, .leaflet-control, .map-caption')) return;
+        if ((oe && oe.detail || 0) > 1) return;
+        const p = e.containerPoint;
+        const t = nearestTarget(p.x, p.y, SNAP_PX);
+        if (!t) return;
+        (t.kind === 'name' ? stationCb : t.kind === 'badge' ? badgeCb : chipCb)(t.kind, t.value);
       });
     }
 

@@ -5,6 +5,7 @@
 
 const MetroQuiz = (() => {
   const BEST_KEY = 'gzmetro.best.v1';
+  const RESULT_DELAY_MS = 1000;   // 最后一枚放完后延迟弹结算，让玩家看清补完的整图
   const $ = sel => document.querySelector(sel);
 
   const MODE_NAMES = { name: '站名模式', code: '编号模式', badge: '线号模式', both: '挑战模式' };
@@ -376,7 +377,7 @@ const MetroQuiz = (() => {
       if (chip.kind === 'name' && game.renderer.popFx) game.renderer.popFx(chip.value, '+100');
       place(chip);
       clearSelection();
-      if (game.chips.size === 0) finish();
+      if (game.chips.size === 0) scheduleFinish();
     } else {
       game.wrongs++;
       game.score = Math.max(0, game.score - 10);
@@ -421,16 +422,29 @@ const MetroQuiz = (() => {
     place(chip);
     clearSelection();
     toast('已自动放置「' + chipLabel(chip) + '」 −50');
-    if (game.chips.size === 0) finish();
+    if (game.chips.size === 0) scheduleFinish();
     else updateHud();
   }
 
   /* ---------- 结算 ---------- */
 
+  // 全部放完不立刻弹结算窗：先冻结局面（finished=true 停输入停计时），
+  // 延迟 RESULT_DELAY_MS 再弹；用时按最后一枚落定时刻冻结，延迟不扣时间加成。
+  // 期间重开/返回会 teardown 换掉 game，回调用身份比对失效，不会误弹新局。
+  function scheduleFinish() {
+    game.finished = true;
+    game.endAt = Date.now();
+    clearInterval(game.timerId);
+    game.timerId = null;
+    const g = game;
+    updateHud();
+    setTimeout(() => { if (game === g) finish(); }, RESULT_DELAY_MS);
+  }
+
   function finish() {
     game.finished = true;
     clearInterval(game.timerId);
-    const elapsed = Math.floor((Date.now() - game.startTime) / 1000);
+    const elapsed = Math.floor(((game.endAt || Date.now()) - game.startTime) / 1000);
     const quota = 150 + game.items.length * 25;   // 每个名牌 25s + 150s 起步
     const bonus = Math.round(Math.max(0, quota - elapsed) * 3 / 10) * 10;
     const total = game.score + bonus;
