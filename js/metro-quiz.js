@@ -387,7 +387,7 @@ const MetroQuiz = (() => {
       if (game.renderer.kind === 'official') game.renderer.wrongFeedback(targetType, targetValue);
       else game.renderer.wrongFeedback(targetValue);
       toast('放错了 −10');
-      clearSelection();
+      // 放错不清选中：名牌保持高亮，方便连续换站点试（用户 2026-10-27 令）
     }
     updateHud();
   }

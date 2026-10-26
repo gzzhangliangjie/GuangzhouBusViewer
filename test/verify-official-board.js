@@ -85,11 +85,12 @@ app.whenReady().then(async () => {
     await new Promise(r => setTimeout(r, 200));
     const afterOk = { score: g.score, prog: document.getElementById('mq-prog').textContent,
       hot: hot.size };
-    // 放错：公园前 -> 广州东站
+    // 放错：公园前 -> 广州东站（放错不清选中，2026-10-27 用户令：方便连续换站点试）
     pick('公园前').click();
     hot.get('广州东站').fire('click');
     await new Promise(r => setTimeout(r, 200));
-    const afterBad = { score: g.score, wrongs: g.wrongs };
+    const afterBad = { score: g.score, wrongs: g.wrongs,
+      stillSel: pick('公园前').className.includes('selected') };
     // 提示：自动放置一枚
     document.getElementById('mq-hint').click();
     await new Promise(r => setTimeout(r, 200));
@@ -98,7 +99,7 @@ app.whenReady().then(async () => {
   })()`);
   check('②放对 +100', step3.afterOk.score === 100 && step3.afterOk.prog === '1/318' && step3.afterOk.hot === 317,
     JSON.stringify(step3.afterOk));
-  check('②放错 −10（牌不消耗）', step3.afterBad.score === 90 && step3.afterBad.wrongs === 1, JSON.stringify(step3.afterBad));
+  check('②放错 −10（牌不消耗, 保留选中）', step3.afterBad.score === 90 && step3.afterBad.wrongs === 1 && step3.afterBad.stillSel === true, JSON.stringify(step3.afterBad));
   check('②提示 −50 自动放置', step3.afterHint.score === 40 && step3.afterHint.hints === 1 && step3.afterHint.dock === 316,
     JSON.stringify(step3.afterHint));
 
