@@ -11,7 +11,8 @@ app.whenReady().then(async () => {
     width: 1400, height: 900, show: true,   // capturePage 对隐藏窗口会截空白，必须可见
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
-      contextIsolation: true, nodeIntegration: false, sandbox: true
+      contextIsolation: true, nodeIntegration: false, sandbox: true,
+      backgroundThrottling: false   // 后台节流会让 capturePage 返回陈旧帧
     }
   });
   const errors = [];
@@ -21,6 +22,8 @@ app.whenReady().then(async () => {
   await win.loadFile(path.join(__dirname, '..', 'index.html'));
 
   const shot = async name => {
+    win.webContents.invalidate();   // 强制重绘，避免 capturePage 拿到陈旧帧
+    await new Promise(r => setTimeout(r, 300));
     const img = await win.webContents.capturePage();
     fs.writeFileSync(path.join(SHOT_DIR, '_quiz-official-' + name + '.png'), img.toPNG());
   };
@@ -209,6 +212,86 @@ app.whenReady().then(async () => {
   })()`);
   check('⑦geo 真实地图回归', step8.kind === 'geo' && step8.dock === step8.expect && step8.tilesVisible,
     JSON.stringify(step8));
+
+  // ---------- ⑧ 站点显示形式=数字胶囊：站名模式跑在 codes 板（400 牌可见作站标记） ----------
+  const step9 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#metro-setup .opt-card[data-v="official"]').click();
+    document.querySelector('#metro-setup .opt-card[data-v="name"]').click();
+    document.querySelector('#metro-setup .opt-block[data-block="form"] .opt-card[data-v="capsule"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const svg = g.renderer.__internals.svg;
+    const pick = nm => [...document.querySelectorAll('#chip-pool .mchip')]
+      .find(e => e.textContent === nm);
+    pick('西塱').click();
+    g.renderer.__internals.hotspots.get('西塱').fire('click');
+    await new Promise(r => setTimeout(r, 200));
+    return { hasChips: !!svg.querySelector('#编号牌'), hasCircles: !!svg.querySelector('#站圆'),
+      chipsVisible: [...svg.querySelectorAll('#编号牌 rect[fill="#FFFFFF"]')]
+        .filter(r => r.style.visibility !== 'hidden').length,
+      hidden: g.renderer.__internals.hiddenCount,
+      dock: document.querySelectorAll('#chip-pool .mchip').length,
+      score: g.score, formBtn: document.getElementById('mq-form').textContent };
+  })()`);
+  check('⑧胶囊形式 codes 板 400 牌可见+站名隐藏+可判分',
+    step9.hasChips && !step9.hasCircles && step9.chipsVisible === 400 &&
+    step9.hidden === 317 && step9.dock === 317 && step9.score === 100 &&
+    step9.formBtn.indexOf('数字胶囊') >= 0,
+    JSON.stringify(step9));
+  await shot('form-capsule-names');
+
+  // ---------- ⑨ 站点显示形式=圆圈 + 编号模式：基础板 + 官方同款牌注入 ----------
+  const step10 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#metro-setup .opt-card[data-v="code"]').click();   // 自动切胶囊
+    document.querySelector('#metro-setup .opt-block[data-block="form"] .opt-card[data-v="circle"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const it = g.renderer.__internals;
+    const svg = it.svg;
+    const slotsBefore = it.slots.size;
+    const rec = window.QUIZ_NETWORK_DATA.chips.find(c => c.nm === '公园前' && c.line === '1号线');
+    const chipEl = [...document.querySelectorAll('#chip-pool .mchip-code')]
+      .find(e => e.title === '公园前 · 1号线');
+    chipEl.click();
+    it.slots.get('公园前|1号线').el.click();
+    await new Promise(r => setTimeout(r, 200));
+    const inj = document.querySelector('#metro-canvas .mb-chip-svg');
+    const vb = inj ? inj.getAttribute('viewBox').split(/\\s+/).map(parseFloat) : [];
+    const vbOk = vb.length === 4 && vb.every((v, i) => Math.abs(v - [rec.x, rec.y, rec.w, rec.h][i]) < 0.05);
+    return { hasCircles: !!svg.querySelector('#站圆'), hasChips: !!svg.querySelector('#编号牌'),
+      slotsBefore, dockBefore: slotsBefore, dock: document.querySelectorAll('#chip-pool .mchip').length,
+      score: g.score, injected: !!inj, vbOk };
+  })()`);
+  check('⑨圆圈形式编号模式 基础板+400槽', step10.hasCircles && !step10.hasChips &&
+    step10.slotsBefore === 400 && step10.dock === 399, JSON.stringify(step10));
+  check('⑨放对注入官方同款牌(+100)', step10.score === 100 && step10.injected && step10.vbOk,
+    JSON.stringify({ score: step10.score, injected: step10.injected, vbOk: step10.vbOk }));
+  await shot('form-circle-codes');
+
+  // ---------- ⑩ 局内顶栏切换回胶囊：进度保留，牌变回 SVG 原位复原 ----------
+  const step11 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-form').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const svg = g.renderer.__internals.svg;
+    const rec = window.QUIZ_NETWORK_DATA.chips.find(c => c.nm === '公园前' && c.line === '1号线');
+    const rects = [...svg.querySelectorAll('#编号牌 rect[fill="#FFFFFF"]')].filter(r =>
+      Math.abs(parseFloat(r.getAttribute('x')) - rec.x) < 0.05 &&
+      Math.abs(parseFloat(r.getAttribute('y')) - rec.y) < 0.05);
+    return { hasChips: !!svg.querySelector('#编号牌'), hasCircles: !!svg.querySelector('#站圆'),
+      placedVisible: rects.length === 1 && rects.every(r => r.style.visibility !== 'hidden'),
+      score: g.score, dock: document.querySelectorAll('#chip-pool .mchip').length,
+      formBtn: document.getElementById('mq-form').textContent };
+  })()`);
+  check('⑩局内切换进度保留 牌回到SVG原位', step11.hasChips && !step11.hasCircles &&
+    step11.placedVisible && step11.score === 100 && step11.dock === 399 &&
+    step11.formBtn.indexOf('数字胶囊') >= 0, JSON.stringify(step11));
 
   await win.webContents.executeJavaScript(
     `console.log('_quiz-verify done')`);

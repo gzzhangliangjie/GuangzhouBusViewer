@@ -13,12 +13,14 @@ const MetroBoard = (() => {
 
   /* ---------- 棋盘装载 ---------- */
 
-  function boardSvgUrl(m) {
-    return 'assets/lines/network-全网' + (m === 'code' || m === 'answer' ? '.codes' : '') + '.svg';
+  // 圆圈形式 = 基础图（站圆+换乘胶囊）；胶囊形式/答案图 = codes 变体（官方编号牌替代站圆）
+  function boardSvgUrl(m, form) {
+    const useCodes = m === 'answer' || form === 'capsule';
+    return 'assets/lines/network-全网' + (useCodes ? '.codes' : '') + '.svg';
   }
 
-  function fetchBoard(m) {
-    return fetch(boardSvgUrl(m)).then(r => {
+  function fetchBoard(m, form) {
+    return fetch(boardSvgUrl(m, form)).then(r => {
       if (!r.ok) throw new Error('board svg HTTP ' + r.status);
       return r.text();
     }).then(txt => {
@@ -82,7 +84,8 @@ const MetroBoard = (() => {
     const slotEls = new Map();      // value -> {el, kind, value}（badge 用线名 / chip 用 键）
     const nameEls = new Map();      // nm -> [text]
     const badgeEls = new Map();     // 线名 -> [g]
-    let chipClusters = new Map();   // chipKey -> [elements]
+    let chipClusters = new Map();   // chipKey -> [elements]（codes 棋盘）
+    const injectedChips = new Map(); // chipKey -> svg（圆圈棋盘无编号牌 DOM，按配对数据注入）
     let dimRefs = [];
     let snapRef = null;
     let stationCb = null, badgeCb = null, chipCb = null;
@@ -162,10 +165,9 @@ const MetroBoard = (() => {
       if (wantChip) {
         for (const c of QD().chips) {
           const key = c.nm + '|' + c.line;
-          const cluster = chipClusters.get(key);
-          if (!cluster) continue;
           if (opts.placedChips && opts.placedChips.has(key)) continue;
-          hide(cluster);
+          const cluster = chipClusters.get(key);
+          if (cluster) hide(cluster);   // 圆圈板无 DOM 簇：只建槽位，放置时注入
           makeChipSlot(c);
         }
       }
@@ -347,6 +349,11 @@ const MetroBoard = (() => {
         return st && st.lines.includes(scope);
       };
       for (const el of svg.querySelectorAll('#走廊 line')) {
+        const cs = el.getAttribute('data-case');   // 环线黑描边: 随所属线淡化(描边色≠线色)
+        if (cs) {
+          if (cs !== scope) dim(el, 0.12);
+          continue;
+        }
         if (strokeHex(el) !== color) dim(el, 0.12);
       }
       for (const el of svg.querySelectorAll('#站圆 circle, #换乘标记 [data-nm]')) {
@@ -360,6 +367,16 @@ const MetroBoard = (() => {
       for (const g of svg.querySelectorAll('[data-badge="header"]')) {
         if (badgeLineOf(g) !== scope) dim(g, 0.18);
       }
+      // 胶囊形式且编号牌非谜面（站名/线号/挑战模式）：非本线牌与圈环淡化为背景
+      if (mode !== 'code' && svg.querySelector('#编号牌')) {
+        for (const [key, cluster] of chipClusters) {
+          if (key.split('|')[1] !== scope) for (const el of cluster) dim(el, 0.25);
+        }
+        for (const ring of svg.querySelectorAll('#编号牌 rect[data-ring]')) {
+          const nm = ring.getAttribute('data-ring');
+          if (nm && !inScope(nm)) dim(ring, 0.3);
+        }
+      }
     }
 
     function dim(el, op) {
@@ -372,12 +389,13 @@ const MetroBoard = (() => {
     function render(opts) {
       lastOpts = opts;
       mode = opts.mode || 'name';
+      const form = opts.form || 'circle';
       const seq = ++loadSeq;
       if (map) { map.remove(); map = null; }
       for (const w of [boardWrap, overlayWrap]) if (w && w.parentNode) w.parentNode.removeChild(w);
       boardWrap = overlayWrap = svg = null;
       stationHot.clear(); slotEls.clear(); nameEls.clear(); badgeEls.clear();
-      chipClusters = new Map(); dimRefs = []; snapRef = null;
+      chipClusters = new Map(); injectedChips.clear(); dimRefs = []; snapRef = null;
 
       container.classList.add('official-canvas');
       // 先清再建：地图容器节点即 container 本体（与 metro-map 同模式）
@@ -407,11 +425,12 @@ const MetroBoard = (() => {
       container.appendChild(overlayWrap);
       map.on('move zoom end resize', syncArt);
 
-      fetchBoard(mode).then(loaded => {
+      fetchBoard(mode, form).then(loaded => {
         if (seq !== loadSeq) return;
         boardWrap.appendChild(loaded.holder);
         svg = loaded.svg;
-        if (mode === 'code' || mode === 'answer') {
+        // 编号牌 DOM 聚类按板上实际内容判定（胶囊形式才有编号牌组；圆圈板走数据注入）
+        if (svg.querySelector('#编号牌')) {
           chipClusters = bindChipClusters(svg, QD().chips);
         }
         collectPieces(opts);
@@ -460,10 +479,31 @@ const MetroBoard = (() => {
       }
     }
 
+    // 圆圈棋盘无编号牌 DOM：按配对数据携带的产品级内标记原位注入（嵌套 svg，viewBox=牌矩形，
+    // 与 codes 板上的官方牌像素级同款）
+    function injectHtmlChip(key, pop) {
+      if (injectedChips.has(key)) return;
+      const c = QD().chips.find(k => k.nm + '|' + k.line === key);
+      if (!c || !c.d) return;
+      const [vx, vy, vw, vh] = VB();
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      el.setAttribute('viewBox', c.x + ' ' + c.y + ' ' + c.w + ' ' + c.h);
+      el.setAttribute('preserveAspectRatio', 'none');
+      el.setAttribute('class', 'mb-chip-svg' + (pop ? ' mb-placed-pop' : ''));
+      el.style.left = ((c.x - vx) / vw * 100) + '%';
+      el.style.top = ((c.y - vy) / vh * 100) + '%';
+      el.style.width = (c.w / vw * 100) + '%';
+      el.style.height = (c.h / vh * 100) + '%';
+      el.innerHTML = c.d;
+      overlayWrap.appendChild(el);
+      injectedChips.set(key, el);
+    }
+
     function placeChip(key) {
       if (lastOpts) lastOpts.placedChips.add(key);
       const cluster = chipClusters.get(key);
       if (cluster) unhide(cluster);
+      else injectHtmlChip(key, true);
       const s2 = slotEls.get(key);
       if (s2) { s2.el.remove(); slotEls.delete(key); }
       const c = QD().chips.find(k => k.nm + '|' + k.line === key);
@@ -508,7 +548,12 @@ const MetroBoard = (() => {
     function revealAll() {
       for (const els of nameEls.values()) for (const el of els) el.style.visibility = '';
       for (const els of badgeEls.values()) for (const el of els) el.style.visibility = '';
-      for (const els of chipClusters.values()) for (const el of els) el.style.visibility = '';
+      for (const c of QD().chips) {
+        const key = c.nm + '|' + c.line;
+        const cluster = chipClusters.get(key);
+        if (cluster) for (const el of cluster) el.style.visibility = '';
+        else injectHtmlChip(key, false);
+      }
       for (const [, mk] of stationHot) mk.remove();
       stationHot.clear();
       for (const [, s2] of slotEls) s2.el.remove();

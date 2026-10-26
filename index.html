@@ -129,6 +129,14 @@
             </div>
           </div>
 
+          <div class="opt-block" data-block="form">
+            <div class="opt-title">站点显示形式（官方线网图，局内可随时切换）</div>
+            <div class="opt-cards">
+              <button class="opt-card selected" data-v="circle"><b>站点圆圈</b><span>经典画法：普通站=线色圆点，换乘站=白色胶囊</span></button>
+              <button class="opt-card" data-v="capsule"><b>数字胶囊</b><span>官方「线路|编号」牌直接标注站旁（编号模式推荐）</span></button>
+            </div>
+          </div>
+
           <div class="opt-block" data-block="scope">
             <div class="opt-title">挑战范围</div>
             <div class="scope-picker" id="scope-picker"></div>
@@ -156,6 +164,7 @@
             <span class="stat prog" id="mq-prog">0/0</span>
           </div>
           <div class="tb-actions">
+            <button id="mq-form" class="tb-btn" title="切换站点显示形式（圆圈/数字胶囊），保留进度" hidden>形式：站点圆圈</button>
             <button id="mq-hint" class="tb-btn accent">提示 −50</button>
             <button id="mq-restart" class="tb-btn" title="重新开始">↻</button>
             <button id="mq-giveup" class="tb-btn danger">放弃并揭示</button>

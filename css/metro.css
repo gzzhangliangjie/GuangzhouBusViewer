@@ -459,6 +459,16 @@ path.dnd-target.wrong { stroke: #f85149 !important; }
   100% { opacity: 1; }
 }
 
+/* 圆圈板上注入的官方同款编号牌（嵌套 svg，viewBox=牌矩形，随底图缩放） */
+.mb-chip-svg {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* 选项块停用（真实地图下站点形式无意义） */
+.opt-block.disabled { opacity: 0.45; pointer-events: none; }
+
 /* ---------- 名牌池：编号牌片 + 线号快捷过滤 ---------- */
 .mchip.mchip-code {
   display: inline-flex;

@@ -84,7 +84,12 @@ def main():
           'V2 走廊色集==徽标色集 (走廊 %s)' % (set(cols) ^ set(line_color.values())))
 
     # ---------- V3 编号牌配对 ----------
-    chips, _rings, _span = gcc.chip_elements(tc)
+    details = gcc.chip_details(tc)
+    chips = [(d['x'], d['y'], d['w'], d['h']) for d in details]
+    check(len(details) == 400 and all(
+        d['inner'].startswith('<line') and d['inner'].endswith('</text>')
+        and d['inner'].count('<text') == 2 for d in details),
+        'V3 逐牌内标记 line+双text 结构 (实得 %d)' % len(details))
     rings = gcc.ring_elements(tc)
     ring_of = {nm: (x, y, w, h) for nm, x, y, w, h in rings}
     pins = {}          # (nm, ln) -> (cx, cy)
@@ -141,11 +146,12 @@ def main():
         stations[nm] = {'x': round(x, 2), 'y': round(y, 2), 'lines': []}
     chips_out = []
     per_line = {}
-    for (x, y, w, h), key in zip(chips, chip_key):
+    for (x, y, w, h), d, key in zip(chips, details, chip_key):
         nm, ln = key
         disp, serial = codes[key]
         chips_out.append({'nm': nm, 'line': ln, 'serial': serial,
-                          'x': round(x, 2), 'y': round(y, 2), 'w': round(w, 2), 'h': round(h, 2)})
+                          'x': round(x, 2), 'y': round(y, 2), 'w': round(w, 2), 'h': round(h, 2),
+                          'd': d['inner']})
         stations[nm]['lines'].append(ln)
         per_line[ln] = per_line.get(ln, 0) + 1
     for st in stations.values():

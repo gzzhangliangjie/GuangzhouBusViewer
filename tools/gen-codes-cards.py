@@ -127,6 +127,25 @@ def chip_elements(svg_text):
     return chips, rings, span
 
 
+def chip_details(svg_text):
+    """编号牌组逐牌解析(共享接口): -> [{'x','y','w','h','inner'}, ...]。
+    inner = 该牌分隔线+两段文字的完整标记(不含牌自身rect, 恰为 line,text,text 序列)。
+    牌无身份属性(§1.6), (站,线)身份由调用方几何配对(见 gen-quiz-data.py);
+    inner 供圆圈底板按坐标原位注入官方同款胶囊(拼图数字胶囊形式)。"""
+    out = []
+    m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', svg_text, re.S)
+    if not m:
+        return out
+    blk = m.group(1)
+    for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#FFFFFF" stroke="(#[0-9A-Fa-f]{6})"[^>]*>', blk):
+        x0 = r.end()
+        nxt = re.search(r'<rect x="[-\d.]+" y="[-\d.]+" width="[\d.]+" height="[\d.]+" rx="[\d.]+" fill="#FFFFFF"', blk[x0:])
+        inner = blk[x0:x0 + nxt.start()] if nxt else blk[x0:]
+        out.append({'x': float(r.group(1)), 'y': float(r.group(2)),
+                    'w': float(r.group(3)), 'h': float(r.group(4)), 'inner': inner})
+    return out
+
+
 def ring_elements(svg_text):
     """解析编号牌组圈环(含 data-ring 站名身份): -> [(nm, x, y, w, h), ...]。
     圈环=多牌站外描边圈, 是编号牌组里唯一带站名身份的元素(牌本体无身份标识)。"""
@@ -141,15 +160,20 @@ def ring_elements(svg_text):
 
 
 def corridor_colors(svg_text):
-    """解析走廊组全部线段颜色: -> {颜色大写: 段数}。单线模式按色淡化其他线走廊用
-    (全网走廊色与线一一对应, 由 gen-quiz-data.py 校验后落数据文件)。"""
+    """解析走廊组全部线段颜色: -> {颜色大写: 段数}。
+    带 data-case 的描边元素(官图环线画法, build-network 产物)非线色, 跳过。"""
     cols = {}
     m = re.search(r'<g id="走廊"[^>]*>(.*?)</g>', svg_text, re.S)
     if not m:
         return cols
-    for cm in re.finditer(r'stroke:(#[0-9A-Fa-f]{6})', m.group(1)):
-        c = cm.group(1).upper()
-        cols[c] = cols.get(c, 0) + 1
+    for lm in re.finditer(r'<line [^>]*>', m.group(1)):
+        tag = lm.group(0)
+        if 'data-case' in tag:
+            continue
+        cm = re.search(r'stroke:(#[0-9A-Fa-f]{6})', tag)
+        if cm:
+            c = cm.group(1).upper()
+            cols[c] = cols.get(c, 0) + 1
     return cols
 
 

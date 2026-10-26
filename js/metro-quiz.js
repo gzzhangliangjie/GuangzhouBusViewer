@@ -16,6 +16,7 @@ const MetroQuiz = (() => {
     title: $('#mq-title'), scopeLbl: $('#mq-scope'),
     score: $('#mq-score'), time: $('#mq-time'), prog: $('#mq-prog'),
     hint: $('#mq-hint'), restart: $('#mq-restart'), giveup: $('#mq-giveup'), back: $('#mq-back'),
+    form: $('#mq-form'),
     dock: $('#metro-dock'), pool: $('#chip-pool'), filter: $('#dock-filter'), count: $('#dock-count'),
     linePills: $('#dock-lines'),
     toast: $('#mq-toast'),
@@ -23,7 +24,7 @@ const MetroQuiz = (() => {
     rsAgain: $('#rs-again'), rsMenu: $('#rs-menu'), rsView: $('#rs-view')
   };
 
-  const cfg = { mode: 'name', style: 'official', scope: null };
+  const cfg = { mode: 'name', style: 'official', form: 'circle', scope: null };
   let game = null;        // 进行中/已结束的一局；{answer:true} 表示答案图浏览
   let selectedChip = null;
   let lineFilter = null;  // 名牌池线号快捷过滤（仅官方棋盘的编号/线号模式）
@@ -73,7 +74,7 @@ const MetroQuiz = (() => {
 
   function wireSetup() {
     document.querySelectorAll('#metro-setup .opt-block').forEach(block => {
-      const key = block.dataset.block;   // mode | style
+      const key = block.dataset.block;   // mode | style | form
       block.querySelectorAll('.opt-card').forEach(card =>
         card.addEventListener('click', () => {
           if (key === 'style' && card.dataset.v === 'geo' && cfg.mode === 'code') {
@@ -83,18 +84,34 @@ const MetroQuiz = (() => {
           block.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
           card.classList.add('selected');
           cfg[key] = card.dataset.v;
-          // 编号模式自动切到官方线网图（编号牌数据只在官方棋盘存在）
-          if (key === 'mode' && card.dataset.v === 'code' && cfg.style === 'geo') {
-            cfg.style = 'official';
-            const styleBlock = document.querySelector('#metro-setup .opt-block[data-block="style"]');
-            styleBlock.querySelectorAll('.opt-card').forEach(c =>
-              c.classList.toggle('selected', c.dataset.v === 'official'));
+          // 站点显示形式只在官方线网图有意义（真实地图无圆圈/胶囊之分）
+          if (key === 'style') syncFormBlock();
+          // 编号模式自动切官方线网图 + 数字胶囊（两处都可在选项里改回）
+          if (key === 'mode' && card.dataset.v === 'code') {
+            if (cfg.style === 'geo') {
+              cfg.style = 'official';
+              const styleBlock = document.querySelector('#metro-setup .opt-block[data-block="style"]');
+              styleBlock.querySelectorAll('.opt-card').forEach(c =>
+                c.classList.toggle('selected', c.dataset.v === 'official'));
+              syncFormBlock();
+            }
+            if (cfg.form !== 'capsule') {
+              cfg.form = 'capsule';
+              document.querySelectorAll('#metro-setup .opt-block[data-block="form"] .opt-card')
+                .forEach(c => c.classList.toggle('selected', c.dataset.v === 'capsule'));
+            }
           }
           updateBestLine();
         }));
     });
+    syncFormBlock();
     $('#metro-start').addEventListener('click', startGame);
     $('#metro-answer').addEventListener('click', showAnswerView);
+  }
+
+  function syncFormBlock() {
+    const fb = document.querySelector('#metro-setup .opt-block[data-block="form"]');
+    if (fb) fb.classList.toggle('disabled', cfg.style !== 'official');
   }
 
   function buildScopePicker() {
@@ -134,12 +151,8 @@ const MetroQuiz = (() => {
     els.result.hidden = true;
 
     const official = cfg.style === 'official';
-    const renderer = official
-      ? MetroBoard.create(els.canvas)
-      : MetroMapView.create(els.canvas, { simple: false });
-
     game = {
-      answer: false, renderer, official, items,
+      answer: false, renderer: null, official, items,
       chips: new Map(),           // chipKey -> {kind, value, el}
       placedNames: new Set(), placedBadges: new Set(), placedChips: new Set(),
       score: 0, corrects: 0, wrongs: 0, hints: 0,
@@ -147,15 +160,10 @@ const MetroQuiz = (() => {
     };
 
     if (official) {
-      renderer.onStationClick((kind, value, payload) => pickTarget(kind, value, payload));
-      renderer.onBadgeClick((kind, value, payload) => pickTarget(kind, value, payload));
-      renderer.onChipClick((kind, value, payload) => pickTarget(kind, value, payload));
-      renderer.render({
-        mode: cfg.mode, scope: scopeName(), interactive: true,
-        placedNames: game.placedNames, placedBadges: game.placedBadges,
-        placedChips: game.placedChips
-      });
+      initBoard();
     } else {
+      const renderer = MetroMapView.create(els.canvas, { simple: false });
+      game.renderer = renderer;
       renderer.onStationClick((id, payload) => pickTarget('name', id, payload));
       renderer.onBadgeClick((ref, payload) => pickTarget('badge', ref, payload));
       renderer.render({
@@ -170,9 +178,11 @@ const MetroQuiz = (() => {
     els.title.textContent = MODE_NAMES[cfg.mode];
     els.scopeLbl.textContent =
       (cfg.scope ? (MetroData.line(cfg.scope)?.zh || cfg.scope) : '全网挑战') +
-      (official ? ' · 官方线网图' : ' · 高德底图');
+      (official ? ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈') : ' · 高德底图');
 
     els.tilesBar.hidden = official;
+    els.form.hidden = !official;
+    els.form.textContent = cfg.form === 'capsule' ? '形式：数字胶囊' : '形式：站点圆圈';
     els.dock.hidden = false;
     els.filter.value = '';
     els.filter.hidden = items.length <= 30;
@@ -181,6 +191,33 @@ const MetroQuiz = (() => {
 
     updateHud();
     game.timerId = setInterval(updateHud, 1000);
+  }
+
+  // 官方棋盘装配（开局与局内形式切换共用；进度集挂在 game 上，重挂不丢进度）
+  function initBoard() {
+    const renderer = MetroBoard.create(els.canvas);
+    game.renderer = renderer;
+    renderer.onStationClick((kind, value, payload) => pickTarget(kind, value, payload));
+    renderer.onBadgeClick((kind, value, payload) => pickTarget(kind, value, payload));
+    renderer.onChipClick((kind, value, payload) => pickTarget(kind, value, payload));
+    renderer.render({
+      mode: cfg.mode, form: cfg.form, scope: scopeName(), interactive: true,
+      placedNames: game.placedNames, placedBadges: game.placedBadges,
+      placedChips: game.placedChips
+    });
+  }
+
+  // 局内切换 站点圆圈 / 数字胶囊（保留分数、计时与已放置进度）
+  function toggleForm() {
+    if (!game || game.answer || game.finished || !game.official) return;
+    cfg.form = cfg.form === 'capsule' ? 'circle' : 'capsule';
+    if (game.renderer) game.renderer.destroy();
+    initBoard();
+    els.form.textContent = cfg.form === 'capsule' ? '形式：数字胶囊' : '形式：站点圆圈';
+    els.scopeLbl.textContent =
+      (cfg.scope ? (MetroData.line(cfg.scope)?.zh || cfg.scope) : '全网挑战') +
+      ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈');
+    toast(cfg.form === 'capsule' ? '已切换：数字胶囊' : '已切换：站点圆圈', true);
   }
 
   function buildItems() {
@@ -400,7 +437,8 @@ const MetroQuiz = (() => {
     const best = saveBest(total, elapsed);
     showResult({
       title: '🎉 拼图完成！',
-      sub: MODE_NAMES[cfg.mode] + ' · ' + (cfg.scope ? MetroData.line(cfg.scope)?.zh : '全网挑战') + ' · 官方线网图',
+      sub: MODE_NAMES[cfg.mode] + ' · ' + (cfg.scope ? MetroData.line(cfg.scope)?.zh : '全网挑战') +
+        ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈'),
       rows: [
         ['答对', `${game.corrects} 个 · +${game.corrects * 100}`],
         ['放错', `${game.wrongs} 次 · −${game.wrongs * 10}`],
@@ -445,7 +483,8 @@ const MetroQuiz = (() => {
   /* ---------- 历史最佳 ---------- */
 
   function bestKeyOf() {
-    return `${cfg.mode}|${cfg.style}|${cfg.scope || '全网'}`;
+    // 形式计入最佳键：圆圈/胶囊的可玩性与提示密度不同，成绩分开记
+    return `${cfg.mode}|${cfg.style}|${cfg.scope || '全网'}|${cfg.style === 'official' ? cfg.form : 'geo'}`;
   }
   function readBests() {
     try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; }
@@ -481,11 +520,12 @@ const MetroQuiz = (() => {
     const renderer = MetroBoard.create(els.canvas);
     game = { answer: true, official: true, renderer, chips: new Map(),
       placedNames: new Set(), placedBadges: new Set(), placedChips: new Set() };
-    renderer.render({ mode: 'answer', interactive: false });
+    renderer.render({ mode: 'answer', form: 'capsule', interactive: false });
 
     els.title.textContent = '答案图';
     els.scopeLbl.textContent = '整理版广州地铁线网（2026 · 官方编号）· 可缩放查看';
     els.tilesBar.hidden = true;
+    els.form.hidden = true;
     els.dock.hidden = true;
     els.hint.hidden = els.restart.hidden = els.giveup.hidden = true;
   }
@@ -497,6 +537,7 @@ const MetroQuiz = (() => {
     els.restart.addEventListener('click', () => { if (!game?.answer) startGame(); });
     els.hint.addEventListener('click', useHint);
     els.giveup.addEventListener('click', giveUp);
+    els.form.addEventListener('click', toggleForm);
     els.rsAgain.addEventListener('click', startGame);
     els.rsMenu.addEventListener('click', () => { els.result.hidden = true; teardown(); showSetup(); });
     els.rsView.addEventListener('click', () => { els.result.hidden = true; });
@@ -549,6 +590,7 @@ const MetroQuiz = (() => {
     els.canvas.innerHTML = '';
     els.pool.innerHTML = '';
     if (els.linePills) els.linePills.innerHTML = '';
+    els.form.hidden = true;
   }
 
   function updateHud(shownOverride) {
