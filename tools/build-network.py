@@ -992,11 +992,17 @@ out.append('<g id="走廊">')
 CASED_LINES = ('11号线',)
 CASING_W = 9.6
 CASING_COLOR = '#1a1a1a'   # 图面墨色(与圈环描边同墨)
+# 描边/填充两遍绘制(2026-10-26 用户: 弯道处线路内部露出描边): 逐段"描边+填充"交错时,
+# 下一段描边圆帽(r4.8)压在上一段填充(半宽3.5)之上, 弯角处黑楔切入线体;
+# 先画完全部描边再画填充, 段间弯角处填充盘(3.5)盖满描边盘(4.8)内心=同连续path圆接。
 for nm, x1, y1, x2, y2, col in corridors:
     if nm not in CASED_LINES:
         continue
     out.append('<line x1="%s" y1="%s" x2="%s" y2="%s" data-case="%s" style="fill:none;stroke:%s;stroke-width:%s;stroke-linecap:round"/>' %
                (fmt(x1), fmt(y1), fmt(x2), fmt(y2), nm, CASING_COLOR, fmt(CASING_W)))
+for nm, x1, y1, x2, y2, col in corridors:
+    if nm not in CASED_LINES:
+        continue
     out.append('<line x1="%s" y1="%s" x2="%s" y2="%s" style="fill:none;stroke:%s;stroke-width:7;stroke-linecap:round"/>' %
                (fmt(x1), fmt(y1), fmt(x2), fmt(y2), col))
 for nm, x1, y1, x2, y2, col in corridors:

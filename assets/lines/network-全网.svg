@@ -2,36 +2,36 @@
 <rect x="668" y="29.7" width="2138" height="1937.25" fill="#ffffff"/>
 <g id="走廊">
 <line x1="1759.5" y1="848.25" x2="1242" y2="848.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1759.5" y1="848.25" x2="1242" y2="848.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1242" y1="848.25" x2="1215" y2="861.75" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1242" y1="848.25" x2="1215" y2="861.75" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1215" y1="861.75" x2="1134" y2="942.75" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1215" y1="861.75" x2="1134" y2="942.75" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1134" y1="942.75" x2="1120.5" y2="965.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1134" y1="942.75" x2="1120.5" y2="965.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1120.5" y1="965.25" x2="1120.5" y2="1163.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1120.5" y1="965.25" x2="1120.5" y2="1163.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1120.5" y1="1163.25" x2="1129.5" y2="1181.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1120.5" y1="1163.25" x2="1129.5" y2="1181.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1129.5" y1="1181.25" x2="1219.5" y2="1271.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1129.5" y1="1181.25" x2="1219.5" y2="1271.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1219.5" y1="1271.25" x2="1237.5" y2="1280.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1219.5" y1="1271.25" x2="1237.5" y2="1280.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1237.5" y1="1280.25" x2="1759.5" y2="1280.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1237.5" y1="1280.25" x2="1759.5" y2="1280.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1759.5" y1="1280.25" x2="1777.5" y2="1271.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1759.5" y1="1280.25" x2="1777.5" y2="1271.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1777.5" y1="1271.25" x2="1867.5" y2="1181.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1777.5" y1="1271.25" x2="1867.5" y2="1181.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1867.5" y1="1181.25" x2="1876.5" y2="1163.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1867.5" y1="1181.25" x2="1876.5" y2="1163.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1876.5" y1="1163.25" x2="1876.5" y2="965.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1876.5" y1="1163.25" x2="1876.5" y2="965.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1876.5" y1="965.25" x2="1867.5" y2="947.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1876.5" y1="965.25" x2="1867.5" y2="947.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1867.5" y1="947.25" x2="1777.5" y2="857.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
-<line x1="1867.5" y1="947.25" x2="1777.5" y2="857.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1759.5" y1="848.25" x2="1777.5" y2="857.25" data-case="11号线" style="fill:none;stroke:#1a1a1a;stroke-width:9.6;stroke-linecap:round"/>
+<line x1="1759.5" y1="848.25" x2="1242" y2="848.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1242" y1="848.25" x2="1215" y2="861.75" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1215" y1="861.75" x2="1134" y2="942.75" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1134" y1="942.75" x2="1120.5" y2="965.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1120.5" y1="965.25" x2="1120.5" y2="1163.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1120.5" y1="1163.25" x2="1129.5" y2="1181.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1129.5" y1="1181.25" x2="1219.5" y2="1271.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1219.5" y1="1271.25" x2="1237.5" y2="1280.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1237.5" y1="1280.25" x2="1759.5" y2="1280.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1759.5" y1="1280.25" x2="1777.5" y2="1271.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1777.5" y1="1271.25" x2="1867.5" y2="1181.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1867.5" y1="1181.25" x2="1876.5" y2="1163.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1876.5" y1="1163.25" x2="1876.5" y2="965.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1876.5" y1="965.25" x2="1867.5" y2="947.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
+<line x1="1867.5" y1="947.25" x2="1777.5" y2="857.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1759.5" y1="848.25" x2="1777.5" y2="857.25" style="fill:none;stroke:#FFCC66;stroke-width:7;stroke-linecap:round"/>
 <line x1="1111.5" y1="1280.25" x2="1111.5" y2="1235.2" style="fill:none;stroke:#FDD835;stroke-width:7;stroke-linecap:round"/>
 <line x1="1111.5" y1="1235.2" x2="1111.5" y2="1145.25" style="fill:none;stroke:#FDD835;stroke-width:7;stroke-linecap:round"/>
