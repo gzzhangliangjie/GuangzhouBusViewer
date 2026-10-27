@@ -8,7 +8,7 @@ const MetroQuiz = (() => {
   const RESULT_DELAY_MS = 1000;   // 最后一枚放完后延迟弹结算，让玩家看清补完的整图
   const $ = sel => document.querySelector(sel);
 
-  const MODE_NAMES = { name: '站名模式', code: '编号模式', badge: '线号模式', both: '挑战模式' };
+  const MODE_NAMES = { name: '站名模式', badge: '线号模式', both: '挑战模式' };
 
   const els = {
     setup: $('#metro-setup'), game: $('#metro-game'), result: $('#metro-result'),
@@ -79,34 +79,15 @@ const MetroQuiz = (() => {
   function wireSetup() {
     document.querySelectorAll('#metro-setup .opt-block').forEach(block => {
       const key = block.dataset.block;   // mode | style | form
-      block.querySelectorAll('.opt-card').forEach(card =>
-        card.addEventListener('click', () => {
-          if (key === 'style' && card.dataset.v === 'geo' && cfg.mode === 'code') {
-            toast('编号模式基于官方编号牌，仅官方线网图可用');
-            return;
-          }
-          block.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
-          card.classList.add('selected');
-          cfg[key] = card.dataset.v;
-          // 站点显示形式只在官方线网图有意义（真实地图无圆圈/胶囊之分）
-          if (key === 'style') syncFormBlock();
-          // 编号模式自动切官方线网图 + 数字胶囊（两处都可在选项里改回）
-          if (key === 'mode' && card.dataset.v === 'code') {
-            if (cfg.style === 'geo') {
-              cfg.style = 'official';
-              const styleBlock = document.querySelector('#metro-setup .opt-block[data-block="style"]');
-              styleBlock.querySelectorAll('.opt-card').forEach(c =>
-                c.classList.toggle('selected', c.dataset.v === 'official'));
-              syncFormBlock();
-            }
-            if (cfg.form !== 'capsule') {
-              cfg.form = 'capsule';
-              document.querySelectorAll('#metro-setup .opt-block[data-block="form"] .opt-card')
-                .forEach(c => c.classList.toggle('selected', c.dataset.v === 'capsule'));
-            }
-          }
-          updateBestLine();
-        }));
+        block.querySelectorAll('.opt-card').forEach(card =>
+          card.addEventListener('click', () => {
+            block.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            cfg[key] = card.dataset.v;
+            // 站点显示形式只在官方线网图有意义（真实地图无圆圈/胶囊之分）
+            if (key === 'style') syncFormBlock();
+            updateBestLine();
+          }));
     });
     syncFormBlock();
     $('#metro-start').addEventListener('click', startGame);
@@ -239,12 +220,6 @@ const MetroQuiz = (() => {
           items.push({ kind: 'badge', value: ln });
         }
       }
-      if (cfg.mode === 'code') {
-        for (const c of QD().chips) {
-          if (scope && c.line !== scope) continue;
-          items.push({ kind: 'chip', value: c.nm + '|' + c.line });
-        }
-      }
     } else {
       if (cfg.mode === 'name' || cfg.mode === 'both') {
         const stations = cfg.scope
@@ -316,7 +291,7 @@ const MetroQuiz = (() => {
   // 线号快捷过滤（官方棋盘的编号/线号模式；站名模式会泄露归属所以不提供）
   function renderLinePills(items) {
     els.linePills.innerHTML = '';
-    if (!game.official || !(cfg.mode === 'code' || cfg.mode === 'badge')) {
+    if (!game.official || cfg.mode !== 'badge') {
       els.linePills.hidden = true;
       return;
     }
