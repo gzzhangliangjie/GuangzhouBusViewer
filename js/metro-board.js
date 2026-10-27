@@ -296,6 +296,9 @@ const MetroBoard = (() => {
       if (!opts.interactive) return;
       const c = map.getContainer();
       c.addEventListener('dragover', e => {
+        // 必须取消 dragover，否则浏览器对未取消区域判 no-drop、松手不派发 drop——
+        // 圈已亮(≤SNAP_PX)就须真能放（geo 棋盘 wireContainerDnD 同款写法）
+        e.preventDefault();
         const rect = c.getBoundingClientRect();
         const t = nearestTarget(e.clientX - rect.left, e.clientY - rect.top, SNAP_PX);
         setSnap(t ? t.ref : null);
