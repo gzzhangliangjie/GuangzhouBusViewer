@@ -16,7 +16,7 @@ const MetroQuiz = (() => {
     canvas: $('#metro-canvas'), tilesBar: $('#metro-view .metro-tiles'),
     title: $('#mq-title'), scopeLbl: $('#mq-scope'),
     score: $('#mq-score'), time: $('#mq-time'), prog: $('#mq-prog'),
-    hint: $('#mq-hint'), restart: $('#mq-restart'), giveup: $('#mq-giveup'), back: $('#mq-back'),
+    hint: $('#mq-hint'), locate: $('#mq-locate'), restart: $('#mq-restart'), giveup: $('#mq-giveup'), back: $('#mq-back'),
     form: $('#mq-form'),
     dock: $('#metro-dock'), pool: $('#chip-pool'), filter: $('#dock-filter'), count: $('#dock-count'),
     linePills: $('#dock-lines'),
@@ -30,6 +30,7 @@ const MetroQuiz = (() => {
   let selectedChip = null;
   let lineFilter = null;  // 名牌池线号快捷过滤（仅官方棋盘的编号/线号模式）
   let toastTimer = null;
+  let jumpBag = null;     // 定位未填写的洗牌袋：{sig, keys, last}——棋面一变即重洗，连点尽量不重复
 
   /* ---------- 官方棋盘数据 ---------- */
 
@@ -129,6 +130,7 @@ const MetroQuiz = (() => {
     const items = buildItems();
     if (!items.length) return;
     lineFilter = null;
+    jumpBag = null;
 
     // 先显示游戏区再创建地图，否则容器 0 尺寸导致 fitBounds 视野错误
     els.setup.hidden = true;
@@ -173,6 +175,7 @@ const MetroQuiz = (() => {
     els.filter.hidden = items.length <= 30;
     els.hint.disabled = false;
     els.hint.hidden = els.restart.hidden = els.giveup.hidden = false;
+    els.locate.hidden = !official;   // 定位未填写：官方棋盘专属（槽位/热区概念）
 
     updateHud();
     game.timerId = setInterval(updateHud, 1000);
@@ -404,6 +407,36 @@ const MetroQuiz = (() => {
     else updateHud();
   }
 
+  /* ---------- 定位未填写（官方棋盘）：聚焦居中 + 闪烁，连点换下一处 ---------- */
+
+  function locateUnfilled() {
+    if (!game || game.answer || !game.official ||
+        !game.renderer || game.renderer.kind !== 'official') return;
+    const list = game.renderer.unfilledList();
+    if (!list.length) { toast('没有未填写的了'); return; }
+    // 洗牌袋：棋面一变（放对/提示消耗目标）即重洗；袋内不重复，重洗后避开上次那一处
+    const sig = list.map(t => t.kind + ':' + t.value).sort().join('|');
+    if (!jumpBag || jumpBag.sig !== sig || !jumpBag.keys.length) {
+      const keys = list.map(t => t.kind + ':' + t.value);
+      for (let i = keys.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [keys[i], keys[j]] = [keys[j], keys[i]];
+      }
+      const last = jumpBag && jumpBag.last;
+      if (last && keys.length > 1 && keys[0] === last) {
+        const j = 1 + Math.floor(Math.random() * (keys.length - 1));
+        [keys[0], keys[j]] = [keys[j], keys[0]];
+      }
+      jumpBag = { sig, keys, last: null };
+    }
+    const key = jumpBag.keys.shift();
+    jumpBag.last = key;
+    const ci = key.indexOf(':');
+    const ok = game.renderer.focusUnfilled(key.slice(0, ci), key.slice(ci + 1));
+    if (ok) toast('已定位一处未填写（还有 ' + list.length + ' 处）');
+    else { jumpBag = null; toast('定位失败，请再点一次'); }
+  }
+
   /* ---------- 结算 ---------- */
 
   // 全部放完不立刻弹结算窗：先冻结局面（finished=true 停输入停计时），
@@ -520,6 +553,7 @@ const MetroQuiz = (() => {
     els.form.hidden = true;
     els.dock.hidden = true;
     els.hint.hidden = els.restart.hidden = els.giveup.hidden = true;
+    els.locate.hidden = true;
   }
 
   /* ---------- 通用 ---------- */
@@ -528,6 +562,7 @@ const MetroQuiz = (() => {
     els.back.addEventListener('click', () => { teardown(); showSetup(); });
     els.restart.addEventListener('click', () => { if (!game?.answer) startGame(); });
     els.hint.addEventListener('click', useHint);
+    els.locate.addEventListener('click', locateUnfilled);
     els.giveup.addEventListener('click', giveUp);
     els.form.addEventListener('click', toggleForm);
     els.rsAgain.addEventListener('click', startGame);

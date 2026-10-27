@@ -11,6 +11,7 @@
 const MetroBoard = (() => {
   const QD = () => window.QUIZ_NETWORK_DATA;
   const SNAP_PX = 60;      // 容器级就近判定半径：拖放磁吸与点击兜底共用（2026-10-26 用户令扩大响应区，46→60）
+  const FOCUS_ZOOM = 0;    // 未填写定位的聚焦级别下限（只放大不缩小到低于此级，槽/站圆清晰可辨）
 
   /* ---------- 棋盘装载 ---------- */
 
@@ -159,6 +160,8 @@ const MetroBoard = (() => {
       if (wantBadge) {
         for (const [line, els] of badgeEls) {
           if (opts.placedBadges && opts.placedBadges.has(line)) continue;
+          // 单线模式：他线徽标保留为淡化背景（与站名/编号牌同口径，§1.7），本线徽标才是谜面
+          if (opts.scope && line !== opts.scope) continue;
           hide(els);
           makeBadgeSlot(line, els[0]);
         }
@@ -201,7 +204,7 @@ const MetroBoard = (() => {
       const line0 = QD().lines.find(l => l.name === line);
       const el = slotDiv(x, y, w, h);
       if (line0) el.style.setProperty('--c', line0.color);
-      const s2 = { el, kind: 'badge', value: line };
+      const s2 = { el, kind: 'badge', value: line, bx: x + w / 2, by: y + h / 2 };
       slotEls.set(line, s2);
       wireSlot(s2);
     }
@@ -210,7 +213,7 @@ const MetroBoard = (() => {
       const line0 = QD().lines.find(l => l.name === c.line);
       const el = slotDiv(c.x, c.y, c.w, c.h, 'mb-slot-chip');
       if (line0) el.style.setProperty('--c', line0.color);
-      const s2 = { el, kind: 'chip', value: c.nm + '|' + c.line };
+      const s2 = { el, kind: 'chip', value: c.nm + '|' + c.line, bx: c.x + c.w / 2, by: c.y + c.h / 2 };
       slotEls.set(s2.value, s2);
       wireSlot(s2);
     }
@@ -588,6 +591,41 @@ const MetroBoard = (() => {
       slotEls.clear();
     }
 
+    /* ---------- 未填写定位（聚焦居中 + 闪烁提醒，2026-10-27 用户令） ---------- */
+
+    // 当前所有未填写目标：站名热区 + 徽标/编号牌槽位（放置即从容器移除，天然只剩未填）
+    function unfilledList() {
+      const list = [];
+      for (const [nm] of stationHot) list.push({ kind: 'name', value: nm });
+      for (const [, s2] of slotEls) list.push({ kind: s2.kind, value: s2.value });
+      return list;
+    }
+
+    // 聚焦一处未填写：视图居中（只放大不缩小）+ 目标闪烁约 2 秒
+    function focusUnfilled(kind, value) {
+      if (!map) return false;
+      let bx, by, el = null;
+      if (kind === 'name') {
+        const st = QD().stations[value];
+        if (!st) return false;
+        bx = st.x; by = st.y;
+        const mk = stationHot.get(value);
+        el = mk ? ((mk.getElement && mk.getElement()) || mk._path || null) : null;
+      } else {
+        const s2 = slotEls.get(value);
+        if (!s2 || s2.bx == null) return false;
+        bx = s2.bx; by = s2.by; el = s2.el;
+      }
+      map.setView(ll(bx, by), Math.max(map.getZoom(), FOCUS_ZOOM), { animate: false });
+      if (el) {
+        el.classList.remove('mb-blink');
+        void el.getBoundingClientRect();   // 强制 reflow，连点同一目标也能重启动画
+        el.classList.add('mb-blink');
+        setTimeout(() => el.classList.remove('mb-blink'), 1900);   // 与 CSS 动画 0.6s×3 对齐
+      }
+      return true;
+    }
+
     /* ---------- 视口 ---------- */
 
     function frame(scope) {
@@ -617,6 +655,7 @@ const MetroBoard = (() => {
       kind: 'official',
       render, frame, destroy,
       placeName, placeBadge, placeChip, wrongFeedback, revealAll, popFx,
+      unfilledList, focusUnfilled,
       invalidate() { if (map) setTimeout(() => { map.invalidateSize(); syncArt(); }, 50); },
       setTiles() {},
       onStationClick(cb) { stationCb = cb; },

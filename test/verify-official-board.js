@@ -293,6 +293,85 @@ app.whenReady().then(async () => {
     JSON.stringify(step12.s1) + ' vs ' + JSON.stringify(step12.s3));
   check('⑩线号药丸过滤 全部+1号线', step12.pills === 2, '药' + step12.pills);
 
+  // ---------- ⑪ 定位未填写（2026-10-27 用户令）：聚焦居中+闪烁，洗牌袋连点零重复 ----------
+  const step13 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    // 还原成 全网×站名模式（沿用残留的胶囊形式即可，定位与形式无关）
+    document.querySelector('#metro-setup .opt-card[data-v="name"]').click();
+    document.querySelector('#scope-picker .scope-pill[data-v=""]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const it = g.renderer.__internals;
+    const map = it.map;
+    const btn = document.getElementById('mq-locate');
+    const hiddenAtStart = btn.hidden;
+    const nearestNm = c => {
+      let bn = null, bd = 1e9;
+      for (const [nm, st] of Object.entries(window.QUIZ_NETWORK_DATA.stations)) {
+        const d = Math.hypot(st.x - c.lng, st.y + c.lat);
+        if (d < bd) { bd = d; bn = nm; }
+      }
+      return [bn, bd];
+    };
+    btn.click();
+    await new Promise(r => setTimeout(r, 150));
+    const [hitNm, hitDist] = nearestNm(map.getCenter());
+    const blinkPaths = document.querySelectorAll('#metro-canvas path.mb-blink').length;
+    const blinkSlots = document.querySelectorAll('#metro-canvas .mb-slot.mb-blink').length;
+    // 连点共 318 次 = 洗牌袋恰好一轮：全部去重后应为 318（纯随机必有约 40 次撞车）
+    const seen = new Set([hitNm]);
+    for (let i = 0; i < 317; i++) {
+      btn.click();
+      seen.add(nearestNm(map.getCenter())[0]);
+    }
+    return { hiddenAtStart, unfilled: g.renderer.unfilledList().length,
+      hitNm, hitDist: hitDist.toFixed(3), blinkTotal: blinkPaths + blinkSlots,
+      distinct: seen.size };
+  })()`);
+  check('⑪定位按钮局内可见', step13.hiddenAtStart === false && step13.unfilled === 318,
+    JSON.stringify({ hidden: step13.hiddenAtStart, unfilled: step13.unfilled }));
+  check('⑪点击聚焦居中到未填站+闪烁', step13.hitDist < 0.5 && step13.blinkTotal === 1,
+    '命中' + step13.hitNm + ' 偏差' + step13.hitDist + ' 闪烁' + step13.blinkTotal);
+  check('⑪连点318次零重复(洗牌袋一轮)', step13.distinct === 318,
+    '去重' + step13.distinct + '/318');
+
+  // ---------- ⑫ 徽标槽定位：居中+闪烁；填完后提示无未填 ----------
+  const step14 = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#metro-setup .opt-card[data-v="badge"]').click();
+    document.querySelector('#scope-picker .scope-pill[data-v="GF"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 3000));
+    const g = MetroQuiz.__game();
+    const it = g.renderer.__internals;
+    const scopeOk = it.slots.size === 1 && it.slots.has('广佛线') &&
+      document.querySelectorAll('#chip-pool .mchip').length === 1;   // 范围生效: 槽=池=本线1
+    const btn = document.getElementById('mq-locate');
+    btn.click();
+    await new Promise(r => setTimeout(r, 150));
+    const s = it.slots.get('广佛线');
+    const c = it.map.getCenter();
+    const dist = Math.hypot(s.bx - c.lng, s.by + c.lat);
+    const blink = document.querySelectorAll('#metro-canvas .mb-slot.mb-blink').length;
+    // 放置（选中牌→点槽位），未填清零后再点定位应提示"没有"
+    document.querySelector('#chip-pool .mchip-badge').click();
+    s.el.click();
+    await new Promise(r => setTimeout(r, 300));
+    const listAfter = g.renderer.unfilledList().length;
+    btn.click();
+    await new Promise(r => setTimeout(r, 150));
+    const toast = document.getElementById('mq-toast').textContent;
+    return { scopeOk, dist: dist.toFixed(3), blink, listAfter, toast };
+  })()`);
+  check('⑫广佛线范围生效 开局槽=池=1', step14.scopeOk, '槽池' + step14.scopeOk);
+  check('⑫徽标槽定位=居中+闪烁', Math.abs(parseFloat(step14.dist)) < 0.5 && step14.blink === 1,
+    '偏差' + step14.dist + ' 闪烁' + step14.blink);
+  check('⑫填完后定位提示无未填', step14.listAfter === 0 && step14.toast.indexOf('没有未填写') >= 0,
+    JSON.stringify({ listAfter: step14.listAfter, toast: step14.toast }));
+
   await win.webContents.executeJavaScript(
     `console.log('_quiz-verify done')`);
   console.log('\\nconsole errors:', errors.length ? errors : 'none');

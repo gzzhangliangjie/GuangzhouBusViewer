@@ -459,6 +459,23 @@ path.dnd-target.wrong { stroke: #f85149 !important; }
   100% { opacity: 1; }
 }
 
+/* 未填写定位：目标连闪三下提醒（定位按钮触发，约 2 秒） */
+.mb-slot.mb-blink {
+  border-style: solid;
+  border-color: #2f7fd1;
+  animation: mb-blink 0.6s ease-in-out 3;
+}
+@keyframes mb-blink {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(47, 127, 209, 0); background: rgba(47, 127, 209, 0.12); }
+  50% { box-shadow: 0 0 0 7px rgba(47, 127, 209, 0.4); background: rgba(47, 127, 209, 0.45); }
+}
+/* 站名热区（Leaflet circleMarker 的 path，fill-opacity 走属性，CSS 动画可覆盖） */
+.official-canvas .mst-hot.mb-blink { animation: mst-hot-blink 0.6s ease-in-out 3; }
+@keyframes mst-hot-blink {
+  0%, 100% { fill-opacity: 0; stroke-opacity: 0; }
+  50% { fill-opacity: 0.55; stroke-opacity: 0.9; stroke: #2f7fd1; stroke-width: 2.5px; }
+}
+
 /* 圆圈板上注入的官方同款编号牌（嵌套 svg，viewBox=牌矩形，随底图缩放） */
 .mb-chip-svg {
   position: absolute;
