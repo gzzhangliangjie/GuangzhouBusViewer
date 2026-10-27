@@ -163,7 +163,9 @@ const MetroBoard = (() => {
           // 单线模式：他线徽标保留为淡化背景（与站名/编号牌同口径，§1.7），本线徽标才是谜面
           if (opts.scope && line !== opts.scope) continue;
           hide(els);
-          makeBadgeSlot(line, els[0]);
+          // 每枚终点徽标独立槽位（2026-10-27 用户令：起点/终点都可填；
+          // 11号线环线 1 枚 / 12 号线 4 枚 / 3、14 号线含支线 3 枚 / 其余 2 枚）
+          els.forEach((g, i) => makeBadgeSlot(line, g, i));
         }
       }
       if (wantChip) {
@@ -193,7 +195,7 @@ const MetroBoard = (() => {
       return el;
     }
 
-    function makeBadgeSlot(line, g) {
+    function makeBadgeSlot(line, g, idx) {
       const tr = (g.getAttribute('transform') || '')
         .match(/translate\(([-\d.]+) ([-\d.]+)\)\s*scale\(([\d.]+)\)/);
       const rect = g.querySelector('rect');
@@ -201,11 +203,14 @@ const MetroBoard = (() => {
       const x = parseFloat(tr[1]), y = parseFloat(tr[2]), s = parseFloat(tr[3]);
       const w = parseFloat(rect.getAttribute('width')) * s;
       const h = parseFloat(rect.getAttribute('height')) * s;
-      const line0 = QD().lines.find(l => l.name === line);
+      // 槽位身份 = (线名, 终点站名)（§1.6 data-term 全链贯通；同键重复=结构异常，报错）
+      const key = line + '|' + (g.getAttribute('data-term') || ('#' + idx));
+      if (slotEls.has(key)) throw new Error('徽标槽键重复: ' + key);
       const el = slotDiv(x, y, w, h);
-      if (line0) el.style.setProperty('--c', line0.color);
-      const s2 = { el, kind: 'badge', value: line, bx: x + w / 2, by: y + h / 2 };
-      slotEls.set(line, s2);
+      // 填写框不上线色（2026-10-27 用户令）：默认黑框，颜色留作"已填对"信号——
+      // 放置后原位徽标（彩色）浮现即是上色
+      const s2 = { el, kind: 'badge', value: key, line, bx: x + w / 2, by: y + h / 2 };
+      slotEls.set(key, s2);
       wireSlot(s2);
     }
 
@@ -497,13 +502,21 @@ const MetroBoard = (() => {
       if (st) popFx(nm, '+100');
     }
 
-    function placeBadge(line) {
+    function placeBadge(line, atKey) {
       if (lastOpts) lastOpts.placedBadges.add(line);
       const els = badgeEls.get(line);
       if (els) unhide(els);
-      const s2 = slotEls.get(line);
-      if (s2) { s2.el.remove(); slotEls.delete(line); }
-      if (els && els[0]) {
+      // 一线填对一枚→同线其余线号位自动补齐（2026-10-27 用户令）：本线全部槽位一并移除，
+      // 各终点徽标整线原位上色；+100 落在玩家实际放入的那枚槽位
+      let pop = null;
+      for (const [key, s2] of Array.from(slotEls)) {
+        if (s2.kind !== 'badge' || s2.line !== line) continue;
+        if (!pop && (key === atKey || !atKey)) pop = { x: s2.bx, y: s2.by };
+        s2.el.remove();
+        slotEls.delete(key);
+      }
+      if (pop) popFxAt(pop.x, pop.y, '+100');
+      else if (els && els[0]) {
         const tr = (els[0].getAttribute('transform') || '')
           .match(/translate\(([-\d.]+) ([-\d.]+)\)/);
         if (tr) popFxAt(parseFloat(tr[1]) + 12, parseFloat(tr[2]) + 6, '+100');

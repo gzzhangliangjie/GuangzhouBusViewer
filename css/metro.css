@@ -229,11 +229,12 @@
 }
 .mchip.mchip-badge {
   font-weight: 700;
-  color: #fff;
-  background: var(--c, #4a9eff);
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  color: #101418;
+  /* 线号牌开局无色（2026-10-27 用户令）：灰色胶囊不带线色，防颜色泄露线路归属；
+     颜色=已填对信号，填对后由板上原位徽标（彩色）展示 */
+  background: #9aa3ad;
+  border: 1px solid rgba(0, 0, 0, 0.3);
   border-radius: 999px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 /* ---------- 真实地图（Leaflet）叠加样式：与公交浏览一致 ---------- */
@@ -423,12 +424,14 @@ path.dnd-target.wrong { stroke: #f85149 !important; }
   color: #f85149; font-size: 14px; background: #fff; z-index: 900;
 }
 
-/* 槽位 = 被收走的徽标/编号牌的原位轮廓（百分比定位随底图缩放） */
+/* 槽位 = 被收走的徽标/编号牌的原位轮廓（百分比定位随底图缩放）
+   填写框默认黑（2026-10-27 用户令）：不再用线色描边——浅色线框（鹅黄/浅灰线）白底上看不清，
+   且颜色要留给"已填对"信号（放置后原位彩色徽标浮现） */
 .mb-slot {
   position: absolute;
   border-radius: 999px;
-  border: 1.5px dashed color-mix(in srgb, var(--c, #6b7280) 55%, transparent);
-  background: rgba(255, 255, 255, 0.25);
+  border: 1.5px dashed #111;
+  background: rgba(0, 0, 0, 0.05);
   pointer-events: auto;
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s, box-shadow 0.12s;
@@ -437,7 +440,7 @@ path.dnd-target.wrong { stroke: #f85149 !important; }
 .mb-slot::after { content: ''; position: absolute; inset: -10px; }
 .mb-slot.snap, .mb-slot.drop-hover {
   border-style: solid;
-  border-color: var(--c, #4a9eff);
+  border-color: #2f7fd1;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.25);
 }

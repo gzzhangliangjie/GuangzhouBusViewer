@@ -218,7 +218,8 @@ const MetroQuiz = (() => {
       if (cfg.mode === 'badge' || cfg.mode === 'both') {
         const lines = scope ? [scope] : QD().lines.map(l => l.name);
         for (const ln of lines) {
-          // 一线多枚终点徽标算一块（任意一枚终点位都判对）
+          // 一线一枚牌；线上每枚终点徽标（起点/终点，含支线/分段）都建独立槽位，任意一枚都判对，
+          // 放对一枚整线自动补齐（2026-10-27 用户令）
           if (!QD().lines.find(l => l.name === ln)) continue;
           items.push({ kind: 'badge', value: ln });
         }
@@ -261,11 +262,11 @@ const MetroQuiz = (() => {
       const key = chipKey(it);
       const el = document.createElement('span');
       if (it.kind === 'badge') {
-        const color = game.official ? lineColor(it.value) : (MetroData.line(it.value)?.color || '#4a9eff');
+        // 线号牌开局无色（2026-10-27 用户令）：灰色胶囊不带线色，防颜色泄露线路归属；
+        // 颜色留到填对后由板上原位徽标（彩色）展示
         el.className = 'mchip mchip-badge';
-        el.style.setProperty('--c', color);
         el.textContent = game.official ? it.value : (MetroData.refLabel(it.value) || it.value);
-        el.title = '线路徽章';
+        el.title = '线号牌';
       } else if (it.kind === 'chip') {
         const [nm, ln] = it.value.split('|');
         const rec = QD().chips.find(c => c.nm === nm && c.line === ln);
@@ -339,7 +340,11 @@ const MetroQuiz = (() => {
 
   /* ---------- 判定 ---------- */
 
-  // targetType: 'name'（站点）| 'badge'（线路槽）| 'chip'（编号牌槽）；payload 为拖拽带来的 "kind:value"
+  // 线号槽位值 = '线名|终点'（每枚终点徽标一个槽位，2026-10-27 用户令），
+  // 判定按线名部分比较：一线多枚终点任意一枚都判对，放对一枚整线自动补齐
+  const badgeLineOf = v => String(v).split('|')[0];
+
+  // targetType: 'name'（站点）| 'badge'（线号槽）| 'chip'（编号牌槽）；payload 为拖拽带来的 "kind:value"
   function pickTarget(targetType, targetValue, payload) {
     if (!game || game.finished || game.answer) return;
     let chip = null;
@@ -351,12 +356,16 @@ const MetroQuiz = (() => {
     }
     if (!chip) return;
 
-    if (chip.kind === targetType && chip.value === targetValue) {
+    const hit = chip.kind === targetType &&
+      (chip.kind === 'badge'
+        ? badgeLineOf(chip.value) === badgeLineOf(targetValue)
+        : chip.value === targetValue);
+    if (hit) {
       game.score += 100;
       game.corrects++;
       toast('✓ ' + chipLabel(chip) + ' +100', true);
       if (chip.kind === 'name' && game.renderer.popFx) game.renderer.popFx(chip.value, '+100');
-      place(chip);
+      place(chip, targetValue);
       clearSelection();
       if (game.chips.size === 0) scheduleFinish();
     } else {
@@ -379,7 +388,7 @@ const MetroQuiz = (() => {
     return disp + '|' + (rec ? rec.serial : '??') + ' ' + nm;
   }
 
-  function place(chip) {
+  function place(chip, targetValue) {
     game.chips.delete(chipKey(chip));
     chip.el.remove();
     if (chip.kind === 'name') {
@@ -387,7 +396,7 @@ const MetroQuiz = (() => {
       game.renderer.placeName(chip.value);
     } else if (chip.kind === 'badge') {
       game.placedBadges.add(chip.value);
-      game.renderer.placeBadge(chip.value);
+      game.renderer.placeBadge(chip.value, targetValue);   // 槽位键=线名|终点，+100 落在放入处
     } else {
       game.placedChips.add(chip.value);
       game.renderer.placeChip(chip.value);

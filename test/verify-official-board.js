@@ -137,7 +137,8 @@ app.whenReady().then(async () => {
     `淡${step5.dimmed} 留${step5.kept}/总${step5.total}`);
   await shot('scope-line3');
 
-  // ---------- ⑤ 线号模式（广佛线）：徽标槽 + 放置 ----------
+  // ---------- ⑤ 线号模式（广佛线）：双终点槽位 + 无色起步 + 任一终点放置整线自动补齐
+  //   （2026-10-27 用户令：每枚终点徽标独立槽位，填写框默认黑/线号胶囊默认灰，填对才上色） ----------
   const step7 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
     await new Promise(r => setTimeout(r, 300));
@@ -147,18 +148,27 @@ app.whenReady().then(async () => {
     await new Promise(r => setTimeout(r, 2500));
     const g = MetroQuiz.__game();
     const it = g.renderer.__internals;
-    const slotOk = it.slots.has('广佛线');
-    const badgeEl = document.querySelector('#chip-pool .mchip-badge');
-    badgeEl.click();
-    it.slots.get('广佛线').el.click();
+    const terms = [...it.slots.values()].map(s => s.value.split('|')[1]).sort().join(',');
+    const chip = document.querySelector('#chip-pool .mchip-badge');
+    const chipBg = getComputedStyle(chip).backgroundColor;            // 灰（不带广佛线色）
+    const slotBorder = getComputedStyle(it.slots.get('广佛线|沥滘').el).borderTopColor;   // 黑
+    chip.click();
+    it.slots.get('广佛线|沥滘').el.click();
     await new Promise(r => setTimeout(r, 200));
+    // 只放了一枚（沥滘槽）：新城东槽也应被自动补齐=同线全部徽标原位上色
     const vis = [...it.svg.querySelectorAll('[data-badge="header"]')]
       .filter(gf => [...gf.querySelectorAll('text')].some(t => t.textContent.trim() === '广佛线'))
       .every(gf => gf.style.visibility !== 'hidden');
-    return { slotOk, dock: document.querySelectorAll('#chip-pool .mchip').length,
+    return { terms, chipBg, slotBorder, slotsAfter: it.slots.size,
+      dock: document.querySelectorAll('#chip-pool .mchip').length,
       score: g.score, finished: g.finished, badgeVisible: vis };
   })()`);
-  check('⑤广佛线徽标放对=完成', step7.slotOk && step7.dock === 0 && step7.score === 100 && step7.finished && step7.badgeVisible,
+  check('⑤广佛线开局 双终点槽 池=1 填写框黑/线号胶囊灰',
+    step7.terms === '新城东,沥滘' && step7.chipBg === 'rgb(154, 163, 173)' &&
+    step7.slotBorder === 'rgb(17, 17, 17)',
+    JSON.stringify(step7));
+  check('⑤任一终点放置=整线自动补齐+完成',
+    step7.slotsAfter === 0 && step7.dock === 0 && step7.score === 100 && step7.finished && step7.badgeVisible,
     JSON.stringify(step7));
 
   // ---------- ⑥ 真实地图风格回归（geo：站名模式照常可玩） ----------
@@ -337,7 +347,7 @@ app.whenReady().then(async () => {
   check('⑪连点318次零重复(洗牌袋一轮)', step13.distinct === 318,
     '去重' + step13.distinct + '/318');
 
-  // ---------- ⑫ 徽标槽定位：居中+闪烁；填完后提示无未填 ----------
+  // ---------- ⑫ 徽标槽定位：居中+闪烁；一线一填全清，填完后提示无未填 ----------
   const step14 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
     await new Promise(r => setTimeout(r, 300));
@@ -347,30 +357,31 @@ app.whenReady().then(async () => {
     await new Promise(r => setTimeout(r, 3000));
     const g = MetroQuiz.__game();
     const it = g.renderer.__internals;
-    const scopeOk = it.slots.size === 1 && it.slots.has('广佛线') &&
-      document.querySelectorAll('#chip-pool .mchip').length === 1;   // 范围生效: 槽=池=本线1
+    const scopeOk = it.slots.size === 2 &&
+      [...it.slots.keys()].every(k => k.indexOf('广佛线|') === 0) &&
+      document.querySelectorAll('#chip-pool .mchip').length === 1;   // 范围生效: 槽=本线2枚终点 池=1
     const btn = document.getElementById('mq-locate');
     btn.click();
     await new Promise(r => setTimeout(r, 150));
-    const s = it.slots.get('广佛线');
     const c = it.map.getCenter();
-    const dist = Math.hypot(s.bx - c.lng, s.by + c.lat);
+    const dist = Math.min(...[...it.slots.values()].map(s => Math.hypot(s.bx - c.lng, s.by + c.lat)));
     const blink = document.querySelectorAll('#metro-canvas .mb-slot.mb-blink').length;
-    // 放置（选中牌→点槽位），未填清零后再点定位应提示"没有"
+    // 放置（选中牌→点闪烁中的那枚槽位），一线一填全清后再点定位应提示"没有"
     document.querySelector('#chip-pool .mchip-badge').click();
-    s.el.click();
+    [...it.slots.values()].find(s => s.el.classList.contains('mb-blink')).el.click();
     await new Promise(r => setTimeout(r, 300));
     const listAfter = g.renderer.unfilledList().length;
     btn.click();
     await new Promise(r => setTimeout(r, 150));
     const toast = document.getElementById('mq-toast').textContent;
-    return { scopeOk, dist: dist.toFixed(3), blink, listAfter, toast };
+    return { scopeOk, dist: dist.toFixed(3), blink, slotsAfter: it.slots.size, listAfter, toast };
   })()`);
-  check('⑫广佛线范围生效 开局槽=池=1', step14.scopeOk, '槽池' + step14.scopeOk);
+  check('⑫广佛线范围生效 开局槽=2枚终点 池=1', step14.scopeOk, '槽池' + step14.scopeOk);
   check('⑫徽标槽定位=居中+闪烁', Math.abs(parseFloat(step14.dist)) < 0.5 && step14.blink === 1,
     '偏差' + step14.dist + ' 闪烁' + step14.blink);
-  check('⑫填完后定位提示无未填', step14.listAfter === 0 && step14.toast.indexOf('没有未填写') >= 0,
-    JSON.stringify({ listAfter: step14.listAfter, toast: step14.toast }));
+  check('⑫一线一填全清 填完后定位提示无未填',
+    step14.slotsAfter === 0 && step14.listAfter === 0 && step14.toast.indexOf('没有未填写') >= 0,
+    JSON.stringify({ slotsAfter: step14.slotsAfter, listAfter: step14.listAfter, toast: step14.toast }));
 
   await win.webContents.executeJavaScript(
     `console.log('_quiz-verify done')`);
