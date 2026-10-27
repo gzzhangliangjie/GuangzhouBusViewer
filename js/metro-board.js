@@ -601,13 +601,22 @@ const MetroBoard = (() => {
     }
 
     function revealAll() {
-      for (const els of nameEls.values()) for (const el of els) el.style.visibility = '';
-      for (const els of badgeEls.values()) for (const el of els) el.style.visibility = '';
-      for (const c of QD().chips) {
-        const key = c.nm + '|' + c.line;
-        const cluster = chipClusters.get(key);
-        if (cluster) for (const el of cluster) el.style.visibility = '';
-        else injectHtmlChip(key, false);
+      // 只复原本局藏掉的谜面（与 hidePieces 同口径）：编号牌仅编号模式相关。
+      // 圆圈板的站圆/换乘胶囊本是底图标记，旧实现无条件注入 400 枚编号牌 =
+      // 揭示后圆点与胶囊两套站标记叠画（2026-10-27 用户令废除）
+      if (mode === 'name' || mode === 'both') {
+        for (const els of nameEls.values()) for (const el of els) el.style.visibility = '';
+      }
+      if (mode === 'badge' || mode === 'both') {
+        for (const els of badgeEls.values()) for (const el of els) el.style.visibility = '';
+      }
+      if (mode === 'code') {
+        for (const c of QD().chips) {
+          const key = c.nm + '|' + c.line;
+          const cluster = chipClusters.get(key);
+          if (cluster) for (const el of cluster) el.style.visibility = '';
+          else injectHtmlChip(key, false);
+        }
       }
       for (const [, mk] of stationHot) mk.remove();
       stationHot.clear();

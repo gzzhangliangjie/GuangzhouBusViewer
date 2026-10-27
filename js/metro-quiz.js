@@ -140,6 +140,14 @@ const MetroQuiz = (() => {
       p.classList.toggle('selected', scopeSelected(p.dataset.v || null)));
   }
 
+  // 一局正式结束（完成结算/放弃揭示）后范围复位为空 = 全网挑战（2026-10-27 用户令：
+  // 玩家一般不会再来一遍同范围）；局内中途返回不复位，重开同一范围仍是合理诉求
+  function resetScopes() {
+    cfg.scopes.length = 0;
+    syncScopePills();
+    updateBestLine();
+  }
+
   /* ---------- 开局 ---------- */
 
   function startGame() {
@@ -470,6 +478,7 @@ const MetroQuiz = (() => {
       ],
       record: best.isNew
     });
+    resetScopes();   // 结算后范围默认回到全网挑战（sub/最佳成绩已在上面按原范围算完）
   }
 
   function giveUp() {
@@ -488,6 +497,7 @@ const MetroQuiz = (() => {
       ],
       record: false
     });
+    resetScopes();
   }
 
   function showResult(r) {

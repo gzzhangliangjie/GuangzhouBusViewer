@@ -299,7 +299,8 @@ app.whenReady().then(async () => {
     step11.placedVisible && step11.score === 100 && step11.dock === 317 &&
     step11.formBtn.indexOf('站点圆圈') >= 0, JSON.stringify(step11));
 
-  // ---------- ⑨ 圆圈形式基础板 + 放弃揭示（revealAll 注入官方同款编号牌） ----------
+  // ---------- ⑨ 圆圈形式基础板 + 放弃揭示（revealAll 只复原本局谜面，
+  //   不注入编号牌——圆点与胶囊两套站标记不得叠画, 2026-10-27 用户令） ----------
   const step10 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
     await new Promise(r => setTimeout(r, 300));
@@ -309,30 +310,51 @@ app.whenReady().then(async () => {
     const g = MetroQuiz.__game();
     const svg = g.renderer.__internals.svg;
     const basic = { hasCircles: !!svg.querySelector('#站圆'), hasChips: !!svg.querySelector('#编号牌'),
-      dock: document.querySelectorAll('#chip-pool .mchip').length };
+      dock: document.querySelectorAll('#chip-pool .mchip').length,
+      hidden: g.renderer.__internals.hiddenCount };
     document.getElementById('mq-giveup').click();
     await new Promise(r => setTimeout(r, 500));
-    const rec = window.QUIZ_NETWORK_DATA.chips.find(c => c.nm === '公园前' && c.line === '1号线');
-    const inj = [...document.querySelectorAll('#metro-canvas .mb-chip-svg')];
-    const vbAt = i => inj[i] ? inj[i].getAttribute('viewBox').split(/\\s+/).map(parseFloat) : [];
-    const first = window.QUIZ_NETWORK_DATA.chips[0];
-    const vbOk = vbAt(0).length === 4 &&
-      vbAt(0).every((v, i) => Math.abs(v - [first.x, first.y, first.w, first.h][i]) < 0.05);
-    const recHas = inj.some(el => {
-      const v = el.getAttribute('viewBox').split(/\\s+/).map(parseFloat);
-      return v.length === 4 && v.every((val, i) => Math.abs(val - [rec.x, rec.y, rec.w, rec.h][i]) < 0.05);
-    });
+    const gongyuan = [...svg.querySelectorAll('#站名标注 text')].find(e => e.textContent === '公园前');
     return { basic, revealed: !document.getElementById('metro-result').hidden,
       rsTitle: document.getElementById('rs-title').textContent,
-      injected: inj.length, vbOk, recHas };
+      injected: document.querySelectorAll('#metro-canvas .mb-chip-svg').length,
+      hiddenAfter: g.renderer.__internals.hiddenCount,
+      gongyuanVisible: !!gongyuan && gongyuan.style.visibility !== 'hidden' };
   })()`);
   check('⑨圆圈形式基础板 站名模式开局', step10.basic.hasCircles && !step10.basic.hasChips &&
-    step10.basic.dock === 318, JSON.stringify(step10.basic));
-  check('⑨放弃揭示 注入400官方同款牌(公园前|1号线在位)',
+    step10.basic.dock === 318 && step10.basic.hidden === 318, JSON.stringify(step10.basic));
+  check('⑨放弃揭示 只复原站名 零胶囊注入(圆点胶囊不叠画)',
     step10.revealed && step10.rsTitle.indexOf('已揭示答案') >= 0 &&
-    step10.injected === 400 && step10.vbOk && step10.recHas,
-    JSON.stringify({ revealed: step10.revealed, injected: step10.injected, vbOk: step10.vbOk, recHas: step10.recHas }));
+    step10.injected === 0 && step10.hiddenAfter === 0 && step10.gongyuanVisible,
+    JSON.stringify({ revealed: step10.revealed, rsTitle: step10.rsTitle,
+      injected: step10.injected, hiddenAfter: step10.hiddenAfter,
+      gongyuanVisible: step10.gongyuanVisible }));
   await shot('form-circle-reveal');
+
+  // ---------- ⑨b 一局正式结束后范围复位全网（2026-10-27 用户令：玩家一般不会再来一遍）：
+  //   带范围开局→放弃揭示（正式结束=复位点）→结算页直接「再来一局」=全网挑战开局 ----------
+  const step10b = await win.webContents.executeJavaScript(`(async () => {
+    document.getElementById('mq-back').click();
+    await new Promise(r => setTimeout(r, 300));
+    document.querySelector('#scope-picker .scope-pill[data-v="GF"]').click();
+    document.getElementById('metro-start').click();
+    await new Promise(r => setTimeout(r, 2500));
+    const scope0 = document.getElementById('mq-scope').textContent;
+    document.getElementById('mq-giveup').click();
+    await new Promise(r => setTimeout(r, 400));
+    document.getElementById('rs-again').click();
+    await new Promise(r => setTimeout(r, 2500));
+    const g2 = MetroQuiz.__game();
+    return { scope0, scopeRe: document.getElementById('mq-scope').textContent,
+      pillsSel: [...document.querySelectorAll('#scope-picker .scope-pill.selected')]
+        .map(p => p.dataset.v).join(','),
+      dockRe: document.querySelectorAll('#chip-pool .mchip').length };
+  })()`);
+  check('⑨b揭示结束后再来一局 默认全网挑战(药丸复位)',
+    step10b.scope0.indexOf('广佛线') >= 0 &&
+    step10b.scopeRe.indexOf('全网挑战') >= 0 && step10b.pillsSel === '' &&
+    step10b.dockRe === 318,
+    JSON.stringify(step10b));
 
   // ---------- ⑩ 单线×胶囊（2026-10-26 用户令：单线展示时本线数字亮、他线数字灰）：
   //   站名模式+胶囊+1号线（选择线路仅站名模式提供，2026-10-27 用户令）：400 牌全作背景，
