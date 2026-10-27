@@ -27,6 +27,20 @@ m_c = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', codes, re.S)
 assert m_c, 'codes缺站名标注组'
 labels_src = m_c.group(1)
 m_b = re.search(r'(<g id="站名标注"[^>]*>).*?(</g>)', base, re.S)
+# 1.5) 定制钉位标签回写规则(通用机制, 无站名特判): build-network定制策略给底图标签打
+#      data-pin-base="1"(东带贴线2026-10-28), 该位=引擎定制位; codes站名组自锚定=上一版codes
+#      (含编号牌避让偏移, 且gen_network锚替换使戳不经过codes)——凡底图带此戳的元素保留底图
+#      自身坐标, 其余照常吃codes。定制方只管打戳, 本层只认戳。
+_base_lbl = gen.text_elements(m_b.group(0))
+_pin_nm = {t['nm'] for t in _base_lbl if 'data-pin-base' in t['attrs']}
+_base_map = {t['nm']: t['el'] for t in _base_lbl}
+_kept = []
+for _t in gen.text_elements(m_c.group(0)):
+    if _t['nm'] in _pin_nm and _t['nm'] in _base_map:
+        _kept.append(_base_map[_t['nm']])
+    else:
+        _kept.append(_t['el'])
+labels_src = ''.join(_kept)
 base = base[:m_b.start(1) + len(m_b.group(1))] + labels_src + base[m_b.start(2):]
 
 # 2) 徽标transform回写(自锚定: transform源=codes SVG, 文档序一一对应)

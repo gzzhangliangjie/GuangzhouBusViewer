@@ -296,7 +296,8 @@ def mk_gap(rect, mk):
 
 def st_clear(rect, own_mk):
     x, y, w, h = rect
-    if mk_gap(rect, own_mk) < ST_GAP:          # 本站: 不贴不叠(太近=贴在一起, 用户纠偏)
+    _pol = label_policy(own_mk['name'])
+    if mk_gap(rect, own_mk) < (_pol['gap'] if _pol else ST_GAP):   # 本站: 不贴不叠(太近=贴在一起, 用户纠偏); 净距下限可被定制策略覆写
         return False
     cx_, cy_ = x + w / 2, y + h / 2            # 归属无歧义: 标签中心离本站最近
     od = dist((cx_, cy_), own_mk['center'])
@@ -306,8 +307,9 @@ def st_clear(rect, own_mk):
     for nm2, x2, y2, w2, h2 in placed_boxes:
         if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
             return False
+    _cor_need = _pol['corridor'] if _pol else CORRIDOR_HALF + 1.0
     for nm2, ax, ay, bx, by, _c in corridors:
-        if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 1.0:
+        if rect_seg_dist(rect, (ax, ay), (bx, by)) < _cor_need:
             return False
     for other in markers:
         if other is own_mk:
@@ -329,7 +331,7 @@ def st_clear_noline(rect, own_mk):
     """APM密集段专用: 豁免走廊碰撞——三平行竖线夹缝无合法位, 用户2026-10-22定稿
     (稍微重叠可接受), 渲染配白描边光环保压线可读; 其余检查(本站净距/歧义/互斥/撞圆)全保留。"""
     x, y, w, h = rect
-    if mk_gap(rect, own_mk) < ST_GAP:
+    if mk_gap(rect, own_mk) < APM_LABEL_GAP:   # 本函数=东带专用(见docstring), 径用定制净距
         return False
     cx_, cy_ = x + w / 2, y + h / 2
     od = dist((cx_, cy_), own_mk['center'])
@@ -369,7 +371,18 @@ for _name in ORDER:
         card_label.setdefault(_t.group(3).strip(), (float(_t.group(1)), float(_t.group(2))))
 
 
-APM_DENSE = {'天河南', '黄埔大道', '妇儿中心', '花城大道', '大剧院', '体育中心南'}  # APM中段: 三平行竖线夹缝
+APM_DENSE = {'天河南', '黄埔大道', '妇儿中心', '花城大道', '大剧院', '体育中心南',
+             '海心沙'}  # APM东带7站(中段夹缝6站+南对角海心沙; 2026-10-28 用户点名体育中心南→海心沙贴线)
+# —— APM东带定制策略(定制优先, 唯一规则源): 通用门禁只读 label_policy 参数, 不写APM分支 ——
+APM_LABEL_GAP = 2.0             # 标签-本站圆横向净距(2026-10-28 用户令: 标签贴线; 旧固定列x1696.5/净距4.5被指离线太远)
+APM_LABEL_COR = CORRIDOR_HALF   # 允许贴走廊边缘(白光环保可读, 用户定稿"稍微重叠可接受")
+
+def label_policy(nm):
+    """东带定制策略: 命中=该站标签用定制参数(gap/贴走廊/白光环)并打 data-pin-base 戳
+    (sync-base 据此保留底图位, 不吃codes编号牌避让偏移); 未命中=None 走通用默认。"""
+    if nm in APM_DENSE:
+        return {'gap': APM_LABEL_GAP, 'corridor': APM_LABEL_COR, 'halo': True, 'pin': True}
+    return None
 ST_FONT2 = 6.0   # 二档小字(向后兼容引用)
 ST_TIERS = [(7.5, 8.5), (6.0, 7.0), (5.0, 6.0), (4.2, 5.0)]   # 逐档缩小到放得下(2026-10-22用户: 竖排诡异改回横排, 有重叠字就小点)
 
@@ -385,8 +398,8 @@ def st_w2(nm):
 def _cands_for(mk, nm, w, hh, fs):
     mx, my = mk['center']
     cands = []
-    if nm in APM_DENSE and fs <= 6.5:            # 东带横排: APM竖线(x1687.5)右侧专用列, 净距4.5起(竖排已废, 2026-10-22)
-        cands.append((1696.5 + w / 2, my))
+    if nm in APM_DENSE:                          # 东带贴线列(定制): 每站圆右缘+APM_LABEL_GAP(2026-10-28 用户令;
+        cands.append((mx + mk['r'] + APM_LABEL_GAP + w / 2, my))   # 旧固定列x1696.5/净距4.5被指离线太远; fs7.5档同吃贴线位)
     if nm in term_dir:                           # 卡片规范: 终点文字在走廊延长线上(含斜线)
         ux, uy = term_dir[nm]
         ext = (w * abs(ux) + hh * abs(uy)) / 2
@@ -431,7 +444,7 @@ def place_one(mk):
         for fs, hh in ((6.0, 7.0), (5.0, 6.0)):
             w = st_wfs(nm, fs)
             for dy2 in (0.0, -9.0, 9.0):     # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
-                cx = 1695.0 + w / 2
+                cx = mk['center'][0] + mk['r'] + APM_LABEL_GAP + w / 2   # 贴线列(与_cands_for同源)
                 cy = mk['center'][1] + dy2
                 rect = (cx - w / 2, cy - hh / 2, w, hh)
                 if st_clear_noline(rect, mk):
@@ -1049,17 +1062,19 @@ out.append('</g>')
 out.append('<g id="站名标注" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif" '
            'font-weight="700" fill="%s">' % INK)
 for nm, cx, cy, fs, stacked in labels:
-    halo = nm in APM_DENSE and fs <= 6.5         # 兜底东带列站名(压线): 白描边光环垫底保可读; 通用位站不压线不加
+    _pol = label_policy(nm)
+    halo = bool(_pol and _pol['halo'])           # 白描边光环: 定制策略可开(东带贴线2026-10-28); 通用位站不压线不加
+    pin = ' data-pin-base="1"' if _pol and _pol['pin'] else ''   # 定制钉位戳: sync-base据此保留底图位, 不吃codes牌避让坐标
     hstyle = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"' if halo else ''
     if stacked:                                 # CJK竖排: 每字一tspan同x顺dy
         inner = ''.join('<tspan x="%s"%s>%s</tspan>' %
                         (fmt(cx), (' dy="%s"' % fmt(fs)) if k else '', ch)
                         for k, ch in enumerate(nm))
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s>%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, inner))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, inner))
     else:
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s>%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, nm))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, nm))
 out.append('</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10
