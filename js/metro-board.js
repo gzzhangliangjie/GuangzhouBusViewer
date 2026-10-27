@@ -144,24 +144,34 @@ const MetroBoard = (() => {
       }
     }
 
+    /* ---------- 单线/多线范围（2026-10-27 用户令：挑战范围可多选） ---------- */
+
+    // scope 归一：接受单线名或线名数组；空数组/空串/无 = 全网
+    function scopeSet(v) {
+      if (Array.isArray(v)) return v.length ? v : null;
+      return v ? [v] : null;
+    }
+    const inScopes = (scopes, lines) => !scopes || lines.some(l => scopes.includes(l));
+
     function hidePieces(opts) {
       const hide = els => { for (const el of els) el.style.visibility = 'hidden'; };
       const wantName = mode === 'name' || mode === 'both';
       const wantBadge = mode === 'badge' || mode === 'both';
       const wantChip = mode === 'code';
+      const scopes = scopeSet(opts.scope);
       if (wantName) {
         for (const [nm, els] of nameEls) {
           if (opts.placedNames && opts.placedNames.has(nm)) continue;
-          // 单线模式：非本线站名保留为淡化背景（旧玩法口径），本线站名才是谜面
-          if (opts.scope && !(QD().stations[nm] || { lines: [] }).lines.includes(opts.scope)) continue;
+          // 范围模式：非所选线站名保留为淡化背景（旧玩法口径），所选线站名才是谜面
+          if (scopes && !inScopes(scopes, (QD().stations[nm] || { lines: [] }).lines)) continue;
           hide(els);
         }
       }
       if (wantBadge) {
         for (const [line, els] of badgeEls) {
           if (opts.placedBadges && opts.placedBadges.has(line)) continue;
-          // 单线模式：他线徽标保留为淡化背景（与站名/编号牌同口径，§1.7），本线徽标才是谜面
-          if (opts.scope && line !== opts.scope) continue;
+          // 范围模式：他线徽标保留为淡化背景（与站名/编号牌同口径，§1.7），所选线徽标才是谜面
+          if (scopes && !scopes.includes(line)) continue;
           hide(els);
           // 每枚终点徽标独立槽位（2026-10-27 用户令：起点/终点都可填；
           // 11号线环线 1 枚 / 12 号线 4 枚 / 3、14 号线含支线 3 枚 / 其余 2 枚）
@@ -172,8 +182,8 @@ const MetroBoard = (() => {
         for (const c of QD().chips) {
           const key = c.nm + '|' + c.line;
           if (opts.placedChips && opts.placedChips.has(key)) continue;
-          // 单线模式：非本线编号牌保留为淡化背景（与站名/徽标同口径），本线牌才是谜面
-          if (opts.scope && c.line !== opts.scope) continue;
+          // 范围模式：非所选线编号牌保留为淡化背景（与站名/徽标同口径），所选线牌才是谜面
+          if (scopes && !scopes.includes(c.line)) continue;
           const cluster = chipClusters.get(key);
           if (cluster) hide(cluster);   // 圆圈板无 DOM 簇：只建槽位，放置时注入
           makeChipSlot(c);
@@ -244,10 +254,11 @@ const MetroBoard = (() => {
 
     function buildHotspots(opts) {
       if (mode !== 'name' && mode !== 'both') return;
+      const scopes = scopeSet(opts.scope);
       for (const [nm, st] of Object.entries(QD().stations)) {
-        // 单线 scope: 他线站=淡化背景, 不设热区不响应(点/拖全屏蔽, 2026-10-27 用户令;
+        // 范围 scope: 他线站=淡化背景, 不设热区不响应(点/拖全屏蔽, 2026-10-27 用户令;
         // 旧口径"他线站可作错误目标−10"废止)
-        if (opts.scope && !st.lines.includes(opts.scope)) continue;
+        if (scopes && !inScopes(scopes, st.lines)) continue;
         if (opts.placedNames && opts.placedNames.has(nm)) continue;
         const mk = L.circleMarker(ll(st.x, st.y), {
           radius: 20, stroke: false, fill: true, fillColor: '#2f7fd1', fillOpacity: 0,
@@ -369,24 +380,24 @@ const MetroBoard = (() => {
       return null;
     }
 
-    function applyScope(scope) {
+    function applyScope(scopeVal) {
       for (const el of dimRefs) { el.style.opacity = ''; }
       dimRefs = [];
-      if (!scope) return;
-      const line = QD().lines.find(l => l.name === scope);
-      if (!line) return;
-      const color = (line.color || '').replace('#', '').toLowerCase();
+      const scopes = scopeSet(scopeVal);
+      if (!scopes) return;
+      const colors = new Set(QD().lines.filter(l => scopes.includes(l.name))
+        .map(l => (l.color || '').replace('#', '').toLowerCase()));
       const inScope = nm => {
         const st = QD().stations[nm];
-        return st && st.lines.includes(scope);
+        return st && inScopes(scopes, st.lines);
       };
       for (const el of svg.querySelectorAll('#走廊 line')) {
         const cs = el.getAttribute('data-case');   // 环线黑描边: 随所属线淡化(描边色≠线色)
         if (cs) {
-          if (cs !== scope) dim(el, 0.12);
+          if (!scopes.includes(cs)) dim(el, 0.12);
           continue;
         }
-        if (strokeHex(el) !== color) dim(el, 0.12);
+        if (!colors.has(strokeHex(el))) dim(el, 0.12);
       }
       for (const el of svg.querySelectorAll('#站圆 circle, #换乘标记 [data-nm]')) {
         const nm = el.getAttribute && el.getAttribute('data-nm');
@@ -397,14 +408,14 @@ const MetroBoard = (() => {
         if (nm && !inScope(nm)) dim(el, 0.25);
       }
       for (const g of svg.querySelectorAll('[data-badge="header"]')) {
-        if (badgeLineOf(g) !== scope) dim(g, 0.18);
+        if (!scopes.includes(badgeLineOf(g))) dim(g, 0.18);
       }
-      // 编号牌背景淡化（所有模式一致）：单线里非本线牌与圈环淡化为背景——
-      // 编号模式本线牌是谜面被收起，他线牌留在原位作参照（2026-10-26 用户令：
+      // 编号牌背景淡化（所有模式一致）：范围里非所选线牌与圈环淡化为背景——
+      // 本线牌是谜面被收起，他线牌留在原位作参照（2026-10-26 用户令：
       // 单线展示时本线数字亮、他线数字灰，不得全图收空）
       if (svg.querySelector('#编号牌')) {
         for (const [key, cluster] of chipClusters) {
-          if (key.split('|')[1] !== scope) for (const el of cluster) dim(el, 0.25);
+          if (!scopes.includes(key.split('|')[1])) for (const el of cluster) dim(el, 0.25);
         }
         for (const ring of svg.querySelectorAll('#编号牌 rect[data-ring]')) {
           const nm = ring.getAttribute('data-ring');
@@ -641,10 +652,11 @@ const MetroBoard = (() => {
 
     /* ---------- 视口 ---------- */
 
-    function frame(scope) {
+    function frame(scopeVal) {
+      const scopes = scopeSet(scopeVal);
       let pts;
-      if (scope) {
-        pts = Object.values(QD().stations).filter(st => st.lines.includes(scope))
+      if (scopes) {
+        pts = Object.values(QD().stations).filter(st => inScopes(scopes, st.lines))
           .map(st => ll(st.x, st.y));
       } else {
         const [vx, vy, vw, vh] = VB();

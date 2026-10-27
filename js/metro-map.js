@@ -65,13 +65,18 @@ const MetroMapView = (() => {
     let stationCb = null, badgeCb = null;
 
     /* ---------- 底图分层透明化：单线模式其他线路半透明 ---------- */
+    // 挑战范围多选（2026-10-27 用户令）：scopeRef 可为单线 ref 或 ref 数组；空/无 = 全网
+    function scopeArr(v) {
+      if (Array.isArray(v)) return v.length ? v : null;
+      return v ? [v] : null;
+    }
     // scopeKey 为 null 时全部恢复；注意 CRS GPU 蒙层雷区——这里只改 SVG 组的 opacity，
     // 不叠加半透明矩形蒙层
     function applyArtScope(opts) {
       if (!boardWrap) return;
+      const scopeKey = scopeArr(opts.scopeRef);
       const linesLayer = boardWrap.querySelector('[id="线路"]');
       if (linesLayer) {
-        const scopeKey = opts.scopeRef;
         for (const g of linesLayer.children) {
           if (g.tagName.toLowerCase() !== 'g') continue;
           const raw = g.getAttribute('id') || '';
@@ -79,15 +84,15 @@ const MetroMapView = (() => {
           for (let d = 0; d < 10; d++) dec = dec.replace(`_x3${d}_`, String(d));
           const norm = dec.replace(/(?:_\d+)+_?$/, '');   // '10_1_'→'10', '9_3_'→'9', 'APM_3_'→'APM'
           g.style.display = '';
-          g.style.opacity = (scopeKey && norm !== scopeKey) ? '0.18' : '1';
+          g.style.opacity = (scopeKey && !scopeKey.includes(norm)) ? '0.18' : '1';
         }
       }
       const dotsLayer = boardWrap.querySelector('[id="站点"]');
-      if (dotsLayer) dotsLayer.style.opacity = opts.scopeRef ? '0.55' : '1';
+      if (dotsLayer) dotsLayer.style.opacity = scopeKey ? '0.55' : '1';
       // 远期/虚线层同样淡化
       for (const lid of ['远期线路', '虚线']) {
         const g = boardWrap.querySelector(`[id="${lid}"]`);
-        if (g) g.style.opacity = opts.scopeRef ? '0.12' : '1';
+        if (g) g.style.opacity = scopeKey ? '0.12' : '1';
       }
     }
 
@@ -166,7 +171,7 @@ const MetroMapView = (() => {
       for (const d of scopeDots.values()) d.mk.remove();
       scopeDots.clear();
 
-      const grey = ref => opts.scopeRef && ref !== opts.scopeRef;
+      const grey = ref => { const sc = scopeArr(opts.scopeRef); return sc && !sc.includes(ref); };
 
       // 单线模式：底图其他线路半透明、站点层淡化；全网模式全部恢复
       if (simple) applyArtScope(opts);
@@ -175,11 +180,13 @@ const MetroMapView = (() => {
         // 底图 = Tim 原图内联矢量（永久无文字）；单线模式用 applyArtScope 半透明化其余线。
         // 选中线在 scopeArt(560) 重描——必须压在未选线站名(dimTooltip 550)之上；
         // 重描会盖住底图其他线的圆圈，但选中线自己的圆在 scopeDot(570) 再画一层补回
-        if (opts.scopeRef) {
+        const sc = scopeArr(opts.scopeRef);
+        if (sc) {
           const B = window.METRO_DATA.board;
-          const l = MetroData.line(opts.scopeRef);
-          const spec = B && B.lines[opts.scopeRef];
-          if (l && spec) {
+          for (const ref of sc) {
+            const l = MetroData.line(ref);
+            const spec = B && B.lines[ref];
+            if (!l || !spec) continue;
             for (const poly of spec.polys) {
               const pts = poly.map(([x, y]) => [-y, x]);
               if (pts.length >= 2) {
@@ -214,9 +221,10 @@ const MetroMapView = (() => {
       }
 
       // 单线模式：全部站点画热区（未选线站点也可作为错误目标），序号牌只画所选线
+      const scDraw = scopeArr(opts.scopeRef);
       for (const s of MetroData.allStations()) {
         drawStation(s, opts);
-        if (!opts.scopeRef || s.lines.includes(opts.scopeRef)) drawNumberTag(s, opts);
+        if (!scDraw || s.lines.some(r => scDraw.includes(r))) drawNumberTag(s, opts);
       }
 
       frame(opts.scopeRef);
@@ -226,7 +234,8 @@ const MetroMapView = (() => {
 
     function drawStation(s, opts) {
       const inter = s.lines.length > 1;
-      const inScope = !opts.scopeRef || s.lines.includes(opts.scopeRef);
+      const sc = scopeArr(opts.scopeRef);
+      const inScope = !sc || s.lines.some(r => sc.includes(r));
       const l0 = MetroData.line(s.lines.find(r => MetroData.line(r)));
       let mk;
       if (simple) {
@@ -237,8 +246,9 @@ const MetroMapView = (() => {
           className: 'mst mst-hot'
         }).addTo(overlay);
         // 选中线的站圆在 scopeDot(570) 重画：保证在未选线站名(550)与选中线重描(560)之上
-        if (opts.scopeRef && inScope) {
-          const lc = (MetroData.line(opts.scopeRef) || {}).color || '#2f7fd1';
+        if (sc && inScope) {
+          const r0 = s.lines.find(r => sc.includes(r));
+          const lc = (MetroData.line(r0) || {}).color || '#2f7fd1';
           const u = Math.pow(2, map.getZoom());
           const placed = opts.placedNames.has(s.id);
           const dot = L.circleMarker(pointOf(s), {
@@ -400,11 +410,12 @@ const MetroMapView = (() => {
     /* ---------- 站点编号牌：「线号-序号」小标签（如 1-14） ---------- */
 
     function stationNumberTag(s, scopeRef) {
-      // 单线模式下优先用所选线的序号，全网用首条（主）线
+      // 范围模式（单线或多选）下优先用所选线的序号，全网用首条（主）线
       // 换乘站显示全部线编号（用户要求：多条线路交汇的站把多条线路的编号都列出来）
       const parts = [];
-      const refs = scopeRef
-        ? [scopeRef, ...s.lines.filter(r => r !== scopeRef)]
+      const sc = scopeArr(scopeRef);
+      const refs = sc
+        ? [...sc.filter(r => s.lines.includes(r)), ...s.lines.filter(r => !sc.includes(r))]
         : s.lines;
       for (const ref of refs) {
         const l = MetroData.line(ref);
@@ -425,7 +436,8 @@ const MetroMapView = (() => {
       const tag = stationNumberTag(s, opts.scopeRef);
       if (!tag) return;
       // 所选线编号牌层级高于非选线站名(tooltip-pane 650)：用 pane 提升
-      const inScope = !opts.scopeRef || s.lines.includes(opts.scopeRef);
+      const sc = scopeArr(opts.scopeRef);
+      const inScope = !sc || s.lines.some(r => sc.includes(r));
       // 已放置：牌原位变成站名（绿色完成样式），不再作为投放目标
       const placed = opts.placedNames.has(s.id);
       const mk = L.marker(pointOf(s), {
@@ -433,7 +445,7 @@ const MetroMapView = (() => {
         keyboard: false,
         zIndexOffset: inScope ? 1000 : 200,
         icon: L.divIcon({
-          className: 'mnum-wrap' + (inScope && opts.scopeRef ? ' scope-num' : ''),
+          className: 'mnum-wrap' + (inScope && sc ? ' scope-num' : ''),
           html: `<span class="mnum official${placed ? ' done' : ''}">${placed ? s.zh : (Array.isArray(tag) ? tag.join('<br>') : tag)}</span>`,
           iconSize: null  // 由内容撑开，锚点在左下
         })
@@ -463,8 +475,10 @@ const MetroMapView = (() => {
       rescaleScopeArt();
       const zoom = map.getZoom();
       const gates = zoomGates(zoom);
-      // 单线模式提示站名更积极：上限放宽、门槛降低
-      const MAX_LABELS = simple ? (lastOpts.scopeRef ? 170 : 110) : 60, MAX_NUMS = 140;
+      const sc = scopeArr(lastOpts.scopeRef);
+      const inSc = s => !sc || s.lines.some(r => sc.includes(r));
+      // 范围模式提示站名更积极：上限放宽、门槛降低
+      const MAX_LABELS = simple ? (sc ? 170 : 110) : 60, MAX_NUMS = 140;
 
       // ① 编号牌（游戏线索，常显）：所选线全部显示（无碰撞剔除），其余按碰撞去重
       const numRects = [];
@@ -472,13 +486,12 @@ const MetroMapView = (() => {
       if (zoom >= gates.num) {
         const nums = [];
         for (const s of MetroData.allStations()) {
-          if (lastOpts.scopeRef && !s.lines.includes(lastOpts.scopeRef)) continue;
+          if (sc && !inSc(s)) continue;
           if (!numMk.has(s.id)) continue;
           // 已放置的站：序号牌隐藏（站名标签接管该位置），不再作为投放目标
           if (lastOpts.placedNames.has(s.id)) continue;
           // 所选线的序号牌必显(不参与碰撞/上限)；全网模式换乘站优先
-          const inScope = !lastOpts.scopeRef || s.lines.includes(lastOpts.scopeRef);
-          nums.push({ s, prio: (inScope ? 0 : 10) + (s.lines.length > 1 ? 0 : 1), must: !!lastOpts.scopeRef && inScope });
+          nums.push({ s, prio: (inSc(s) ? 0 : 10) + (s.lines.length > 1 ? 0 : 1), must: !!sc && inSc(s) });
         }
         nums.sort((a, b) => a.prio - b.prio);
         for (const { s, must } of nums) {
@@ -511,8 +524,8 @@ const MetroMapView = (() => {
       for (const s of MetroData.allStations()) {
         const placed = lastOpts.placedNames.has(s.id);
         if (simple && placed) continue;          // 已放置：编号牌原位显示站名
-        const inScope = !lastOpts.scopeRef || s.lines.includes(lastOpts.scopeRef);
-        let nameVisible = lastOpts.scopeRef
+        const inScope = inSc(s);
+        let nameVisible = sc
           ? (placed || (lastOpts.showStationNames && inScope) || !inScope)
           : (lastOpts.showStationNames || placed);
         if (!nameVisible) continue;
@@ -522,9 +535,9 @@ const MetroMapView = (() => {
 
       for (const [id, mk] of stationMk) {
         const has = !!mk.getTooltip();
-        // 单线模式：非所选线站名用 dim 类降低存在感；已有 tooltip 但类需更新时重绑
+        // 范围模式：非所选线站名用 dim 类降低存在感；已有 tooltip 但类需更新时重绑
         const s = MetroData.station(id);
-        const dim = !!(lastOpts.scopeRef && !s.lines.includes(lastOpts.scopeRef));
+        const dim = !!(sc && !inSc(s));
         if (keep.has(id) && !has) bindLabel(mk, s, dim);
         else if (keep.has(id) && has) {
           const cls = mk.getTooltip().getContent() && mk.getTooltip().getElement() ? mk.getTooltip().getElement().className : '';
@@ -714,22 +727,27 @@ const MetroMapView = (() => {
     /* ---------- 视口 ---------- */
 
     function frame(scopeRef) {
+      const sc = scopeArr(scopeRef);
       let pts;
-      if (scopeRef) {
-        const l = MetroData.line(scopeRef);
-        pts = l ? MetroData.lineStationIds(l)
-          .map(id => MetroData.station(id))
-          .filter(Boolean)
-          .map(pointOf) : [];
+      if (sc) {
+        pts = [];
+        for (const ref of sc) {
+          const l = MetroData.line(ref);
+          if (!l) continue;
+          for (const id of MetroData.lineStationIds(l)) {
+            const st = MetroData.station(id);
+            if (st) pts.push(pointOf(st));
+          }
+        }
       } else {
         pts = MetroData.allStations().map(pointOf);
       }
-      // 真实地图：单线放大聚焦（上限 13），全网概览（上限 11）；纯线路图自然取景
+      // 真实地图：范围模式放大聚焦（上限 13），全网概览（上限 11）；纯线路图自然取景
       // 纯线路图要给底部名牌池 dock 让位（西塱 1-01 曾被面板盖住无法拖放）
       const dockH = (document.getElementById('metro-dock') || {}).offsetHeight || 0;
       const opts = simple
         ? { paddingTopLeft: [24, 10], paddingBottomRight: [24, dockH ? dockH + 18 : 10] }
-        : { padding: [50, 50], maxZoom: scopeRef ? 13 : 11 };
+        : { padding: [50, 50], maxZoom: sc ? 13 : 11 };
       // animate:false —— 聚焦不依赖动画帧，窗口遮挡/后台时也能正确落位
       const fit = () => { if (pts.length) map.fitBounds(L.latLngBounds(pts), { ...opts, animate: false }); };
       fit();

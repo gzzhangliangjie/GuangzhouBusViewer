@@ -19,25 +19,29 @@ const MetroQuiz = (() => {
     hint: $('#mq-hint'), locate: $('#mq-locate'), restart: $('#mq-restart'), giveup: $('#mq-giveup'), back: $('#mq-back'),
     form: $('#mq-form'),
     dock: $('#metro-dock'), pool: $('#chip-pool'), filter: $('#dock-filter'), count: $('#dock-count'),
-    linePills: $('#dock-lines'),
     toast: $('#mq-toast'),
     rsTitle: $('#rs-title'), rsSub: $('#rs-sub'), rsBody: $('#rs-body'),
     rsAgain: $('#rs-again'), rsMenu: $('#rs-menu'), rsView: $('#rs-view')
   };
 
-  const cfg = { mode: 'name', style: 'official', form: 'circle', scope: null };
+  const cfg = { mode: 'name', style: 'official', form: 'circle', scopes: [] };
   let game = null;        // 进行中/已结束的一局；{answer:true} 表示答案图浏览
   let selectedChip = null;
-  let lineFilter = null;  // 名牌池线号快捷过滤（仅官方棋盘的编号/线号模式）
   let toastTimer = null;
   let jumpBag = null;     // 定位未填写的洗牌袋：{sig, keys, last}——棋面一变即重洗，连点尽量不重复
 
   /* ---------- 官方棋盘数据 ---------- */
 
   function QD() { return window.QUIZ_NETWORK_DATA; }
-  // 挑战范围在官方棋盘用线名（zh），真实地图用 MetroData ref
-  function scopeName() {
-    return cfg.scope ? (MetroData.line(cfg.scope)?.zh || null) : null;
+  // 挑战范围 = 选中线路集合（多选，2026-10-27 用户令；空 = 全网挑战）。
+  // 官方棋盘用线名（zh），真实地图用 MetroData ref
+  function officialScopes() {
+    return cfg.scopes.map(ref => MetroData.line(ref)?.zh).filter(Boolean);
+  }
+  function scopeLabel() {
+    return cfg.scopes.length
+      ? cfg.scopes.map(ref => MetroData.line(ref)?.zh || ref).join('＋')
+      : '全网挑战';
   }
   function lineColor(name) {
     const l = QD() && QD().lines.find(x => x.name === name);
@@ -85,8 +89,9 @@ const MetroQuiz = (() => {
             block.querySelectorAll('.opt-card').forEach(c => c.classList.remove('selected'));
             card.classList.add('selected');
             cfg[key] = card.dataset.v;
-            // 站点显示形式只在官方线网图有意义（真实地图无圆圈/胶囊之分）
-            if (key === 'style') syncFormBlock();
+            // 站点显示形式只在官方线网图有意义（真实地图无圆圈/胶囊之分）；
+            // 线号模式下数字胶囊=提示（线号就在牌面上），同样禁选（2026-10-27 用户令）
+            if (key === 'style' || key === 'mode') syncFormBlock();
             updateBestLine();
           }));
     });
@@ -97,22 +102,27 @@ const MetroQuiz = (() => {
 
   function syncFormBlock() {
     const fb = document.querySelector('#metro-setup .opt-block[data-block="form"]');
-    if (fb) fb.classList.toggle('disabled', cfg.style !== 'official');
+    if (fb) fb.classList.toggle('disabled', cfg.style !== 'official' || cfg.mode === 'badge');
   }
 
   function buildScopePicker() {
     const mk = (value, label, colour, title) => {
       const b = document.createElement('button');
-      b.className = 'scope-pill' + (value === cfg.scope ? ' selected' : '');
+      b.className = 'scope-pill' + (scopeSelected(value) ? ' selected' : '');
       b.dataset.v = value || '';
       b.innerHTML = colour
         ? `<span class="scope-badge" style="background:${colour}">${label}</span>`
         : `<span>${label}</span>`;
       if (title) b.title = title;
       b.addEventListener('click', () => {
-        cfg.scope = value;
-        els.scopePicker.querySelectorAll('.scope-pill').forEach(p => p.classList.remove('selected'));
-        b.classList.add('selected');
+        if (value) {
+          // 多选：点线药丸切换选中（2026-10-27 用户令：范围保留但可多选，更好玩）
+          const i = cfg.scopes.indexOf(value);
+          if (i >= 0) cfg.scopes.splice(i, 1); else cfg.scopes.push(value);
+        } else {
+          cfg.scopes.length = 0;   // 全网挑战 = 清空多选
+        }
+        syncScopePills();
         updateBestLine();
       });
       return b;
@@ -123,13 +133,21 @@ const MetroQuiz = (() => {
     }
   }
 
+  function scopeSelected(v) { return v ? cfg.scopes.includes(v) : !cfg.scopes.length; }
+
+  function syncScopePills() {
+    els.scopePicker.querySelectorAll('.scope-pill').forEach(p =>
+      p.classList.toggle('selected', scopeSelected(p.dataset.v || null)));
+  }
+
   /* ---------- 开局 ---------- */
 
   function startGame() {
     teardown();
+    // 线号模式无数字胶囊（2026-10-27 用户令：胶囊线号=提示）：强制站点圆圈形式
+    if (cfg.mode === 'badge') cfg.form = 'circle';
     const items = buildItems();
     if (!items.length) return;
-    lineFilter = null;
     jumpBag = null;
 
     // 先显示游戏区再创建地图，否则容器 0 尺寸导致 fitBounds 视野错误
@@ -154,7 +172,7 @@ const MetroQuiz = (() => {
       renderer.onStationClick((id, payload) => pickTarget('name', id, payload));
       renderer.onBadgeClick((ref, payload) => pickTarget('badge', ref, payload));
       renderer.render({
-        scopeRef: cfg.scope, interactive: true,
+        scopeRef: cfg.scopes, interactive: true,
         showStationNames: cfg.mode === 'badge',
         showBadges: cfg.mode === 'name' ? 'filled' : 'slots',
         placedNames: game.placedNames, placedBadges: game.placedBadges
@@ -163,12 +181,11 @@ const MetroQuiz = (() => {
 
     renderChips(items);
     els.title.textContent = MODE_NAMES[cfg.mode];
-    els.scopeLbl.textContent =
-      (cfg.scope ? (MetroData.line(cfg.scope)?.zh || cfg.scope) : '全网挑战') +
+    els.scopeLbl.textContent = scopeLabel() +
       (official ? ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈') : ' · 高德底图');
 
     els.tilesBar.hidden = official;
-    els.form.hidden = !official;
+    els.form.hidden = !official || cfg.mode === 'badge';   // 线号模式无形式切换（无胶囊）
     els.form.textContent = cfg.form === 'capsule' ? '形式：数字胶囊' : '形式：站点圆圈';
     els.dock.hidden = false;
     els.filter.value = '';
@@ -189,7 +206,7 @@ const MetroQuiz = (() => {
     renderer.onBadgeClick((kind, value, payload) => pickTarget(kind, value, payload));
     renderer.onChipClick((kind, value, payload) => pickTarget(kind, value, payload));
     renderer.render({
-      mode: cfg.mode, form: cfg.form, scope: scopeName(), interactive: true,
+      mode: cfg.mode, form: cfg.form, scope: officialScopes(), interactive: true,
       placedNames: game.placedNames, placedBadges: game.placedBadges,
       placedChips: game.placedChips
     });
@@ -197,13 +214,12 @@ const MetroQuiz = (() => {
 
   // 局内切换 站点圆圈 / 数字胶囊（保留分数、计时与已放置进度）
   function toggleForm() {
-    if (!game || game.answer || game.finished || !game.official) return;
+    if (!game || game.answer || game.finished || !game.official || cfg.mode === 'badge') return;
     cfg.form = cfg.form === 'capsule' ? 'circle' : 'capsule';
     if (game.renderer) game.renderer.destroy();
     initBoard();
     els.form.textContent = cfg.form === 'capsule' ? '形式：数字胶囊' : '形式：站点圆圈';
-    els.scopeLbl.textContent =
-      (cfg.scope ? (MetroData.line(cfg.scope)?.zh || cfg.scope) : '全网挑战') +
+    els.scopeLbl.textContent = scopeLabel() +
       ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈');
     toast(cfg.form === 'capsule' ? '已切换：数字胶囊' : '已切换：站点圆圈', true);
   }
@@ -211,12 +227,12 @@ const MetroQuiz = (() => {
   function buildItems() {
     const items = [];
     if (cfg.style === 'official') {
-      const scope = scopeName();
+      const scope = officialScopes();   // 空数组 = 全网
       if (cfg.mode === 'name' || cfg.mode === 'both') {
         for (const nm of officialLineStations2(scope)) items.push({ kind: 'name', value: nm });
       }
       if (cfg.mode === 'badge' || cfg.mode === 'both') {
-        const lines = scope ? [scope] : QD().lines.map(l => l.name);
+        const lines = scope.length ? scope : QD().lines.map(l => l.name);
         for (const ln of lines) {
           // 一线一枚牌；线上每枚终点徽标（起点/终点，含支线/分段）都建独立槽位，任意一枚都判对，
           // 放对一枚整线自动补齐（2026-10-27 用户令）
@@ -226,13 +242,14 @@ const MetroQuiz = (() => {
       }
     } else {
       if (cfg.mode === 'name' || cfg.mode === 'both') {
-        const stations = cfg.scope
-          ? MetroData.lineStationIds(MetroData.line(cfg.scope))
+        const stations = cfg.scopes.length
+          ? [...new Set(cfg.scopes.flatMap(ref =>
+              MetroData.lineStationIds(MetroData.line(ref)) || []))]
           : MetroData.allStations().map(s => s.id);
         for (const id of stations) items.push({ kind: 'name', value: id });
       }
       if (cfg.mode === 'badge' || cfg.mode === 'both') {
-        const lines = cfg.scope ? [cfg.scope] : MetroData.allLines().map(l => l.ref);
+        const lines = cfg.scopes.length ? cfg.scopes : MetroData.allLines().map(l => l.ref);
         for (const ref of lines) items.push({ kind: 'badge', value: ref });
       }
     }
@@ -244,11 +261,11 @@ const MetroQuiz = (() => {
     return items;
   }
 
-  function officialLineStations2(scope) {
+  function officialLineStations2(scopes) {
     const st = QD().stations;
     const all = Object.keys(st);
-    if (!scope) return all;
-    return all.filter(nm => st[nm].lines.includes(scope));
+    if (!scopes.length) return all;
+    return all.filter(nm => scopes.some(ln => st[nm].lines.includes(ln)));
   }
 
   /* ---------- 名牌池 ---------- */
@@ -257,7 +274,6 @@ const MetroQuiz = (() => {
 
   function renderChips(items) {
     els.pool.innerHTML = '';
-    renderLinePills(items);
     for (const it of items) {
       const key = chipKey(it);
       const el = document.createElement('span');
@@ -290,36 +306,6 @@ const MetroQuiz = (() => {
       game.chips.set(key, { kind: it.kind, value: it.value, el });
     }
     updateHud();
-  }
-
-  // 线号快捷过滤（官方棋盘的编号/线号模式；站名模式会泄露归属所以不提供）
-  function renderLinePills(items) {
-    els.linePills.innerHTML = '';
-    if (!game.official || cfg.mode !== 'badge') {
-      els.linePills.hidden = true;
-      return;
-    }
-    els.linePills.hidden = false;
-    const mk = (label, color, v) => {
-      const b = document.createElement('button');
-      b.className = 'dock-pill' + (lineFilter === v ? ' selected' : '');
-      b.textContent = label;
-      if (color) b.style.setProperty('--c', color);
-      b.addEventListener('click', () => {
-        lineFilter = lineFilter === v ? null : v;
-        els.linePills.querySelectorAll('.dock-pill').forEach(p =>
-          p.classList.toggle('selected', p.dataset.v === (lineFilter || '')));
-        applyDockFilter();
-      });
-      b.dataset.v = v || '';
-      return b;
-    };
-    els.linePills.appendChild(mk('全部', null, null));
-    const used = new Set(items.map(it => it.kind === 'chip' ? it.value.split('|')[1] : it.value));
-    for (const l of QD().lines) {
-      if (!used.has(l.name)) continue;
-      els.linePills.appendChild(mk(l.disp, l.color, l.name));
-    }
   }
 
   function selectChip(el, silent) {
@@ -471,7 +457,7 @@ const MetroQuiz = (() => {
     const best = saveBest(total, elapsed);
     showResult({
       title: '🎉 拼图完成！',
-      sub: MODE_NAMES[cfg.mode] + ' · ' + (cfg.scope ? MetroData.line(cfg.scope)?.zh : '全网挑战') +
+      sub: MODE_NAMES[cfg.mode] + ' · ' + scopeLabel() +
         ' · 官方线网图 · ' + (cfg.form === 'capsule' ? '数字胶囊' : '站点圆圈'),
       rows: [
         ['答对', `${game.corrects} 个 · +${game.corrects * 100}`],
@@ -517,8 +503,9 @@ const MetroQuiz = (() => {
   /* ---------- 历史最佳 ---------- */
 
   function bestKeyOf() {
-    // 形式计入最佳键：圆圈/胶囊的可玩性与提示密度不同，成绩分开记
-    return `${cfg.mode}|${cfg.style}|${cfg.scope || '全网'}|${cfg.style === 'official' ? cfg.form : 'geo'}`;
+    // 形式计入最佳键：圆圈/胶囊的可玩性与提示密度不同，成绩分开记；
+    // 范围多选按键内排序归一（同一组合不同点击序=同一键）
+    return `${cfg.mode}|${cfg.style}|${cfg.scopes.length ? [...cfg.scopes].sort().join('+') : '全网'}|${cfg.style === 'official' ? cfg.form : 'geo'}`;
   }
   function readBests() {
     try { return JSON.parse(localStorage.getItem(BEST_KEY)) || {}; }
@@ -590,9 +577,7 @@ const MetroQuiz = (() => {
     const q = els.filter.value.trim();
     let shown = 0;
     for (const [, c] of game.chips) {
-      const lineOK = !lineFilter ||
-        (c.kind === 'chip' ? c.value.split('|')[1] : c.kind === 'badge' ? c.value : null) === lineFilter;
-      const hit = lineOK && (!q || chipSearchText2(c).includes(q));
+      const hit = !q || chipSearchText2(c).includes(q);
       c.el.style.display = hit ? '' : 'none';
       if (hit) shown++;
     }
@@ -622,10 +607,8 @@ const MetroQuiz = (() => {
     }
     game = null;
     selectedChip = null;
-    lineFilter = null;
     els.canvas.innerHTML = '';
     els.pool.innerHTML = '';
-    if (els.linePills) els.linePills.innerHTML = '';
     els.form.hidden = true;
   }
 

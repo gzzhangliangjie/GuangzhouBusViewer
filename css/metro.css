@@ -512,31 +512,6 @@ path.dnd-target.wrong { stroke: #f85149 !important; }
 .mchip.mchip-code.selected { box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.45); }
 .mchip.mchip-code:hover { border-color: #4a9eff; box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.25); }
 
-.dock-lines {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  padding: 4px 14px 0;
-}
-.dock-pill {
-  min-width: 30px;
-  padding: 2px 8px;
-  font-size: 11px;
-  font-weight: 700;
-  border: 1px solid var(--c, #2f3742);
-  border-radius: 999px;
-  background: #1a2027;
-  color: var(--c, #c9d1d9);
-  cursor: pointer;
-}
-.dock-pill:hover { background: #232b34; }
-.dock-pill.selected {
-  background: var(--c, #4a9eff);
-  border-color: var(--c, #4a9eff);
-  color: #fff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
-}
-
 /* ---------- 结算浮层 ---------- */
 .metro-overlay {
   position: absolute;
