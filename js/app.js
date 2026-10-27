@@ -70,7 +70,7 @@
   /* ---------- 线路索引 ---------- */
 
   async function loadIndex(force) {
-    setStatus(force ? '正在刷新线路列表…' : '正在从 Overpass 拉取全市线路列表（首次约 10-30 秒）…');
+    setStatus(force ? '正在刷新线路列表…' : '正在加载本地线路数据…');
     els.refresh.disabled = true;
     setLoading(true);
     try {
@@ -80,7 +80,8 @@
       });
       state.index.sort((a, b) => a.ref.localeCompare(b.ref, 'zh-Hans-CN', { numeric: true }));
       els.count.textContent = state.index.length;
-      setStatus(`已加载 ${state.index.length} 条线路记录（每 24 小时自动更新缓存）`);
+      setStatus(`已加载 ${state.index.length} 条线路记录` +
+        (force ? '（已在线更新）' : '（本地数据，点「刷新」可在线更新）'));
       renderList();
     } catch (err) {
       setStatus('线路列表获取失败：' + err.message + '，可点击“刷新”重试', true);

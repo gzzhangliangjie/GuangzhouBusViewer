@@ -19,8 +19,34 @@ const Overpass = (() => {
   /**
    * 所有镜像并发竞速，最先返回有效结果者胜（串行轮询太慢：4 镜像 × 30s = 2 分钟，
    * 本机网络对镜像时通时断，竞速把上限压到单个超时 30s）。
+   * 连接级失败记忆（2026-10-27）：fetch 抛 TypeError（TLS 握手被掐/DNS 等网络层失败，
+   * Chromium 会打 "handshake failed" 到 stderr）的镜像记 6h，期间竞速跳过——
+   * 否则每次启动后台刷新都白打一轮被掐主机；HTTP 层错误(429/504)是能通的，不记。
+   * 全部镜像都在记忆期则放弃跳过（宁可慢不可瘫）。
    */
+  const HEALTH_KEY = 'gzbus.mirror-health.v1';
+  const HEALTH_SKIP_MS = 6 * 60 * 60 * 1000;
+
+  function recentConnectFails(now) {
+    let h = null;
+    try { h = JSON.parse(localStorage.getItem(HEALTH_KEY)); } catch { /* 忽略 */ }
+    const out = {};
+    if (h) for (const [m, at] of Object.entries(h)) if (now - at < HEALTH_SKIP_MS) out[m] = at;
+    return out;
+  }
+
+  function noteConnectFail(mirror) {
+    try {
+      const h = JSON.parse(localStorage.getItem(HEALTH_KEY)) || {};
+      h[mirror] = Date.now();
+      localStorage.setItem(HEALTH_KEY, JSON.stringify(h));
+    } catch { /* 配额满等忽略 */ }
+  }
+
   async function runQuery(query, { onMirrorFail } = {}) {
+    const bad = recentConnectFails(Date.now());
+    const mirrors = MIRRORS.filter(m => !(m in bad));
+    const list = mirrors.length ? mirrors : MIRRORS;
     const attempt = async mirror => {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
@@ -37,12 +63,15 @@ const Overpass = (() => {
           throw new Error('服务端: ' + String(json.remark).slice(0, 80));
         }
         return json;
+      } catch (e) {
+        if (e instanceof TypeError) noteConnectFail(mirror);
+        throw e;
       } finally {
         clearTimeout(timer);
       }
     };
     try {
-      return await Promise.any(MIRRORS.map(attempt));
+      return await Promise.any(list.map(attempt));
     } catch (agg) {
       const errs = (agg && agg.errors) || [];
       const msg = errs.length ? errs[errs.length - 1].message : '全部超时';
@@ -67,13 +96,13 @@ const Overpass = (() => {
     const key = 'gzbus.index.v1';
     const cached = loadCache(key);
 
-    // 本地先行：缓存/随包快照任一有数据 → 立即返回并集（秒出列表），
-    // 在线刷新转后台静默做。首次加载绝不能让 UI 等镜像（本机到镜像时通时断）。
+    // 本地先行：缓存/随包快照任一有数据 → 立即返回并集（秒出列表），绝不联网——
+    // 启动联网会被本机网络掐 TLS 握手、Chromium 刷 "handshake failed" 到 stderr
+    // （2026-10-27 用户令：启动只用本地数据，联网刷新只走手动「刷新」按钮 force=true）
     if (!force) {
       const snap = await loadIndexSnapshot();
       const local = (cached && Array.isArray(cached.data) && cached.data.length) ? cached.data : null;
       if ((local && local.length) || (snap && snap.data.length)) {
-        refreshIndexInBackground();
         if (snap) return mergeWithSnapshot(local || []);
         return local;
       }
@@ -109,29 +138,6 @@ const Overpass = (() => {
       }
       throw err;
     }
-  }
-
-  // 后台静默刷新索引（成功只写缓存，不影响已显示的列表）
-  let idxRefreshing = false;
-  async function refreshIndexInBackground() {
-    if (idxRefreshing) return;
-    idxRefreshing = true;
-    try {
-      const query = `[out:json][timeout:90];${AREA_GUANGZHOU}->.gz;rel(area.gz)["route"="bus"];out tags;`;
-      const json = await runQuery(query);
-      if (!json || !json.elements) return;
-      const data = json.elements.map(el => ({
-        id: el.id,
-        ref: el.tags.ref || (el.tags.name || '').split(/[：（]/)[0] || '未知',
-        name: el.tags.name || '',
-        from: el.tags.from || '',
-        to: el.tags.to || '',
-        operator: el.tags.operator || '',
-        colour: el.tags.colour || ''
-      }));
-      if (data.length > 1000) saveCache('gzbus.index.v1', { at: Date.now(), data });
-    } catch { /* 静默 */ }
-    finally { idxRefreshing = false; }
   }
 
   // 缓存/在线结果 与 随包快照按 id 并集：旧缓存缺线（曾遇响应截断缺 90-120 段）也能补全
