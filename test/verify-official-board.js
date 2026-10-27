@@ -130,7 +130,8 @@ app.whenReady().then(async () => {
     return { hotspots: it.hotspots.size, dock: document.querySelectorAll('#chip-pool .mchip').length,
       hidden: it.hiddenCount, lineSt, dimmed, kept, total };
   })()`);
-  check('④3号线 池=本线站数(谜面)', step5.dock === step5.lineSt && step5.hidden === step5.lineSt,
+  check('④3号线 池=藏=热区=本线站数(他线站不设热区不响应)',
+    step5.dock === step5.lineSt && step5.hidden === step5.lineSt && step5.hotspots === step5.lineSt,
     `池${step5.dock} 藏${step5.hidden} 本线${step5.lineSt} 热区${step5.hotspots}`);
   check('④走廊按色淡化(本线保留)', step5.kept > 5 && step5.dimmed === step5.total - step5.kept,
     `淡${step5.dimmed} 留${step5.kept}/总${step5.total}`);

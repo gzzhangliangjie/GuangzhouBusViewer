@@ -237,6 +237,9 @@ const MetroBoard = (() => {
     function buildHotspots(opts) {
       if (mode !== 'name' && mode !== 'both') return;
       for (const [nm, st] of Object.entries(QD().stations)) {
+        // 单线 scope: 他线站=淡化背景, 不设热区不响应(点/拖全屏蔽, 2026-10-27 用户令;
+        // 旧口径"他线站可作错误目标−10"废止)
+        if (opts.scope && !st.lines.includes(opts.scope)) continue;
         if (opts.placedNames && opts.placedNames.has(nm)) continue;
         const mk = L.circleMarker(ll(st.x, st.y), {
           radius: 20, stroke: false, fill: true, fillColor: '#2f7fd1', fillOpacity: 0,
@@ -296,11 +299,11 @@ const MetroBoard = (() => {
       if (!opts.interactive) return;
       const c = map.getContainer();
       c.addEventListener('dragover', e => {
-        // 必须取消 dragover，否则浏览器对未取消区域判 no-drop、松手不派发 drop——
-        // 圈已亮(≤SNAP_PX)就须真能放（geo 棋盘 wireContainerDnD 同款写法）
-        e.preventDefault();
         const rect = c.getBoundingClientRect();
         const t = nearestTarget(e.clientX - rect.left, e.clientY - rect.top, SNAP_PX);
+        // 圈亮(≤SNAP_PX)才取消 dragover 默认: 取消=浏览器允放; 不取消=判 no-drop
+        // (光标🚫、松手不派发 drop)——圈亮↔可放双向一致(2026-10-27 用户令)
+        if (t) e.preventDefault();
         setSnap(t ? t.ref : null);
       });
       c.addEventListener('drop', e => {
