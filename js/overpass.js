@@ -43,40 +43,48 @@ const Overpass = (() => {
     } catch { /* 配额满等忽略 */ }
   }
 
-  async function runQuery(query, { onMirrorFail } = {}) {
-    const bad = recentConnectFails(Date.now());
-    const mirrors = MIRRORS.filter(m => !(m in bad));
-    const list = mirrors.length ? mirrors : MIRRORS;
-    const attempt = async mirror => {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
-      try {
-        const res = await fetch(mirror, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: 'data=' + encodeURIComponent(query),
-          signal: ctrl.signal
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const json = await res.json();
-        if (json.remark && /error/i.test(json.remark)) {
-          throw new Error('服务端: ' + String(json.remark).slice(0, 80));
+  async function runQuery(query, { onMirrorFail, onRound, rounds = 3 } = {}) {
+    // 多轮竞速（2026-10-29）：镜像时通时断（mail.ru 504 后 15s 内 200 实测），
+    // 单轮竞速一轮全败就报错=道路查看跪了的主因；轮间只等 1.5s，镜像健康记忆跨轮生效
+    for (let round = 1; round <= rounds; round++) {
+      if (onRound && round > 1) onRound(round);
+      const bad = recentConnectFails(Date.now());
+      const mirrors = MIRRORS.filter(m => !(m in bad));
+      const list = mirrors.length ? mirrors : MIRRORS;
+      const attempt = async mirror => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+        try {
+          const res = await fetch(mirror, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent(query),
+            signal: ctrl.signal
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          const json = await res.json();
+          if (json.remark && /error/i.test(json.remark)) {
+            throw new Error('服务端: ' + String(json.remark).slice(0, 80));
+          }
+          return json;
+        } catch (e) {
+          if (e instanceof TypeError) noteConnectFail(mirror);
+          throw e;
+        } finally {
+          clearTimeout(timer);
         }
-        return json;
-      } catch (e) {
-        if (e instanceof TypeError) noteConnectFail(mirror);
-        throw e;
-      } finally {
-        clearTimeout(timer);
+      };
+      try {
+        return await Promise.any(list.map(attempt));
+      } catch (agg) {
+        const errs = (agg && agg.errors) || [];
+        const msg = errs.length ? errs[errs.length - 1].message : '全部超时';
+        if (round === rounds) {
+          if (onMirrorFail) onMirrorFail('并发竞速', new Error(msg));
+          throw new Error('所有 Overpass 镜像均失败（' + msg + '，已试 ' + rounds + ' 轮）');
+        }
+        await sleep(1500);
       }
-    };
-    try {
-      return await Promise.any(list.map(attempt));
-    } catch (agg) {
-      const errs = (agg && agg.errors) || [];
-      const msg = errs.length ? errs[errs.length - 1].message : '全部超时';
-      if (onMirrorFail) onMirrorFail('并发竞速', new Error(msg));
-      throw new Error('所有 Overpass 镜像均失败（' + msg + '）');
     }
   }
 
