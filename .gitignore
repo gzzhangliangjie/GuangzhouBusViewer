@@ -25,3 +25,4 @@ data/read-sheet-map.json
 data/sheet-mapping.json
 data/_l*.json
 data/_sw-walk.json
+tools/scratch.py

@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import custom_params as CP   # 定制参数中心(特殊优先, 纯数据)
+SG = CP.STANDARD_GAPS        # 标准间隔表(G层, 2026-10-28定稿: 唯一数值源, 引擎门禁成对声明)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES_DIR = os.path.join(ROOT, 'assets', 'lines')
@@ -43,7 +44,7 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
          '21号线', '22号线', '广佛线', 'APM线']
 
 SPREAD_CIRC = 9.0        # 同名实例最大两两距离阈值: 内=共享圆, 外=胶囊包络
-BADGE_H = 13.5           # 徽标高=1.5×序号胶囊高(codes全网编号牌 H=9.0), 2026-10-24用户定稿;
+BADGE_H = SG['BADGE_H']  # 徽标高=1.5×序号胶囊高(G层值源), 2026-10-24用户定稿;
                          # 宽随各卡徽标原比例(原高均43 -> 统一scale=13.5/43≈0.314)
 FORCE_CAPSULE = CP.FORCE_CAPSULE   # 钉距<=9仍按胶囊: 几何锁死站显式豁免(值源=custom_params)
 CAP_W = 10.0             # 胶囊白色带宽(=直径)
@@ -51,12 +52,8 @@ CAP_RING = 2.0           # 胶囊黑描边宽
 CIRC_R_MULTI = 5.0       # 多线共享圆半径
 INK = '#1a1a1a'
 CORRIDOR_HALF = 3.5      # 走廊 stroke-width 7 的半宽
-GAP_CORRIDOR = 2.0       # 标签-走廊净距下限
-GAP_MARKER = 1.5         # 标签-标记净距下限
-GAP_LABEL = 1.5          # 标签-标签净距下限
 FONT_ZH = 10.5
 DIRS = [(0, -1), (1, 0), (1, -1), (-1, 0), (-1, -1), (0, 1), (1, 1), (-1, 1)]
-RINGS = [4.0, 12.0, 20.0]
 
 
 # ---------- 几何 ----------
@@ -247,39 +244,26 @@ def marker_anchor(mk, dx, dy):
     return cx + dx * r, cy + dy * r
 
 
-def clearances_ok(rect, mk, placed):
-    x, y, w, h = rect
-    for nm2, x2, y2, w2, h2 in placed:
-        if not (x + w + GAP_LABEL < x2 or x2 + w2 + GAP_LABEL < x or
-                y + h + GAP_LABEL < y2 or y2 + h2 + GAP_LABEL < y):
-            return False
-    for _, ax, ay, bx, by, _c in corridors:
-        if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + GAP_CORRIDOR:
-            return False
-    for other in markers:
-        if other is mk:
-            continue
-        if other['kind'] == 'capsule':
-            edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
-            for a, b in edges:
-                if rect_seg_dist(rect, a, b) < CAP_W / 2 + GAP_MARKER:
-                    return False
-        else:
-            ox, oy = other['center']
-            qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
-            if dist((ox, oy), (qx, qy)) < other['r'] + GAP_MARKER:
-                return False
-    return True
-
-
 labels = []              # (名, cx, 基线y) 全部站名统一7.5px加粗(2026-10-22用户: 大小间距全线一致)
 placed_boxes = []
+label_src = {}           # 站名 -> {fs, src}: 胜出候选的定位依据(layout-report 审计数据)
 failed = []
+# 编号胶囊rect(codes层持久化的确定性数据, 见gen-codes-cards落盘说明): 站名搜索即避让(L2→L3闭环),
+# 徽标落位_place_ok亦用——加载须先于站名段(st_clear引用)。
+_chip_obstacles = []
+_chip_path = os.path.join(ROOT, 'data', '_chip-rects.json')
+if os.path.exists(_chip_path):
+    try:
+        _cr = json.load(open(_chip_path, encoding='utf-8'))
+        _chip_obstacles = [tuple(r) for r in _cr.get('chips', []) + _cr.get('rings', [])]
+    except (ValueError, KeyError):
+        _chip_obstacles = []
 transfers = [m for m in markers if len(m['lines']) > 1]
 st_labels = []
 ST_FONT = 7.5
-RINGS_TIGHT = [4.0, 8.0, 13.0, 19.0]
-ST_GAP = 3.0             # 标签盒-本站标记最小净距(用户: 太近贴在一起, 2026-10-22)
+RINGS_TIGHT = list(SG['LABEL_RING'])   # 环梯(G层值源; 档0=紧环标准位)
+ST_GAP = SG['LABEL_GAP']  # 标签盒-本站标记最小净距(G层值源; 太近贴在一起, 2026-10-22)
+_LABEL_OTHER = SG['LABEL_OTHER']   # 站名-他站标记/他站名净距(G层值源)
 
 
 def st_w(nm):
@@ -308,9 +292,9 @@ def st_clear(rect, own_mk):
         if other is not own_mk and dist((cx_, cy_), other['center']) < od - 1.0:
             return False
     for nm2, x2, y2, w2, h2 in placed_boxes:
-        if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
+        if not (x + w + _LABEL_OTHER < x2 or x2 + w2 + _LABEL_OTHER < x or y + h + _LABEL_OTHER < y2 or y2 + h2 + _LABEL_OTHER < y):
             return False
-    _cor_need = _pol['corridor'] if _pol else CORRIDOR_HALF + 1.0
+    _cor_need = _pol['corridor'] if _pol else CORRIDOR_HALF + SG['LABEL_CORRIDOR']
     for nm2, ax, ay, bx, by, _c in corridors:
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < _cor_need:
             return False
@@ -320,12 +304,12 @@ def st_clear(rect, own_mk):
         if other['kind'] == 'capsule':
             edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
             for a, b in edges:
-                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 1.0:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + _LABEL_OTHER:
                     return False
         else:
             ox, oy = other['center']
             qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
-            if dist((ox, oy), (qx, qy)) < other['r'] + 1.0:
+            if dist((ox, oy), (qx, qy)) < other['r'] + _LABEL_OTHER:
                 return False
     return True
 
@@ -342,7 +326,7 @@ def st_clear_noline(rect, own_mk, gap):
         if other is not own_mk and dist((cx_, cy_), other['center']) < od - 1.0:
             return False
     for nm2, x2, y2, w2, h2 in placed_boxes:
-        if not (x + w + 1.0 < x2 or x2 + w2 + 1.0 < x or y + h + 1.0 < y2 or y2 + h2 + 1.0 < y):
+        if not (x + w + _LABEL_OTHER < x2 or x2 + w2 + _LABEL_OTHER < x or y + h + _LABEL_OTHER < y2 or y2 + h2 + _LABEL_OTHER < y):
             return False
     for other in markers:
         if other is own_mk:
@@ -350,12 +334,12 @@ def st_clear_noline(rect, own_mk, gap):
         if other['kind'] == 'capsule':
             edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
             for a, b in edges:
-                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 1.0:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + _LABEL_OTHER:
                     return False
         else:
             ox, oy = other['center']
             qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
-            if dist((ox, oy), (qx, qy)) < other['r'] + 1.0:
+            if dist((ox, oy), (qx, qy)) < other['r'] + _LABEL_OTHER:
                 return False
     return True
 
@@ -384,30 +368,27 @@ def label_policy(nm):
         if nm in _g['stations']:
             return _g
     return None
-ST_FONT2 = 6.0   # 二档小字(向后兼容引用)
-ST_TIERS = [(7.5, 8.5), (6.0, 7.0), (5.0, 6.0), (4.2, 5.0)]   # 逐档缩小到放得下(2026-10-22用户: 竖排诡异改回横排, 有重叠字就小点)
+ST_TIERS = SG['FONT_LADDER']   # (字号,盒高)逐档缩小到放得下(G层值源; 2026-10-22用户: 竖排诡异改回横排, 有重叠字就小点)
 
 
 def st_wfs(nm, fs):
     return sum(fs if ord(ch) > 0x2E80 else 0.56 * fs for ch in nm)
 
 
-def st_w2(nm):
-    return sum(ST_FONT2 if ord(ch) > 0x2E80 else 3.4 for ch in nm)
-
-
 def _cands_for(mk, nm, w, hh, fs):
+    """候选生成: 返回 (中心x, 中心y, src标签) —— src=定位依据(政策贴线/终点延长线/卡片方位/环梯),
+    胜出者记入 label_src 供 layout-report 审计。"""
     mx, my = mk['center']
     cands = []
     _pol = label_policy(nm)
     if _pol:                                     # 贴线列(定制): 每站圆右缘+gap(2026-10-28 用户令; 旧固定列x1696.5废;
-        cands.append((mx + mk['r'] + _pol['gap'] + w / 2, my))   # fs7.5档同吃贴线位)
+        cands.append((mx + mk['r'] + _pol['gap'] + w / 2, my, 'policy贴线'))   # fs7.5档同吃贴线位)
     if nm in term_dir:                           # 卡片规范: 终点文字在走廊延长线上(含斜线)
         ux, uy = term_dir[nm]
         ext = (w * abs(ux) + hh * abs(uy)) / 2
         r0 = (mk['r'] if mk['kind'] != 'capsule' else CAP_W / 2 + CAP_RING)
-        for g_ in (5.0, 9.0, 14.0):
-            cands.append((mx + ux * (r0 + g_ + ext), my + uy * (r0 + g_ + ext)))
+        for g_ in SG['TERM_LABEL_LADDER']:
+            cands.append((mx + ux * (r0 + g_ + ext), my + uy * (r0 + g_ + ext), 'term延长线'))
     if nm in card_label:                         # 卡片标准方位(保盒边净距钳制)
         cx, cy = card_label[nm]
         ox, oy = cx - mx, (cy - 1.75) - my
@@ -420,31 +401,33 @@ def _cands_for(mk, nm, w, hh, fs):
             if g0 < ST_GAP + 0.5:
                 px += ox / L * (ST_GAP + 0.5 - g0)
                 py += oy / L * (ST_GAP + 0.5 - g0)
-            cands.append((px, py))
+            cands.append((px, py, 'card卡片方位'))
     for ring in RINGS_TIGHT:
         for dx, dy in DIRS:
             ax, ay = marker_anchor(mk, dx, dy)
             r2 = place_box(w, hh, ax + dx * ring, ay + dy * ring, dx, dy)
-            cands.append((r2[0] + w / 2, r2[1] + hh / 2))
+            cands.append((r2[0] + w / 2, r2[1] + hh / 2, 'ring环梯'))
     return cands
 
 
 def place_one(mk):
     """横排逐档缩小直到放得下; 竖排已废(2026-10-22用户: 竖向显示诡异)。
     APM密集段: 大档(7.5/6)全拒先落东带列兜底(fs6+豁免走廊, 白光环), 不让掉进极小字档;
-    18号线冼村段右移后多数站紧环即可放(用户: 稍微重叠可接受)。"""
+    18号线冼村段右移后多数站紧环即可放(用户: 稍微重叠可接受)。
+    胜出候选的 (字号档, src来源) 记入 label_src(=layout-report 站名审计数据)。"""
     nm = mk['name']
-    for fs, hh in ((7.5, 8.5), (6.0, 7.0)):
+    for fs, hh in ST_TIERS[:2]:
         w = st_wfs(nm, fs)
-        for cx, cy in _cands_for(mk, nm, w, hh, fs):
+        for cx, cy, _src in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
             if st_clear(rect, mk):
                 labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
+                label_src[nm] = dict(fs=fs, src=_src)
                 return True
     _pol = label_policy(nm)
     if _pol:                                 # 兜底: 贴线列+豁免走廊碰撞(fs6起, 不掉4.2极小字)
-        for fs, hh in ((6.0, 7.0), (5.0, 6.0)):
+        for fs, hh in (ST_TIERS[1], ST_TIERS[2]):
             w = st_wfs(nm, fs)
             for dy2 in (0.0, -9.0, 9.0):     # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
                 cx = mk['center'][0] + mk['r'] + _pol['gap'] + w / 2   # 贴线列(与_cands_for同源)
@@ -453,14 +436,16 @@ def place_one(mk):
                 if st_clear_noline(rect, mk, _pol['gap']):
                     labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                     placed_boxes.append((nm,) + rect)
+                    label_src[nm] = dict(fs=fs, src='policy贴线兜底')
                     return True
-    for fs, hh in ((5.0, 6.0), (4.2, 5.0)):  # 非密集段继续小档
+    for fs, hh in ST_TIERS[2:]:              # 非密集段继续小档
         w = st_wfs(nm, fs)
-        for cx, cy in _cands_for(mk, nm, w, hh, fs):
+        for cx, cy, _src in _cands_for(mk, nm, w, hh, fs):
             rect = (cx - w / 2, cy - hh / 2, w, hh)
             if st_clear(rect, mk):
                 labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
+                label_src[nm] = dict(fs=fs, src=_src)
                 return True
     failed.append(nm)
     return False
@@ -505,6 +490,7 @@ _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name'])
 for mk in _mks:
     place_one(mk)
 print('  站名: %d/%d (未放: %s)' % (len(labels), len(markers), ','.join(failed) or '无'))
+_LABELS_ADOPTED = False   # codes锚表labels_inner终版是否生效(layout-report 口径)
 
 # 终版文字锚定(codes锚表labels_inner): 底图站名直接采用终版标签——两模式一套的源头统一,
 # 徽标落位/复检全部对终版文字(此前底图算法标签↔回写标签两套坐标, 徽标贴字规则被复检
@@ -522,6 +508,7 @@ if _fin_labels_inner:
         _new_labels.append((_mm.group(4), float(_mm.group(1)), float(_mm.group(2)), float(_mm.group(3)), False))
     if len(_new_labels) >= len(markers):   # >=: 多行英文标签(如广州南站三行)文本数可超站数
         labels = _new_labels
+        _LABELS_ADOPTED = True
         placed_boxes = []
         for _nm, _cx, _cy_bl, _fs, _stk in labels:
             _w = st_wfs(_nm, _fs)
@@ -542,24 +529,24 @@ def badge_rect_why(rect, placed_badges, ignore_corridor=False, own_line=None):
     2号线@广州南站判例规则化: 延长线被他线占时该档被拒, 外推/兜底自然让位。"""
     x, y, w, h = rect
     for nm2, x2, y2, w2, h2 in placed_badges:
-        if not (x + w + 6 < x2 or x2 + w2 + 6 < x or y + h + 6 < y2 or y2 + h2 + 6 < y):
+        if not (x + w + SG['BADGE_BADGE'] < x2 or x2 + w2 + SG['BADGE_BADGE'] < x or y + h + SG['BADGE_BADGE'] < y2 or y2 + h2 + SG['BADGE_BADGE'] < y):
             return '撞徽标%s' % nm2
     if not ignore_corridor or own_line is not None:
         for nm2, ax, ay, bx, by, _c in corridors:
             if own_line is not None and nm2 == own_line:
                 continue
-            if rect_seg_dist(rect, (ax, ay), (bx, by)) < CORRIDOR_HALF + 3.0:
+            if rect_seg_dist(rect, (ax, ay), (bx, by)) < SG['BADGE_CORRIDOR']:
                 return '撞走廊%s@(%g,%g)' % (nm2, ax, ay)
     for other in markers:
         if other['kind'] == 'capsule':
             edges = poly_edges(other['hull']) if len(other['hull']) > 2 else [tuple(other['hull'])]
             for a, b in edges:
-                if rect_seg_dist(rect, a, b) < CAP_W / 2 + 3.0:
+                if rect_seg_dist(rect, a, b) < CAP_W / 2 + SG['BADGE_MARKER']:
                     return '撞胶囊'
         else:
             ox, oy = other['center']
             qx = min(max(ox, x), x + w); qy = min(max(oy, y), y + h)
-            if dist((ox, oy), (qx, qy)) < other['r'] + 3.0:
+            if dist((ox, oy), (qx, qy)) < other['r'] + SG['BADGE_MARKER']:
                 return '撞站圆(%g,%g)' % (ox, oy)
     for nm2, x2, y2, w2, h2 in placed_boxes:
         if not (x + w + 2 < x2 or x2 + w2 + 2 < x or y + h + 2 < y2 or y2 + h2 + 2 < y):
@@ -573,6 +560,8 @@ def badge_rect_ok(rect, placed_badges, ignore_corridor=False, own_line=None):
 
 badges = []             # (线名, 左上x, 左上y, w, h)
 badge_home = []         # 与badges同序: 各徽标所属终点(环线=None), 贴本体校正用
+badge_src = []          # 与badges同序: 'anchor'=验收锚位终稿(只验不改, 锚点固定) | 'algo'=规则算法位
+badge_method = []       # 与badges同序: 落位方式(layout-report 审计: 锚位直落/锚位微调/文字轴gap档/走廊公式/终点网格/环线贴本体)
 badge_fail = []
 # 文字位置查询(斜线终点徽标相对文字居中用): 站名 -> (中心x, 盒中心y, 字号); 盒中心=基线+hh/2-0.8fs, hh=fs+1
 lab_by_nm = {}
@@ -592,15 +581,7 @@ for _lb in labels:
 # 且端点30px内须有站圆(广佛线0.1-2.3px裂隙端点掉mid-line教训)。
 # 环线锚位(11号线贴本体验收位, 无文字规则对象故持久化保留); 终点徽标一律文字轴规则
 _OLD_SC = CP.BADGE_ANCHOR_LEGACY_SCALE   # 锚位尺寸口径: 旧版缩放(默认0.7), 值源=custom_params
-# 编号胶囊rect(codes层持久化的确定性数据, 见gen-codes-cards落盘说明): 底图落位即考虑胶囊
-_chip_obstacles = []
-_chip_path = os.path.join(ROOT, 'data', '_chip-rects.json')
-if os.path.exists(_chip_path):
-    try:
-        _cr = json.load(open(_chip_path, encoding='utf-8'))
-        _chip_obstacles = [tuple(r) for r in _cr.get('chips', []) + _cr.get('rings', [])]
-    except (ValueError, KeyError):
-        _chip_obstacles = []
+# 编号胶囊rect加载已上移至站名段前(st_clear/place_one先于徽标段引用, L2→L3闭环)
 _anc_path = os.path.join(ROOT, 'data', 'codes-final-pins.json')
 badge_anchors = {}
 if os.path.exists(_anc_path):
@@ -629,37 +610,38 @@ def _place_ok(rect, own_ln, skip_idx=-1):
                 (rect[0] - 3.0, rect[1] + rect[3] + 3.0),
                 (rect[0] + rect[2] + 3.0, rect[1] + rect[3] + 3.0)]
     for nm2, ax, ay, bx, by, _c in corridors:
-        if rect_seg_dist(rect, (ax, ay), (bx, by)) < 6.5:
+        if rect_seg_dist(rect, (ax, ay), (bx, by)) < SG['BADGE_CORRIDOR']:
             return False
         for cpt in _corners:
-            if seg_point_dist(cpt, (ax, ay), (bx, by)) < 4.2:
+            if seg_point_dist(cpt, (ax, ay), (bx, by)) < SG['BADGE_CORNER']:
                 return False
     for r9 in _chip_obstacles:
-        if _rgap(rect, r9) < 0.3:
+        if _rgap(rect, r9) < SG['BADGE_CHIP']:
             return False
     for _nm2, _x2, _y2, _w2, _h2 in placed_boxes:
-        if _rgap(rect, (_x2, _y2, _w2, _h2)) < 0.3:
+        if _rgap(rect, (_x2, _y2, _w2, _h2)) < SG['BADGE_CHIP']:
             return False
     for _j2, (_nm2, _bx2, _by2, _bw2, _bh2) in enumerate(badges):
         if _j2 == skip_idx:
             continue
-        if _rgap(rect, (_bx2, _by2, _bw2, _bh2)) < 6.0:
+        if _rgap(rect, (_bx2, _by2, _bw2, _bh2)) < SG['BADGE_BADGE']:
             return False
     for mk in markers:
         if mk['kind'] == 'capsule':
             edges = poly_edges(mk['hull']) if len(mk['hull']) > 2 else [tuple(mk['hull'])]
-            if any(rect_seg_dist(rect, a, b) < CAP_W / 2 + 3.0 for a, b in edges):
+            if any(rect_seg_dist(rect, a, b) < CAP_W / 2 + SG['BADGE_MARKER'] for a, b in edges):
                 return False
         else:
             ox, oy = mk['center']
             qx = min(max(ox, rect[0]), rect[0] + rect[2])
             qy = min(max(oy, rect[1]), rect[1] + rect[3])
-            if dist((ox, oy), (qx, qy)) < mk['r'] + 3.0:
+            if dist((ox, oy), (qx, qy)) < mk['r'] + SG['BADGE_MARKER']:
                 return False
     return True
 
 
 line_ends = {}           # 线名 -> 焊接真终点列表(贴本体校正复用)
+badge_expect = {}        # 线名 -> 分型公式期望徽标数(G2: Σ每段max(1,真终点数); 环线段=1)
 for name in ORDER:
     _sc = BADGE_H / badge_size[name][1]
     bw, bh = badge_size[name][0] * _sc, BADGE_H
@@ -696,6 +678,26 @@ for name in ORDER:
         return False
 
     ends = [p for p in ends if not _on_seg_interior(p)]
+    # G2 枚数公式(L4分型): 段=焊接图连通分量, 每段徽标数=max(1,该段真终点数)——环线段=1枚;
+    # 布局期校验少枚/多枚, 不等quiz装载fail-loud。全网总和须=41(金丝)。
+    _comp, _cid = {}, 0
+    for _p0 in wadj:
+        if _p0 in _comp:
+            continue
+        _cid += 1
+        _stk = [_p0]
+        while _stk:
+            _q = _stk.pop()
+            if _q in _comp:
+                continue
+            _comp[_q] = _cid
+            _stk.extend(wadj[_q])
+    _per_comp = {c: 0 for c in set(_comp.values())}
+    for _e in ends:
+        _c2 = _comp.get(_e)
+        if _c2 is not None:
+            _per_comp[_c2] += 1
+    badge_expect[name] = sum(max(1, n) for n in _per_comp.values()) if _comp else 0
     line_ends[name] = ends
     # L1 已验收锚位(用户架构: 锚表=终稿持久化, 同0eff3db): 中心不变按13.5pt重算top-left,
     # 必须通过与所有元件相同的规则检查(_place_ok)——锚位不是豁免, 是规则合法解中的在选解;
@@ -707,6 +709,7 @@ for name in ORDER:
     for _ax, _ay in badge_anchors.get(name, []):
         _cx, _cy = _ax + _ow / 2, _ay + _oh / 2
         rect = (_cx - bw / 2, _cy - bh / 2, bw, bh)
+        _how = '锚位直落'
         if not _place_ok(rect, name):
             _fixed = None
             for _st in range(1, 241):
@@ -723,10 +726,13 @@ for name in ORDER:
             if _fixed:
                 print('  徽标 %s 锚位微调 %.1fpt' % (name, _dd))
                 rect = _fixed
+                _how = '锚位微调%.1fpt' % _dd
             else:
                 print('  !! 徽标 %s 锚位违规且无解, 弃锚改文字轴规则' % name)
                 continue
         badges.append((name, rect[0], rect[1], bw, bh))
+        badge_src.append('anchor')
+        badge_method.append(_how)
         _ce = min(ends, key=lambda q: dist((rect[0] + bw / 2, rect[1] + bh / 2), q)) if ends else None
         if _ce and dist((rect[0] + bw / 2, rect[1] + bh / 2), _ce) <= 120:
             badge_home.append(_ce)
@@ -754,6 +760,8 @@ for name in ORDER:
         if best:
             badges.append((name, best[1][0], best[1][1], bw, bh))
             badge_home.append(None)
+            badge_src.append('algo')
+            badge_method.append('环线贴本体')
             print('  徽标 %s 环线贴本体: 距走廊 %.0fpx' % (name, best[0]))
         else:
             badge_fail.append(name)
@@ -785,7 +793,7 @@ for name in ORDER:
             sx = 1 if dxl >= 0 else -1
             sy = 1 if dyl >= 0 else -1
             cands = []
-            for gap in (5.0, 9.0, 14.0, 20.0, 32.0, 50.0, 72.0, 100.0):
+            for gap in SG['BADGE_TEXT_LADDER']:
                 for sgx, sgy in ((sx, 0), (0, sy), (-sx, 0), (0, -sy), (sx, sy), (-sx, sy), (sx, -sy), (-sx, -sy)):
                     cx2 = lx + sgx * (lw / 2 + gap + bw / 2)
                     cy2 = lcy + sgy * (lhh / 2 + gap + bh / 2)
@@ -797,13 +805,15 @@ for name in ORDER:
                 if _place_ok(rect, name):
                     badges.append((name, rect[0], rect[1], bw, bh))
                     badge_home.append(c)
+                    badge_src.append('algo')
+                    badge_method.append('文字轴gap%g' % _gap)
                     done = True
                     break
         # 兜底: 旧走廊方向公式(徽标中心=终点圆心+走廊方向×(r0+gap+半伸长), 可盖本线延长线)
         if not done:
             r0 = tm['r'] if tm['kind'] != 'capsule' else CAP_W / 2 + CAP_RING
             ext_b = (bw * abs(ux) + bh * abs(uy)) / 2
-            for gap in (7.0, 12.0, 20.0, 32.0, 50.0, 72.0, 100.0):
+            for gap in SG['BADGE_TERM_LADDER']:
                 d = r0 + gap + ext_b
                 cx2 = tm['center'][0] + ux * d
                 cy2 = tm['center'][1] + uy * d
@@ -811,6 +821,8 @@ for name in ORDER:
                 if _place_ok(rect, name):
                     badges.append((name, rect[0], rect[1], bw, bh))
                     badge_home.append(c)
+                    badge_src.append('algo')
+                    badge_method.append('走廊公式gap%g' % gap)
                     done = True
                     break
         # 终点邻域网格(终点±150)
@@ -823,6 +835,8 @@ for name in ORDER:
                     if badge_rect_ok(rect, badges):
                         badges.append((name, rect[0], rect[1], bw, bh))
                         badge_home.append(c)
+                        badge_src.append('algo')
+                        badge_method.append('终点网格reach%g' % reach)
                         done = True
                         break
                 if done:
@@ -834,11 +848,13 @@ for name in ORDER:
 # 起点终点已天然覆盖(旧BADGE_AT_2ND单端版式随手动锚一并废除, 2026-10-24)。
 
 # 落位审计: 每枚复检(应全过; 2号线/22号线曾盖线的防线) + 离本体距离(过远=偏离本体)。
+_recheck_hits = []      # 复检撞清单(N7 硬失败用; 2026-10-28 P1: 旧版只print不拦=门禁洞)
 # 复检口径=与落位同一套_place_ok(跳过自身); 偏离本体>110px仅告警——文字轴规则下徽标跟
 # 终版文字走, 个别被nudge推远的终点文字(如冼村)带着徽标离走廊稍远属规则内行为。
 for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
     if not _place_ok((_bx, _by, _bw, _bh), _nm, skip_idx=_i):
         print('  !! 徽标 %s 复检撞' % _nm)
+        _recheck_hits.append(_nm)
 
 # 站距钳制(2026-10-24 用户: 10和11要算的是到站点的距离——徽标属于终点站, 视觉的远=离站远;
 # 旧锚位中心距站44~82px, 大盒时代盒缘够到站体, 缩到13.5pt后同中心小盒脱站):
@@ -859,6 +875,8 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
     _stn_nm, _stn_c = badge_stn[_i]
     if not _stn_c:
         continue
+    if badge_src[_i] == 'anchor':
+        continue   # 锚位=验收终稿只验不改(锚点固定原则, 2026-10-28): 规则算法位才参与站距钳制
     _mk = _mk_by_name[_stn_nm]
     _r_out = (_mk['r'] if _mk['kind'] != 'capsule' else CAP_W / 2 + CAP_RING) + 4.0
     _bc = (_bx + _bw / 2, _by + _bh / 2)
@@ -883,6 +901,7 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
                 if _place_ok(_trect, _nm, skip_idx=_i):
                     badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
                     print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx(角偏%.0f°)' % (_nm, _d, _R, _dth))
+                    badge_method[_i] = badge_method[_i] + '+站距钳制'
                     _done2 = True
                     break
             if _done2:
@@ -894,6 +913,7 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
             if _place_ok(_trect, _nm, skip_idx=_i):
                 badges[_i] = (_nm, _trect[0], _trect[1], _bw, _bh)
                 print('  徽标 %s 站距钳制: 距站%.0f->%.0fpx(推出)' % (_nm, _d, _target))
+                badge_method[_i] = badge_method[_i] + '+站距钳制'
                 break
 
 # 文字轴合规复查(2026-10-24 用户: 徽标跟终点文字的距离和居中 批量检查 不符合规范的调整):
@@ -904,7 +924,7 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
 # 环线(home=None)跳过。放在站距钳制之后: 两规则冲突时文字轴结果为准。
 def _text_cands(lx, lcy, lw, lhh, bw, bh, sx, sy):
     _cands = []
-    for _gap in (5.0, 9.0, 14.0, 20.0, 32.0, 50.0, 72.0, 100.0):
+    for _gap in SG['BADGE_TEXT_LADDER']:
         for _sgx, _sgy in ((sx, 0), (0, sy), (-sx, 0), (0, -sy),
                            (sx, sy), (-sx, sy), (sx, -sy), (-sx, -sy)):
             _cx2 = lx + _sgx * (lw / 2 + _gap + bw / 2)
@@ -917,6 +937,8 @@ def _text_cands(lx, lcy, lw, lhh, bw, bh, sx, sy):
 for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
     if badge_home[_i] is None:
         continue
+    if badge_src[_i] == 'anchor':
+        continue   # 锚位=验收终稿只验不改(锚点固定原则): 站文分离站不复议
     _stn_nm, _stn_c = badge_stn[_i]
     _bl = lab_by_nm.get(_stn_nm)
     if not _bl:
@@ -949,6 +971,7 @@ for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
             break
     if _new and (abs(_new[0] - _bx) > 0.3 or abs(_new[1] - _by) > 0.3):
         badges[_i] = (_nm, _new[0], _new[1], _bw, _bh)
+        badge_method[_i] = badge_method[_i] + '+文字轴复查'
         print('  徽标 %s 文字轴复查调整: (%g,%g)->(%g,%g) [压字%s 距文字%.0f]'
               % (_nm, _bx, _by, _new[0], _new[1], _g0 < 0.3, _dt0))
 
@@ -1117,6 +1140,15 @@ if failed:
     errs.append('N3 标签放不下: %s' % ', '.join(failed))
 if badge_fail:
     errs.append('N6 徽标放不下: %s' % ', '.join(badge_fail))
+# G2 枚数公式(2026-10-28): 每线徽标数 = 分型公式 Σ每段max(1,真终点数), 少枚/多枚布局期即红
+_ct2 = {}
+for _nm2, _x2, _y2, _w2, _h2 in badges:
+    _ct2[_nm2] = _ct2.get(_nm2, 0) + 1
+for _ln2 in ORDER:
+    if _ct2.get(_ln2, 0) != badge_expect.get(_ln2, 0):
+        errs.append('G2 %s 徽标数%d != 分型公式%d' % (_ln2, _ct2.get(_ln2, 0), badge_expect.get(_ln2, 0)))
+if _recheck_hits:
+    errs.append('N7 徽标复检撞(终检_place_ok不过): %s' % ', '.join(_recheck_hits))
 for i, a in enumerate(markers):
     for b in markers[i + 1:]:
         if a['name'] == b['name']:
@@ -1130,6 +1162,13 @@ audit['corridors'] = len(corridors)
 audit['badges'] = [(nm, round(bx, 1), round(by, 1)) for nm, bx, by, _w, _h in badges]
 audit['badge_failed'] = badge_fail
 audit['viewBox'] = [round(v, 2) for v in vb]
+# layout-report(P1, 2026-10-28): 每元素定位依据审计——站名=胜出候选来源/字号档, 徽标=锚位|算法+方式
+audit['layout_report'] = dict(
+    labels_source='codes锚表labels_inner终版' if _LABELS_ADOPTED else '底图算法搜索',
+    labels=[dict(nm=_ln2, fs=_v['fs'], src=_v['src']) for _ln2, _v in sorted(label_src.items())],
+    badges=[dict(ln=_nm2, src=badge_src[_i], how=badge_method[_i])
+            for _i, (_nm2, _x2, _y2, _w2, _h2) in enumerate(badges)],
+)
 with open(OUT_JSON, 'w', encoding='utf-8') as f:
     json.dump(audit, f, ensure_ascii=False, indent=1)
 

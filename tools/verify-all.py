@@ -37,6 +37,22 @@ for f in ('assets/lines/network-全网.svg', 'assets/lines/network-全网.codes.
         fails.append('XML语法错误 %s: %s' % (f, e))
         print('  %s FAIL: %s' % (f, e))
 
+# 0.5) G1 分组结构(2026-10-28 P1): 组集合与z序冻结——底图6组/codes5组,
+#     组序=绘制z序契约(docs/layout-refactor-plan.md §3); 调组序/组外塞元素=门禁红。
+print('== 0.5) G1 分组结构 ==')
+import re as _re1
+_G1_EXPECT = {
+    BASE: ['走廊', '站圆', '换乘标记', '线路徽标', '站名标注', '图例'],
+    CODES: ['走廊', '线路徽标', '站名标注', '编号牌', '图例'],
+}
+for _f1, _want1 in _G1_EXPECT.items():
+    _got1 = _re1.findall(r'<g id="([^"]+)"', open(_f1, encoding='utf-8').read())
+    if _got1 != _want1:
+        fails.append('G1 %s 分组结构漂移: 实测%s' % (_f1, _got1))
+        print('  %s FAIL: %s' % (_f1, _got1))
+    else:
+        print('  %s OK (%d组)' % (_f1, len(_got1)))
+
 # 1) 全链重跑 + 幂等
 if '--quick' not in sys.argv:
     print('== 1) 重跑 build-network / gen-codes-cards / sync ==')

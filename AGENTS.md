@@ -1,7 +1,7 @@
 # 广州地铁线网图工程纪律（每次会话必读, 违者返工）
 
 ## 1. 禁用 heredoc 内联 python（用户明令, 已四次违纪）
-- 任何 Bash 命令含 `<<` 一律不发。多行 python → Write 落盘 `tools/_tmp-*.py` → 运行；改代码只用 Edit/Write 工具。
+- 任何 Bash 命令含 `<<` 一律不发。多行 python → Write 覆盖固定草稿 `tools/scratch.py`（草稿纸runner, 自带 utf-8/chdir/ROOT/load_gen 底座, git已忽略, 每次整体覆盖）→ `python tools/scratch.py`；需留档的多批脚本才用 `tools/_tmp-*.py`。改代码只用 Edit/Write 工具。
 - 原因: 命令串经多层传输, 反斜杠序列必被吃（`\1`→`\x01` 静默写坏文件、`\\`→`\`、`\\n`→真实换行）。自我合理化"这个小补丁很简单"=违纪信号, 出现即停。
 - 落盘脚本先 `python -m py_compile` 再跑。
 
@@ -25,7 +25,7 @@
 - **定位未填写（2026-10-27 用户令）**：官方棋盘局内"定位未填写"按钮 → `MetroBoard.unfilledList()/focusUnfilled()`（目标=站名热区∪徽标/编号牌槽位，放置即移除天然只剩未填）聚焦居中+CSS 闪烁三连（`.mb-blink`，只放大不缩小，FOCUS_ZOOM=0）；quiz 层洗牌袋（棋面一变重洗+避开上次）保证连点尽量不重复。断言 verify-official-board ⑪（连点318次去重318/318）+⑫（徽标槽定位居中闪烁；一线一填全清后提示无未填，全网线号局）。
 - **挑战范围多选（2026-10-27 用户令"保留可选线路但做成多选，更好玩"）**：`cfg.scopes` 数组、空=全网挑战；"全网挑战"pill=清空，线 pill 多选切换。官方板 `render({scope})`/geo 板 `render({scopeRef})` 均接受数组（内部 scopeSet/scopeArr 归一，单线名串仍兼容）；藏牌/槽位/热区/淡化/取景/编号牌序全按所选线并集口径；bestKey 键内排序归一（同组合不同点击序=同键）。断言 ⑤（多选 GF+1号线：槽=并集4枚 池=2 一线一填全清）+⑥（geo 并集冒烟）。
 - **线号模式无数字胶囊（2026-10-27 用户令"带颜色的数字胶囊=提示，去掉"）**：线号模式强制站点圆圈形式——startGame 强制 `cfg.form='circle'`、设置页形式块禁用（.disabled）、局内"形式"按钮隐藏；挑战模式保留胶囊（胶囊是站名谜面的站点标注，去掉则无站标记）。名牌池线号药丸过滤随之移除（#dock-lines 已删，线号模式下按线找牌走范围多选）。断言 ⑤（形式块禁用+局内按钮隐藏+圆圈板无#编号牌）+⑩（药丸行已移除哨兵）。
-- **定制参数中心（2026-10-28 用户定稿"特殊规则优先，集中管理"）**：站级/线级布局定制的唯一集中地=`tools/custom_params.py`（纯数据：LABEL_POLICY 标签策略含 data-pin-base 戳 / CHIP_FONT_OVERRIDE 牌字号 / LINE_DISPLAY 线路显示名(唯一不可派生=广佛线GF) / FORCE_CAPSULE / TERM_DIR_EXEMPT / BADGE_ANCHOR_LEGACY_SCALE）。通用门禁只读参数+通用默认兜底，**禁止再在通用逻辑里内嵌站名/线名分支**；同步层（sync-base）零站名只认戳。不进中心：几何真源=rebuild10 CFG；线名归一函数=line_disp/badge_text_to_line=gen 共享接口；校准阈值只写判例注释。**数据源全名口径（2026-10-28 用户令"数据源头规避"）**：CSV/编号总表一律写全名（'APM线' 非 'APM'），显示名由 gen.line_disp 去尾派生（X号线/X线），简写只允许出现在显示面（牌面/徽标涂装）；同批删除 csv_line_to_card 简写分支、KEY2LN/徽标接受集改派生、APM_FONT 兼容别名与 gen-quiz-data 重复映射。
+- **定制参数中心（2026-10-28 用户定稿"特殊规则优先，集中管理"）**：站级/线级布局定制的唯一集中地=`tools/custom_params.py`（纯数据：LABEL_POLICY 标签策略含 data-pin-base 戳 / CHIP_FONT_OVERRIDE 牌字号 / LINE_DISPLAY 线路显示名(唯一不可派生=广佛线GF) / FORCE_CAPSULE / TERM_DIR_EXEMPT / BADGE_ANCHOR_LEGACY_SCALE / **STANDARD_GAPS 标准间隔表(G层唯一数值源: 环梯/净距/字号梯/延长线梯, 2026-10-28 P1 收编, 引擎与门禁成对声明禁单边)**）。通用门禁只读参数+通用默认兜底，**禁止再在通用逻辑里内嵌站名/线名分支**；同步层（sync-base）零站名只认戳。不进中心：几何真源=rebuild10 CFG；线名归一函数=line_disp/badge_text_to_line=gen 共享接口；校准阈值只写判例注释。**数据源全名口径（2026-10-28 用户令"数据源头规避"）**：CSV/编号总表一律写全名（'APM线' 非 'APM'），显示名由 gen.line_disp 去尾派生（X号线/X线），简写只允许出现在显示面（牌面/徽标涂装）；同批删除 csv_line_to_card 简写分支、KEY2LN/徽标接受集改派生、APM_FONT 兼容别名与 gen-quiz-data 重复映射。
 
 ## 2. 管道截断雷
 - `python 生成器.py | head -N` 会 SIGPIPE 杀掉生成器——SVG 没写盘, 后续门禁读陈旧文件。跑生成器一律 `> 文件 2>&1` 后再 tail；`| grep` 安全。
@@ -36,6 +36,7 @@
 - 提交分级门禁（pre-commit 按 staged 内容分级, `tools/precommit-gate.py`）: **T1** 纯文档（*.md, docs/）放行; **T2** 产物/数据（assets/**, data/*.json）或生成器链（build-network/gen-codes-cards/sync-base）→ verify-all 全量（生成器链变更升级非 quick：重跑链+幂等，重跑输出与 staged 不一致=拒绝——产物必须随生成器变更同 commit 入库）+ accept 基线; **T3** 纯脚本 → 工具自测（`tools/selftest.py`: gen共享接口单元+产物数字金丝+快照沙箱）+ XML/基线快检。钩子不过=修复后重试; `--no-verify` 仅限用户明示。
 - ⚠️钩子文件已入库: `tools/hooks/pre-commit`（`.git/hooks/` 不受 git 版本保护）。**克隆或换机后必须安装**: `cp tools/hooks/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit`——不装=全部门禁静默失效。
 - **产物数字金丝**（selftest.py, 定稿冻结值: 41徽标/318文字/400牌/16胶囊/302圆/scale统一0.314/transform无链）随定稿变更须有意识更新——与基线 accept 同理, 不许静默漂移。
+- **布局G门禁（2026-10-28 P1）**: verify-all 0.5步=**G1 分组结构断言**（底图6组[走廊/站圆/换乘标记/线路徽标/站名标注/图例]/codes5组[走廊/线路徽标/站名标注/编号牌/图例], z序冻结, 组外塞元素/调组序即红）; build-network errs=**G2 徽标枚数公式**（每线=Σ每连通段max(1,真终点数), 全网41, 少枚多枚布局期即红）+ **N7 徽标复检撞硬失败**（终检_place_ok不过即exit 1, 旧版只print不拦=门禁洞, 11号线徽标漂移事件判例）。间隔值源=STANDARD_GAPS 成对声明。
 - **每批提交前过"三文档同步"（2026-10-26 用户令, 防废弃用例复发）**: ①selftest 金丝数字 ②AGENTS.md 条文 ③docs/network-map-spec.md——逐条对照本批改动, 冲突即改; 规范正文只写现行规则, 过期判例移"大坑档案"或标注历史。
 - **测试体系终版（2026-10-26）**: 唯一测试执行器 = `tools/selftest.py`（A.gen共享接口单元 / B.产物数字金丝 / C.快照沙箱 / D.基线锁突变自检——污染沙箱断言门禁必然翻红, 防假绿）; 产物验收不用测试框架, 由 verify-all+基线锁承担（比逐用例断言更严）。旧 pytest 套件已删除（单线卡时代过期锚, 思想已移植 selftest）, **模块被 import 时禁再包 sys.stdout**（重复包装会关底层流, rewrap 只放 `__main__`）。
 

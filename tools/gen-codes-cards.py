@@ -290,11 +290,11 @@ def parse_card(line):
 FONT = 5.5        # 牌字号(全网, 2026-10-23 五轮再缩)
 FONT_CARD = 6.0   # 单线卡字号
 # (编号牌字号覆写表 CHIP_FONT_OVERRIDE 已随定制参数中心在文件顶部装载)
-H = 9.0           # 牌高
+H = CP.STANDARD_GAPS['CHIP_H']   # 牌高(G层值源; 底图徽标BADGE_H=1.5×此值)
 H_CARD = 10.0
 PADX = 1.8        # 左右内边距
 SEPW = 2.6        # 分隔区宽(含两侧空隙)
-GAP = 1.0         # 组内牌间缝
+GAP = CP.STANDARD_GAPS['CHIP_GAP']   # 组内牌间缝(G层值源)
 CORR_HALF = 3.5   # 走廊 stroke-width 7 半宽(触线判定含线宽)
 RING_PAD = 1.2    # 多线组外描边圈的白衬宽(用户: 描边贴紧内部胶囊, 五轮2.5->1.2)
 RIM = 0.7         # 外圈黑边线宽
@@ -1367,65 +1367,11 @@ def gen_network(codes, report):
 
     chip_rects_all = [(cc[2] - cc[4] / 2, cc[3] - H / 2, cc[4], H) for cc in chips]
     ring_rects_all = [r for rs in obstacles.values() for r in rs]
-    BADGE_GAP = 8.0   # 底图规范: 徽标视觉净距>=8px
-    # 徽标规则终稿(十七轮 用户: 每个决策都是遵守规则; 无任何点名位):
-    # R0 底图位=默认(用户验收过, 终点120px内不迁)
-    # R1 撞牌/圈(净距<8) -> 终点公式gap梯度(7/12/20/32/50/72/100)沿走廊出向外推最小档
-    # R2 混淆规避: 到他线走廊描边距离 < 到本线走廊描边距离(量边不量心)
-    #    -> 贴本体网格重放(距本线走廊6.5~60px, 离他线描边>=30px, 不撞牌圈徽标,
-    #       离本线终点最近优先——10号线原位离广佛线更近=R2触发, 东侧净空位=规则输出)
-    # 环线(11号线)碰撞 -> 规范贴本体网格全域搜
-    EDGE = CORR_HALF   # 走廊描边半宽(净距量边不量心)
-
-    def _badge_grid(ln, ocx, ocy, tpx, tpy, bw2, bh2):
-        """贴本体网格重放(歧义判定触发): 硬底线=到他线走廊边不近于到本线边(混淆);
-        软偏好=离他线边>=20px(能20就20, 不行就挤——用户口径); 优选离本线终点近."""
-        own_segs = segs_of[ln]
-        other_segs = [s2 for ln2 in ORDER if ln2 != ln for s2 in segs_of[ln2]]
-        best = None
-        for s in own_segs:
-            L = ((s[2] - s[0]) ** 2 + (s[3] - s[1]) ** 2) ** 0.5
-            if L < 4:
-                continue
-            n2 = max(2, int(L / 6))
-            dxu, dyu = (s[2] - s[0]) / L, (s[3] - s[1]) / L
-            for i in range(n2 + 1):
-                qx = s[0] + (s[2] - s[0]) * i / n2
-                qy = s[1] + (s[3] - s[1]) * i / n2
-                # 采样限定: 终点邻段(终点±80pt)或原位±70pt——重放是局部优选, 不跨图迁移
-                if ((qx - tpx) ** 2 + (qy - tpy) ** 2) ** 0.5 > 80 and                    ((qx - ocx) ** 2 + (qy - ocy) ** 2) ** 0.5 > 70:
-                    continue
-                for sgn in (1, -1):
-                    nx_, ny_ = -dyu * sgn, dxu * sgn
-                    for off in (14, 20, 28, 40, 56):
-                        cx2, cy2 = qx + nx_ * off, qy + ny_ * off
-                        r2 = (cx2 - bw2 / 2, cy2 - bh2 / 2, bw2, bh2)
-                        if any(_gap(r2, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all):
-                            continue
-                        if any(_gap(r2, r2b) < 3 for _k2, r2b in badge_rects):
-                            continue
-                        # 走廊硬约束(十八轮末 用户: 1/2/10/11/22跟路线叠一块——所有移动pass
-                        # 都没查走廊, "可盖走廊"只适用于终点延长线自然位, 挪出的新位置必须
-                        # 不压任何走廊描边)
-                        if min((rect_seg_dist(r2, s2) for s2 in own_segs + other_segs), default=9e9) < 3:
-                            continue
-                        own_ed = min((rect_seg_dist(r2, s2) for s2 in own_segs), default=9e9) - EDGE
-                        oth_ed = min((rect_seg_dist(r2, s2) for s2 in other_segs), default=9e9) - EDGE
-                        # 硬底线: 不压他线描边(>=1) + 本线侧强偏好(own_ed<=oth_ed+25, 容差容纳
-                        # '广佛线上方'这类本线标注区他线在下方穿过的合法位)
-                        if oth_ed < 1 or own_ed > oth_ed + 25:
-                            continue
-                        margin_pen = 3.0 * max(0.0, 20.0 - min(oth_ed, 20.0))
-                        dt = ((cx2 - tpx) ** 2 + (cy2 - tpy) ** 2) ** 0.5
-                        dorg = ((cx2 - ocx) ** 2 + (cy2 - ocy) ** 2) ** 0.5
-                        score = dt + margin_pen   # 不再奖励'离原位近'——歧义重放本就要离开歧义侧
-                        if best is None or score < best[0]:
-                            best = (score, r2)
-        return best[1] if best else None
-
-    # 十八轮终版: 底图位 → 延长线正交居中 → 真牌圈碰撞最小挤让。就这么简单。
-    # 不做公式重放/gap梯度/网格搜索——底图位已按规范放好, 唯一要修的是编号牌引入的新碰撞。
-    BADGE_MIN = 1.0
+    BADGE_GAP = CP.STANDARD_GAPS['CODES_BADGE_GAP']   # 底图规范: 徽标视觉净距>=8px(G层值源)
+    # 徽标规则终稿(十八轮): 底图位 → 真牌圈碰撞最小挤让, 就这么简单。
+    # 不做公式重放/gap梯度/网格搜索——旧R1/R2/_badge_grid已判死删除(2026-10-28 P1:
+    # 每型一方案, 方案内禁发明变体; 底图位已按规范放好, 唯一要修的是编号牌引入的新碰撞)。
+    BADGE_MIN = CP.STANDARD_GAPS['CODES_BADGE_MIN']   # 挤让触发阈(G层值源, 不重叠口径)
     for bd in badges:
         ln = _ln_of_key(bd['key'])
         if ln:
@@ -1460,57 +1406,6 @@ def gen_network(codes, report):
                 badge_moves.append('%s:挤让%.1fpt' % (bd['key'], best9[0]))
             else:
                 badge_moves.append('%s:无解保持' % bd['key'])
-        badge_rects.append((bd['key'], rect))
-        continue
-        ocx, ocy = bd['ox'] + bw / 2, bd['oy'] + bh / 2
-        own_segs = segs_of[ln]
-        other_d = min((rect_seg_dist(rect, s2) for ln2 in ORDER if ln2 != ln
-                       for s2 in segs_of[ln2] if rect_seg_dist(rect, s2) < 150), default=9e9)
-        own_d = min(rect_seg_dist(rect, s2) for s2 in own_segs)
-        collide = any(_gap(rect, r) < BADGE_GAP for r in chip_rects_all + ring_rects_all)
-        ambiguous = (other_d - EDGE) < (own_d - EDGE) and own_d > EDGE + 1  # 他线描边更近=混淆
-        if not collide and not ambiguous:
-            badge_rects.append((bd['key'], rect))
-            continue
-        # 锚定终点=离原位最近的本线钉
-        tpx, tpy = min((((p[1] - ocx) ** 2 + (p[2] - ocy) ** 2, p[1], p[2])
-                        for nm3, lst in pins.items() for p in lst if p[0] == ln),
-                       default=(0, ocx, ocy))[1:3]
-        # R1: 终点公式 gap 梯度外推(撞牌时优先, 环线跳过公式)
-        if collide and ln != '11号线':
-            tx, ty = corridor_tangent(own_segs, tpx, tpy)
-            cxs = sum(p[1] for nm3, lst in pins.items() for p in lst if p[0] == ln) / \
-                max(1, sum(1 for nm3, lst in pins.items() for p in lst if p[0] == ln))
-            cys = sum(p[2] for nm3, lst in pins.items() for p in lst if p[0] == ln) / \
-                max(1, sum(1 for nm3, lst in pins.items() for p in lst if p[0] == ln))
-            if (tpx - cxs) * tx + (tpy - cys) * ty < 0:
-                tx, ty = -tx, -ty   # 出向=背离线体质心
-            r0 = 7.0 if len(by_st.get(next((nm3 for nm3, lst in pins.items()
-                    for p in lst if p[0] == ln and p[1] == tpx and p[2] == tpy), ''), [])) >= 2 else 4.5
-            half = (bw * abs(tx) + bh * abs(ty)) / 2
-            placed1 = False
-            for rung in (7, 12, 20, 32, 50, 72, 100):
-                d2 = r0 + rung + half
-                ccx, ccy = tpx + tx * d2, tpy + ty * d2
-                r2 = (ccx - bw / 2, ccy - bh / 2, bw, bh)
-                if (all(_gap(r2, r) >= BADGE_GAP for r in chip_rects_all + ring_rects_all) and
-                        all(_gap(r2, r2b) >= 3 for _k2, r2b in badge_rects)):
-                    rect = r2
-                    bd['tx'], bd['ty'] = r2[0], r2[1]
-                    badge_moves.append('%s:R1外推gap%d' % (bd['key'], rung))
-                    placed1 = True
-                    break
-            if placed1:
-                badge_rects.append((bd['key'], rect))
-                continue
-        # R2/环线: 贴本体网格
-        r3 = _badge_grid(ln, ocx, ocy, tpx, tpy, bw, bh)
-        if r3 is not None:
-            rect = r3
-            bd['tx'], bd['ty'] = r3[0], r3[1]
-            badge_moves.append('%s:重放(%s)' % (bd['key'], '撞牌' if collide else '混淆'))
-        else:
-            badge_moves.append('%s:无合法位保持原位' % bd['key'])
         badge_rects.append((bd['key'], rect))
     report['badge_moves'] = badge_moves
 
