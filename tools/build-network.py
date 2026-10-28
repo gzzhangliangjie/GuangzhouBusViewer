@@ -28,6 +28,9 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import custom_params as CP   # 定制参数中心(特殊优先, 纯数据)
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES_DIR = os.path.join(ROOT, 'assets', 'lines')
 OUT_SVG = os.path.join(LINES_DIR, 'network-全网.svg')
@@ -42,7 +45,7 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
 SPREAD_CIRC = 9.0        # 同名实例最大两两距离阈值: 内=共享圆, 外=胶囊包络
 BADGE_H = 13.5           # 徽标高=1.5×序号胶囊高(codes全网编号牌 H=9.0), 2026-10-24用户定稿;
                          # 宽随各卡徽标原比例(原高均43 -> 统一scale=13.5/43≈0.314)
-FORCE_CAPSULE = {'镇龙'}  # 钉距<=9仍按胶囊: 几何锁死站的显式豁免(2026-10-22)
+FORCE_CAPSULE = CP.FORCE_CAPSULE   # 钉距<=9仍按胶囊: 几何锁死站显式豁免(值源=custom_params)
 CAP_W = 10.0             # 胶囊白色带宽(=直径)
 CAP_RING = 2.0           # 胶囊黑描边宽
 CIRC_R_MULTI = 5.0       # 多线共享圆半径
@@ -327,11 +330,11 @@ def st_clear(rect, own_mk):
     return True
 
 
-def st_clear_noline(rect, own_mk):
-    """APM密集段专用: 豁免走廊碰撞——三平行竖线夹缝无合法位, 用户2026-10-22定稿
+def st_clear_noline(rect, own_mk, gap):
+    """密集段兜底专用: 豁免走廊碰撞——三平行竖线夹缝无合法位, 用户2026-10-22定稿
     (稍微重叠可接受), 渲染配白描边光环保压线可读; 其余检查(本站净距/歧义/互斥/撞圆)全保留。"""
     x, y, w, h = rect
-    if mk_gap(rect, own_mk) < APM_LABEL_GAP:   # 本函数=东带专用(见docstring), 径用定制净距
+    if mk_gap(rect, own_mk) < gap:   # 净距下限由定制策略传入(调用方 label_policy 命中才进本函数)
         return False
     cx_, cy_ = x + w / 2, y + h / 2
     od = dist((cx_, cy_), own_mk['center'])
@@ -371,17 +374,15 @@ for _name in ORDER:
         card_label.setdefault(_t.group(3).strip(), (float(_t.group(1)), float(_t.group(2))))
 
 
-APM_DENSE = {'天河南', '黄埔大道', '妇儿中心', '花城大道', '大剧院', '体育中心南',
-             '海心沙'}  # APM东带7站(中段夹缝6站+南对角海心沙; 2026-10-28 用户点名体育中心南→海心沙贴线)
-# —— APM东带定制策略(定制优先, 唯一规则源): 通用门禁只读 label_policy 参数, 不写APM分支 ——
-APM_LABEL_GAP = 2.0             # 标签-本站圆横向净距(2026-10-28 用户令: 标签贴线; 旧固定列x1696.5/净距4.5被指离线太远)
-APM_LABEL_COR = CORRIDOR_HALF   # 允许贴走廊边缘(白光环保可读, 用户定稿"稍微重叠可接受")
+# —— 定制策略(特殊优先, 参数唯一集中地=custom_params.py): 通用门禁只读参数, 不写站名分支 ——
+_LABEL_GROUPS = list(CP.LABEL_POLICY.values())
 
 def label_policy(nm):
-    """东带定制策略: 命中=该站标签用定制参数(gap/贴走廊/白光环)并打 data-pin-base 戳
-    (sync-base 据此保留底图位, 不吃codes编号牌避让偏移); 未命中=None 走通用默认。"""
-    if nm in APM_DENSE:
-        return {'gap': APM_LABEL_GAP, 'corridor': APM_LABEL_COR, 'halo': True, 'pin': True}
+    """查定制参数: 命中=该站标签用定制组(gap/贴走廊/白光环/pin打戳——sync-base据此保留
+    底图位, 不吃codes编号牌避让偏移); 未命中=None 走通用默认。"""
+    for _g in _LABEL_GROUPS:
+        if nm in _g['stations']:
+            return _g
     return None
 ST_FONT2 = 6.0   # 二档小字(向后兼容引用)
 ST_TIERS = [(7.5, 8.5), (6.0, 7.0), (5.0, 6.0), (4.2, 5.0)]   # 逐档缩小到放得下(2026-10-22用户: 竖排诡异改回横排, 有重叠字就小点)
@@ -398,8 +399,9 @@ def st_w2(nm):
 def _cands_for(mk, nm, w, hh, fs):
     mx, my = mk['center']
     cands = []
-    if nm in APM_DENSE:                          # 东带贴线列(定制): 每站圆右缘+APM_LABEL_GAP(2026-10-28 用户令;
-        cands.append((mx + mk['r'] + APM_LABEL_GAP + w / 2, my))   # 旧固定列x1696.5/净距4.5被指离线太远; fs7.5档同吃贴线位)
+    _pol = label_policy(nm)
+    if _pol:                                     # 贴线列(定制): 每站圆右缘+gap(2026-10-28 用户令; 旧固定列x1696.5废;
+        cands.append((mx + mk['r'] + _pol['gap'] + w / 2, my))   # fs7.5档同吃贴线位)
     if nm in term_dir:                           # 卡片规范: 终点文字在走廊延长线上(含斜线)
         ux, uy = term_dir[nm]
         ext = (w * abs(ux) + hh * abs(uy)) / 2
@@ -440,14 +442,15 @@ def place_one(mk):
                 labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                 placed_boxes.append((nm,) + rect)
                 return True
-    if nm in APM_DENSE:                      # 兜底: 东带列(x1695起)+豁免走廊碰撞(fs6起, 不掉4.2极小字)
+    _pol = label_policy(nm)
+    if _pol:                                 # 兜底: 贴线列+豁免走廊碰撞(fs6起, 不掉4.2极小字)
         for fs, hh in ((6.0, 7.0), (5.0, 6.0)):
             w = st_wfs(nm, fs)
             for dy2 in (0.0, -9.0, 9.0):     # y偏移错开邻站歧义(妇儿中心vs冼村隔29px)
-                cx = mk['center'][0] + mk['r'] + APM_LABEL_GAP + w / 2   # 贴线列(与_cands_for同源)
+                cx = mk['center'][0] + mk['r'] + _pol['gap'] + w / 2   # 贴线列(与_cands_for同源)
                 cy = mk['center'][1] + dy2
                 rect = (cx - w / 2, cy - hh / 2, w, hh)
-                if st_clear_noline(rect, mk):
+                if st_clear_noline(rect, mk, _pol['gap']):
                     labels.append((nm, cx, cy - hh / 2 + 0.8 * fs, fs, False))
                     placed_boxes.append((nm,) + rect)
                     return True
@@ -495,7 +498,7 @@ for _ln in ORDER:
 
 # 终点文字候选豁免: 多线共享圆且终点线走向与并圆线走向冲突的站, 延长线文字=斜挂旁线不对齐,
 # 跳过term_dir让紧环放轴向位(2026-10-22用户: 文字没有跟圆点对齐/广州塔文字归位)
-NO_TERM_DIR = {'林和西', '广州塔'}  # 林和西=APM斜×3号线竖; 广州塔=APM斜×3号线竖(右下对角→右侧同y)
+NO_TERM_DIR = CP.TERM_DIR_EXEMPT   # 终点文字不走延长线候选(值源=custom_params; 林和西/广州塔=APM斜×3号线竖判例)
 for _nm in NO_TERM_DIR:
     term_dir.pop(_nm, None)
 _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
@@ -588,7 +591,7 @@ for _lb in labels:
 # 度数2=内部点自然剔除; 重叠段悬空端点落同线他段内部=假终点剔除(1号线花地湾判例);
 # 且端点30px内须有站圆(广佛线0.1-2.3px裂隙端点掉mid-line教训)。
 # 环线锚位(11号线贴本体验收位, 无文字规则对象故持久化保留); 终点徽标一律文字轴规则
-_OLD_SC = {'APM线': 0.5}   # 锚位尺寸口径: 旧版缩放(0.7/APM0.5), 用于中心换算
+_OLD_SC = CP.BADGE_ANCHOR_LEGACY_SCALE   # 锚位尺寸口径: 旧版缩放(默认0.7), 值源=custom_params
 # 编号胶囊rect(codes层持久化的确定性数据, 见gen-codes-cards落盘说明): 底图落位即考虑胶囊
 _chip_obstacles = []
 _chip_path = os.path.join(ROOT, 'data', '_chip-rects.json')

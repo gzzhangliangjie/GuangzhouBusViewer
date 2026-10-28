@@ -116,7 +116,8 @@ def check_card(path, label, gen):
     for cx, cy, w, h, col, texts in chips:
         if len(texts) >= 2:
             fs = texts[0][3]
-            card = abs(fs - gen.FONT_CARD) < 0.01 or abs(fs - gen.APM_FONT_CARD) < 0.01
+            card = any(abs(fs - f) < 0.01 for f in
+                       [gen.FONT_CARD] + [ov[1] for ov in gen.CHIP_FONT_OVERRIDE.values()])
             need = gen.chip_need_w(texts[0][0], texts[1][0], card)
             if need > w + 0.05:
                 overflow.append('%s|%s(需%.1f>%.1f)' % (texts[0][0], texts[1][0], need, w))

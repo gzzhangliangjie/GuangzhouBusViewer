@@ -270,8 +270,14 @@ def parse_card(line):
 # ---------- 牌几何 ----------
 FONT = 5.5        # 牌字号(全网, 2026-10-23 五轮再缩)
 FONT_CARD = 6.0   # 单线卡字号
-APM_FONT = 4.1    # APM 专用小字号+textLength压缩(用户: APM牌缩到与数字牌同大)
-APM_FONT_CARD = 4.5
+# 定制参数(唯一集中地=custom_params.py, 特殊优先): 编号牌字号覆写表 线号->(全网牌, 单线卡)
+import importlib.util as _ilu_cp
+_spec_cp = _ilu_cp.spec_from_file_location(
+    'custom_params', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_params.py'))
+CP = _ilu_cp.module_from_spec(_spec_cp)
+_spec_cp.loader.exec_module(CP)
+CHIP_FONT_OVERRIDE = CP.CHIP_FONT_OVERRIDE
+APM_FONT, APM_FONT_CARD = CHIP_FONT_OVERRIDE['APM']   # 兼容别名(verify-codes-cards V4 引用)
 H = 9.0           # 牌高
 H_CARD = 10.0
 PADX = 1.8        # 左右内边距
@@ -296,9 +302,10 @@ _W_CACHE = {}
 
 
 def font_of(line_disp, card):
-    """牌字号: APM 专用更小档, 其余标准档."""
-    if line_disp == 'APM':
-        return APM_FONT_CARD if card else APM_FONT
+    """牌字号: 覆写表小档(custom_params.CHIP_FONT_OVERRIDE), 其余标准档."""
+    ov = CHIP_FONT_OVERRIDE.get(line_disp)
+    if ov:
+        return ov[1] if card else ov[0]
     return FONT_CARD if card else FONT
 
 
@@ -340,7 +347,7 @@ def chip_need_w(line_disp, serial, card):
     """牌需求宽(恒定): 定宽线号格与线号实测取 max + 分隔区 + 两位序号格
     -> 全部牌(数字/GF/APM/支线序号)全等宽; 1位数字线号的竖线左移不改变牌宽."""
     std = FONT_CARD if card else FONT
-    return 2 * PADX + max(cell_a_std(card), part_w(line_disp, std) if line_disp != 'APM' else 0) + SEPW + cell_b(card)
+    return 2 * PADX + max(cell_a_std(card), 0 if line_disp in CHIP_FONT_OVERRIDE else part_w(line_disp, std)) + SEPW + cell_b(card)
 
 
 def chip_w(line_disp, serial, card):
@@ -358,10 +365,10 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     超宽文本(APM线号/支线序号)小字号+textLength 压入标准格 -> 全牌同大."""
     x0, y0 = cx - w / 2, cy - h / 2
     ca = cell_a(line_disp, card)
-    if line_disp == 'APM':
+    if line_disp in CHIP_FONT_OVERRIDE:
         # 十一轮末 用户: APM竖线右移给三字母多点空间——线号格=牌宽-边距-分隔-两位小字序号格,
         # 序号两位小字自然宽即可, APM以95%近原生宽渲染(旧: 压入7.3格=73%重压)
-        sfs0 = APM_FONT_CARD if card else APM_FONT
+        sfs0 = font_of(line_disp, card)
         ca = w - 2 * PADX - SEPW - part_w('00', sfs0)
     cb = w - 2 * PADX - ca - SEPW   # 序号格=余量(1位数字线号竖线左移后序号格变宽)
     xline = x0 + PADX + ca / 2
@@ -377,7 +384,7 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
         stl = f' textLength="{cb:.2f}" lengthAdjust="spacingAndGlyphs"'
     tyL = cy - 0.02 * fs
     tyS = cy - 0.02 * sfs
-    tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp == 'APM' else ''
+    tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp in CHIP_FONT_OVERRIDE else ''
     return (
         f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
