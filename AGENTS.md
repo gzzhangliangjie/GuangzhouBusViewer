@@ -47,4 +47,5 @@
 
 ## 5. 用户点名微调走自锚定链路
 - 点名改文字/徽标位置 → 文字用 `tools/move-label.py 站名 方向`，徽标用 `tools/move-badge.py 终点站名 方向 [线号] [--dry]`（同终点多枚用线号消歧；也可直改 codes SVG 对应元素——SVG 即锚表，重跑自动沿用；量净距一律走 gen 接口禁手算）→ `sync-base.py` → `verify-station.py 站名` 局部验证 → 渲染核验 → 汇报数字 → **用户确认后提交**（pre-commit 自动全量+accept基线）。
+- **⚠️目标坐标禁手算（2026-10-28 用户令, 普君北路/岗顶连续两次手算出错判例）**: 直改 codes 需要目标坐标时, 一律先写引擎复算脚本(build的place_box/marker_anchor/_cands_for原语义), 以引擎输出为唯一真值, 落盘值=引擎输出+data-nudge已记录偏移, 落盘前逐项核对; 禁止凭记忆手推公式(基线0.8fs丢行高/2、胶囊预留漏算两次判例)。引擎输出与期望不符→改引擎或加定制参数, 不绕过。
 - ⚠️ 两份 SVG 的还原**禁用 `git checkout`**（autocrlf 改写换行致 md5 漂移、基线假告警，还会回退未提交工作）。还原优先级: ①重跑生成器链 build→gen→gen→sync（幂等，形态真源）②`python tools/svg-snapshot.py restore`（字节级快照; move-badge/move-label 写盘前自动 save 一版，试验性改动随时可回滚）。

@@ -203,6 +203,32 @@ def corridor_segments(svg_text):
             for m in re.finditer(r'<line x1="([-\d.]+)" y1="([-\d.]+)" x2="([-\d.]+)" y2="([-\d.]+)"', svg_text)]
 
 
+LINE_HALF_WIDTH = {'11号线': 4.8}   # 黑描边环线(官图画法 data-case 9.6); 其余默认 3.5
+
+
+def line_clearance(label_box, line, base_svg_text):
+    """标签盒到指定线路走廊漆边的净距(共享接口, 2026-10-29 P3新增, 封闭组合查询):
+    线段解析自底图(黑描边 data-case 段仅存在于底图), 半宽按线查 LINE_HALF_WIDTH。
+    消费方: verify-station/verify-all 压线检查——禁止再自写线段过滤与距离拼接。"""
+    m = re.search(r'<g id="走廊">(.*?)</g>', base_svg_text, re.S)
+    if not m:
+        return 9e9
+    segs = []
+    own_color = parse_card(line)['color'].upper()
+    for lm in re.finditer(r'<line ([^>]*)>', m.group(1)):
+        at = lm.group(1)
+        cm = re.search(r'stroke:(#[0-9A-Fa-f]{6})', at)
+        if not ('data-case="%s"' % line in at or (cm and cm.group(1).upper() == own_color)):
+            continue
+        g = [re.search(r'%s="([-\d.]+)"' % k, at) for k in ('x1', 'y1', 'x2', 'y2')]
+        if all(g):
+            segs.append(tuple(float(x.group(1)) for x in g))
+    if not segs:
+        return 9e9
+    hw = LINE_HALF_WIDTH.get(line, 3.5)
+    return min(rect_seg_dist(label_box, s) for s in segs) - hw
+
+
 def marker_elements(svg_text):
     """解析底图站圆+换乘胶囊标记(共享接口, 2026-10-25 move-badge需求新增):
     -> {'circles': [(cx, cy, r, nm)], 'capsules': [([(x, y), ...], nm)]}
