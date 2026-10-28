@@ -72,7 +72,7 @@ STANDARD_GAPS = dict(
     # 编号牌(codes)
     CHIP_H=9.0,                          # 牌高(BADGE_H=1.5×此值)
     CHIP_GAP=1.0,                        # 组内牌间缝
-    LABEL_PILL_GAP=1.0,                  # 骑线胶囊/编号牌邻位: 文字盒左缘=牌右缘+此值(2026-10-29 用户批准按类型固化; 58同构站实测53站=1.0)
+    LABEL_CHIP_GAP=1.0,                  # 标签盒-骑线编号牌rect净距(收编gen既有规则nudge_labels五处调用; 2026-10-29一致性调查: 58同构E侧站53站=1.0即本规则输出, 用户批准按类型固化单源入表)
     # 徽标(codes侧全网)
     CODES_BADGE_GAP=8.0,                 # codes徽标-胶囊/圈环视觉净距(底图规范, 像素门禁V8口径)
     CODES_BADGE_MIN=1.0,                 # codes徽标挤让触发阈(不重叠口径)
