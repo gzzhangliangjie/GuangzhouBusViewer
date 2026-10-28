@@ -305,14 +305,58 @@
   color: #166534;
   background: #f0fff4;
 }
-/* 官方风格编号牌：更接近官方站的编码显示 */
+/* 官方编号牌复刻（与 codes SVG 牌面 gen-codes-cards.chip_svg 同款）:
+   白底胶囊 + 线色边框 + 线色竖分隔线 + 黑字两段(线号|序号), 全牌等宽;
+   多线换乘纵排、右对齐靠站点一侧。比例按官方牌 H=9/字号5.5 折算 em。 */
 .mnum.official {
-  background: #fff;
-  border: 1.5px solid currentColor;
-  color: #333;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  background: none;
+  border: none;
   font-size: 10px;
   font-weight: 700;
-  font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+.mnum.official .mcap {
+  font-style: normal;
+  display: inline-flex;
+  align-items: stretch;
+  box-sizing: border-box;
+  width: 3.55em;      /* 官方全牌等宽 19.5/5.5 */
+  height: 1.82em;     /* H=9 + 描边 1.0, 折 10/5.5 */
+  padding: 0 0.33em;  /* PADX=1.8 */
+  background: #fff;
+  border: 0.18em solid var(--c, #4a9eff);   /* stroke-width=1.0 */
+  border-radius: 0.91em;
+  color: #000;
+}
+.mnum.official .mcap .ln {
+  display: flex; align-items: center; justify-content: center;
+  width: 1.24em;      /* 线号格 = max(两位数字, GF) 定宽 */
+}
+.mnum.official .mcap.d1 .ln { width: 0.93em; }  /* 1位数字线号: 竖线左移(字宽+1.9) */
+.mnum.official .mcap.apm .ln { width: 1.54em; font-size: 0.75em; }  /* APM: 4.1/5.5 小字号+竖线右移 */
+.mnum.official .mcap .sep { display: flex; justify-content: center; width: 0.47em; }  /* SEPW=2.6 */
+.mnum.official .mcap .sep::before {
+  content: '';
+  width: 0.145em;     /* 分隔线宽 0.8 */
+  background: var(--c, #4a9eff);
+  margin: 0.04em 0;   /* 上下端距牌缘 1.2(去描边后) */
+}
+.mnum.official .mcap .sn {
+  display: flex; align-items: center; justify-content: center;
+  flex: 1;
+  min-width: 1.17em;  /* 序号格 = 两位序号定宽 */
+}
+/* 他线牌淡化: 与官方板 applyScope dim 0.25 同口径 */
+.mnum.official .mcap.dim { opacity: 0.25; }
+/* 已放置：序号牌原位变成站名，恢复绿框完成样式 */
+.mnum.official.done {
+  display: inline-block;
+  background: #f0fff4;
+  border: 1.5px solid #2ea043;
 }
 /* 拖放热区扩边：牌本体 ~34x13 太小，::after 向四周扩 14px（约 62x41） */
 .mnum-wrap.dnd-target { position: absolute; }
@@ -337,6 +381,9 @@
   100% { stroke-width: 3px;  stroke-opacity: 1; }
 }
 .mnum-wrap:hover .mnum { border-color: #4a9eff; color: #1f262e; background: rgba(255,255,255,0.95); }
+/* 胶囊版编号牌不吃上面的悬停底色：容器保持透明，高亮落在胶囊描边上 */
+.mnum-wrap:hover .mnum.official { background: none; border: none; }
+.mnum-wrap:hover .mnum.official .mcap { border-color: #4a9eff; }
 .mnum {
   display: inline-block;
   transform: translate(calc(-100% - 7px), 3px);

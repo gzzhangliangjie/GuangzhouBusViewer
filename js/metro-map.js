@@ -422,11 +422,16 @@ const MetroMapView = (() => {
         if (!l) continue;
         const idx = l.stations.indexOf(s.id);
         if (idx < 0) continue;
-        // 官方编号 = 线路号 + 站序（如 101、503、2201；广佛线 GF01、APM 线 APM01）
+        // 官方编号 = 线路号 + 两位站序（如 1|01、22|07；广佛线 GF|08、APM 线 APM|01）
         const ln = ref.replace(/^0+/, '');
-        const isNum = /^\d+$/.test(ln);
         const seq = String(idx + 1).padStart(2, '0');
-        parts.push(ln + '-' + seq);
+        // 范围口径与官方板一致：他线牌原样保留整牌淡化(dim 0.25)，不是灰底色
+        const dim = sc && !sc.includes(ref);
+        parts.push({
+          ln, seq, color: l.color || '#4a9eff', dim,
+          apm: ln === 'APM',                 // APM: 小字号 + 竖线右移(对应 CHIP_FONT_OVERRIDE)
+          d1: ln.length === 1 && /^\d$/.test(ln)   // 1位数字线号: 竖线左移给序号让空间
+        });
       }
       if (!parts.length) return null;
       return parts;
@@ -446,7 +451,13 @@ const MetroMapView = (() => {
         zIndexOffset: inScope ? 1000 : 200,
         icon: L.divIcon({
           className: 'mnum-wrap' + (inScope && sc ? ' scope-num' : ''),
-          html: `<span class="mnum official${placed ? ' done' : ''}">${placed ? s.zh : (Array.isArray(tag) ? tag.join('<br>') : tag)}</span>`,
+          // 官方编号牌复刻: 白底胶囊+线色边框+线色竖分隔线+黑字两段(线号|序号)
+          html: placed
+            ? `<span class="mnum official done">${s.zh}</span>`
+            : `<span class="mnum official">` +
+              tag.map(p => `<i class="mcap${p.dim ? ' dim' : ''}${p.apm ? ' apm' : ''}${p.d1 ? ' d1' : ''}" style="--c:${p.color}">` +
+                `<span class="ln">${p.ln}</span><span class="sep"></span><span class="sn">${p.seq}</span></i>`).join('') +
+              `</span>`,
           iconSize: null  // 由内容撑开，锚点在左下
         })
       }).addTo(overlay);
