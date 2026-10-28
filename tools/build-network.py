@@ -248,16 +248,22 @@ labels = []              # (名, cx, 基线y) 全部站名统一7.5px加粗(2026
 placed_boxes = []
 label_src = {}           # 站名 -> {fs, src}: 胜出候选的定位依据(layout-report 审计数据)
 failed = []
-# 编号胶囊rect(codes层持久化的确定性数据, 见gen-codes-cards落盘说明): 站名搜索即避让(L2→L3闭环),
-# 徽标落位_place_ok亦用——加载须先于站名段(st_clear引用)。
+# 编号牌/圈环 rect(自 codes SVG 直读, 2026-10-29 用户令: SVG data 即记录, _chip-rects.json 已废):
+# 牌带 data-nm 站归属; 站名搜索避让(L2→L3闭环)与徽标落位 _place_ok 亦用——
+# 加载须先于站名段(st_clear引用); 冷启动无 codes 时为空(与旧 JSON 缺失行为一致)。
 _chip_obstacles = []
-_chip_path = os.path.join(ROOT, 'data', '_chip-rects.json')
-if os.path.exists(_chip_path):
-    try:
-        _cr = json.load(open(_chip_path, encoding='utf-8'))
-        _chip_obstacles = [tuple(r) for r in _cr.get('chips', []) + _cr.get('rings', [])]
-    except (ValueError, KeyError):
-        _chip_obstacles = []
+_chip_named = {}
+_loc_path = os.path.join(LINES_DIR, 'network-全网.codes.svg')
+if os.path.exists(_loc_path):
+    import importlib.util as _ilu
+    _gspec = _ilu.spec_from_file_location('gen_mod', os.path.join(ROOT, 'tools', 'gen-codes-cards.py'))
+    _gmod = _ilu.module_from_spec(_gspec)
+    _gspec.loader.exec_module(_gmod)
+    _ch, _rn, _ = _gmod.chip_elements(open(_loc_path, encoding='utf-8').read())
+    _chip_obstacles = [c[:4] for c in _ch] + list(_rn)
+    for c in _ch:
+        if c[4]:
+            _chip_named[c[4]] = c[:4]
 transfers = [m for m in markers if len(m['lines']) > 1]
 st_labels = []
 ST_FONT = 7.5

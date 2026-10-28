@@ -131,8 +131,9 @@ def text_elements(svg_text):
 
 
 def chip_elements(svg_text):
-    """解析编号牌组: -> (chips=[(x,y,w,h)], rings=[(x,y,w,h)], group_span=(start,end)).
-    区分依据: ring 带 data-ring / fill=none; chip 为 fill=#FFFFFF 实底。"""
+    """解析编号牌组: -> (chips=[(x,y,w,h,nm)], rings=[(x,y,w,h)], group_span=(start,end)).
+    区分依据: ring 带 data-ring / fill=none; chip 为 fill=#FFFFFF 实底;
+    nm = data-nm 站名归属(2026-10-29 SVG data 记录, 旧产物无此属性时为空串)。"""
     chips, rings = [], []
     m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', svg_text, re.S)
     span = (m.start(), m.end()) if m else (0, 0)
@@ -143,26 +144,29 @@ def chip_elements(svg_text):
             if 'data-ring' in rest or 'fill="none"' in rest:
                 rings.append((x, y, w, h))
             elif 'fill="#FFFFFF"' in rest:
-                chips.append((x, y, w, h))
+                nmm = re.search(r'data-nm="([^"]+)"', rest)
+                chips.append((x, y, w, h, nmm.group(1) if nmm else ''))
     return chips, rings, span
 
 
 def chip_details(svg_text):
-    """编号牌组逐牌解析(共享接口): -> [{'x','y','w','h','inner'}, ...]。
+    """编号牌组逐牌解析(共享接口): -> [{'x','y','w','h','nm','inner'}, ...]。
     inner = 该牌分隔线+两段文字的完整标记(不含牌自身rect, 恰为 line,text,text 序列)。
-    牌无身份属性(§1.6), (站,线)身份由调用方几何配对(见 gen-quiz-data.py);
-    inner 供圆圈底板按坐标原位注入官方同款胶囊(拼图数字胶囊形式)。"""
+    nm = data-nm 站名归属(2026-10-29 SVG data 记录); (站,线)身份仍由调用方按
+    牌面解码配对(gen-quiz-data), nm 作交叉核对与直接消费。"""
     out = []
     m = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', svg_text, re.S)
     if not m:
         return out
     blk = m.group(1)
-    for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#FFFFFF" stroke="(#[0-9A-Fa-f]{6})"[^>]*>', blk):
+    for r in re.finditer(r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+"[^>]*?fill="#FFFFFF" stroke="(#[0-9A-Fa-f]{6})"[^>]*>', blk):
         x0 = r.end()
-        nxt = re.search(r'<rect x="[-\d.]+" y="[-\d.]+" width="[\d.]+" height="[\d.]+" rx="[\d.]+" fill="#FFFFFF"', blk[x0:])
+        nxt = re.search(r'<rect x="[-\d.]+" y="[-\d.]+" width="[\d.]+" height="[\d.]+" rx="[\d.]+"[^>]*?fill="#FFFFFF"', blk[x0:])
         inner = blk[x0:x0 + nxt.start()] if nxt else blk[x0:]
+        nmm = re.search(r'data-nm="([^"]+)"', r.group(0))
         out.append({'x': float(r.group(1)), 'y': float(r.group(2)),
-                    'w': float(r.group(3)), 'h': float(r.group(4)), 'inner': inner})
+                    'w': float(r.group(3)), 'h': float(r.group(4)),
+                    'nm': nmm.group(1) if nmm else '', 'inner': inner})
     return out
 
 
@@ -407,7 +411,7 @@ def serial_font(serial, fs):
     return round(fs * 0.75, 1)
 
 
-def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
+def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card, nm=''):
     """一枚编号牌: 白底胶囊+线色边框+线色竖分隔线+黑字两段(定宽格居中);
     超宽文本(APM线号/支线序号)小字号+textLength 压入标准格 -> 全牌同大."""
     x0, y0 = cx - w / 2, cy - h / 2
@@ -432,8 +436,10 @@ def chip_svg(cx, cy, w, h, color, line_disp, serial, fs, card):
     tyL = cy - 0.02 * fs
     tyS = cy - 0.02 * sfs
     tl = (f' textLength="{ca:.2f}" lengthAdjust="spacingAndGlyphs"') if line_disp in CHIP_FONT_OVERRIDE else ''
+    nattr = f' data-nm="{nm}"' if nm else ''
     return (
-        f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}" '
+        f'<rect x="{x0:.2f}" y="{y0:.2f}" width="{w:.2f}" height="{h:.2f}" rx="{h / 2:.2f}"'
+        f'{nattr} '
         f'fill="#FFFFFF" stroke="{color}" stroke-width="1.0"/>' +
         f'<line x1="{xsep:.2f}" y1="{y0 + 1.2:.2f}" x2="{xsep:.2f}" y2="{y0 + h - 1.2:.2f}" '
         f'stroke="{color}" stroke-width="0.8"/>' +
@@ -923,7 +929,7 @@ def gen_line_card(line, codes, report):
         f'<circle cx="{cx}" cy="{cy}" r="4.5" data-nm="{nm}" style="fill:#FFFFFF;stroke:{color};stroke-width:2"/>'
         for nm, cx, cy in kept)
     chips_svg = ''.join(
-        chip_svg(cx, cy, w, H_CARD, color, disp, serial, fs, True)
+        chip_svg(cx, cy, w, H_CARD, color, disp, serial, fs, True, nm)
         for nm, disp, serial, cx, cy, w, h, fs in chips)
     t2 = t[:m.start()] + ('<g id="站圆">' + circles_svg + '</g>' if circles_svg else '') + t[m.end():]
     # 站名避让: 与牌相犯的标签沿钉->标方向外推(缩小后仍压的才推)
@@ -1695,8 +1701,9 @@ def gen_network(codes, report):
             sys.exit(1)
         # chips自锚定: 上一版编号牌组中fill="#FFFFFF"的牌rect按文档序取位移增量
         # (坑口-5与手改自动携带); 数量变化=结构变化, 硬报错。
+        # (2026-10-29: rx 与 fill 之间允许 data-nm 等属性, 属性序安全)
         _pchip = re.findall(
-            r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+" fill="#FFFFFF" stroke="#[0-9A-Fa-f]{6}"',
+            r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+"[^>]*?fill="#FFFFFF" stroke="#[0-9A-Fa-f]{6}"',
             _prev)
         if len(_pchip) != len(chips):
             print('!! 牌数%d != 上一版%d: 结构变化, 拒绝静默错位' % (len(chips), len(_pchip)))
@@ -1737,18 +1744,12 @@ def gen_network(codes, report):
     rings_svg = ''.join(black_parts) + ''.join(white_parts)
     chips_svg = ''.join(
         chip_svg(cx, cy, w, H, color_of[ln], codes[(nm, ln)][0], codes[(nm, ln)][1],
-                 font_of(codes[(nm, ln)][0], False), False)
+                 font_of(codes[(nm, ln)][0], False), False, nm)
         for nm, ln, cx, cy, w in chips)
     mn = re.search(r'<g id="站名标注"[^>]*>.*?</g>', t, re.S)
     t = t[:mn.end()] + '<g id="编号牌" font-family="\'Microsoft YaHei\', \'PingFang SC\', sans-serif">' + rings_svg + chips_svg + '</g>' + t[mn.end():]
-    # 胶囊rect持久化(2026-10-24 用户: 计算位置需要考虑胶囊要整合进流程):
-    # 胶囊位只依赖钉位/走廊(与徽标无关)=确定性, 底图生成器(build-network)读取后
-    # 落位即考虑胶囊, 终检响应式微调归零。胶囊随底图几何变化时, verify-all的
-    # 两轮重跑自收敛(第一轮更新本文件, 第二轮底图即用新值)。
-    _chip_rects_out = {'chips': [[cx - w / 2, cy - H / 2, w, H] for nm, ln, cx, cy, w in chips],
-                       'rings': [[x, y, w, h] for rs in obstacles.values() for x, y, w, h in rs]}
-    json.dump(_chip_rects_out, open(os.path.join(ROOT, 'data', '_chip-rects.json'), 'w',
-                                    encoding='utf-8'), ensure_ascii=False)
+    # 牌位不再落 JSON(_chip-rects.json 已废, 2026-10-29 用户令: SVG data 即记录)——
+    # 牌 rect 带 data-nm 写在 codes 编号牌组内, build 经 chip_elements 直读(含站归属)。
     open(os.path.join(LINES_DIR, 'network-全网.codes.svg'), 'w', encoding='utf-8').write(
         expand_viewbox(t, [r for rs in obstacles.values() for r in rs]
                        + [(cx - w / 2, cy - H / 2, w, H) for nm, ln, cx, cy, w in chips]))
