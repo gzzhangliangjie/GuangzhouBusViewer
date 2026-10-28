@@ -90,12 +90,18 @@ if _ba4.get('miss'):
 else:
     print('  徽标锚 OK (命中%s)' % _ba4.get('hit', '?'))
 _a4 = {}
+_pin4 = set()
+for _mm4 in _re1.finditer(r'<text x="([-\d.]+)" y="([-\d.]+)"([^>]*)data-pin-base="1"[^>]*>([^<]+)</text>', open(BASE, encoding='utf-8').read()):
+    _pin4.add(_mm4.group(4))
 for _f4 in (CODES, BASE):
     _t4 = open(_f4, encoding='utf-8').read()
     _m4 = _re1.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _t4, _re1.S)
     _a4[_f4] = sorted(_re1.findall(r'<text[^>]*data-(?:loc|nudge)="[^"]*"[^>]*>([^<]+)</text>', _m4.group(1))) if _m4 else []
+# 钉戳站底图元素按钉机制保留原样(无data-loc属合法), 只比对非钉戳站
+_a4[BASE] = [n for n in _a4[BASE] if n not in _pin4]
+_a4[CODES] = [n for n in _a4[CODES] if n not in _pin4]
 if _a4[BASE] != _a4[CODES]:
-    fails.append('G4 data-loc/nudge 站名属性 codes→base 同步缺失: codes=%s base=%s' % (_a4[CODES], _a4[BASE]))
+    fails.append('G4 data-loc/nudge 站名属性 codes→base 同步缺失: %s' % (set(_a4[CODES]) ^ set(_a4[BASE])))
     print('  属性同步 FAIL')
 else:
     print('  属性同步 OK (%d站带语义锚)' % len(_a4[CODES]))

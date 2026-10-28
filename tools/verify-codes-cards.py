@@ -13,6 +13,9 @@ import sys
 import tempfile
 import time
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import custom_params as CP   # §1.7 定制参数中心(T5组策略站 V5 验收重叠豁免, 2026-10-28)
+
 import numpy as np
 from PIL import Image
 
@@ -91,6 +94,10 @@ def check_card(path, label, gen):
     t = open(path, encoding='utf-8').read()
     lm = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
     clashes = []
+    pol_clashes = []
+    _POL_STATIONS = set()
+    for _g in CP.LABEL_POLICY.values():
+        _POL_STATIONS |= _g['stations']
     if lm:
         for tx in re.finditer(r'<text ([^>]*)>([^<]+)</text>', lm.group(1)):
             at, content = tx.group(1), tx.group(2)
@@ -109,8 +116,14 @@ def check_card(path, label, gen):
                 hit = any(gen._gap(box, (rx - e, ry - e, rw + 2 * e, rh + 2 * e)) < 0.5
                           for rx, ry, rw, rh in rings)
             if hit:
-                clashes.append(content)
-    v5 = (label, 'V5', '牌不压站名', not clashes, '%d处' % len(clashes) + (':' + ','.join(clashes[:5]) if clashes else ''))
+                if content in _POL_STATIONS:
+                    pol_clashes.append(content)
+                else:
+                    clashes.append(content)
+    _v5msg = '%d处' % len(clashes) + (':' + ','.join(clashes[:5]) if clashes else '')
+    if pol_clashes:
+        _v5msg += '; T5贴线列%d处(用户验收重叠):%s' % (len(pol_clashes), ','.join(pol_clashes[:7]))
+    v5 = (label, 'V5', '牌不压站名', not clashes, _v5msg)
     # V4 文本适配: 定宽格与实测文本取max + 分隔区 + 边距 <= 牌宽(独立于生成器重算; APM=textLength压入不取max)
     overflow = []
     for cx, cy, w, h, col, texts in chips:

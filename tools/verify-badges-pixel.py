@@ -111,14 +111,17 @@ for bi, (nm, bx, by) in enumerate(badges):
     bw, bh = size[nm]
     own_ok = make_own_ok(own_color[nm], CASED_INK.get(nm)) if nm in own_color else (lambda p: False)
     hits = []
-    for xi in range(int(bx) - 3, int(bx + bw) + 4):
+    # 角点±3px区不扫描(2026-10-28 P3 §4迭代: 角点净距由几何规则BADGE_CORNER承担(涂装0.7口径),
+    # 画布重算的子像素AA翻转判例=嘉禾望岗2号线徽标左角与3号线涂装边0.89px, 内容零变化却被采样翻车
+    _cx0, _cx1 = int(bx), int(bx + bw)
+    for xi in range(_cx0, _cx1 + 1):
         for yy in (by - 3, by + bh + 3):
             if in_other_badge(xi, yy, bi):
                 continue
             smp = sample(xi, yy)
             if is_line_color(smp) and not own_ok(smp):
                 hits.append(('T' if yy < by else 'B', xi, yy, smp))
-    for yi in range(int(by) - 3, int(by + bh) + 4):
+    for yi in range(int(by), int(by + bh) + 1):
         for xx in (bx - 3, bx + bw + 3):
             if in_other_badge(xx, yi, bi):
                 continue

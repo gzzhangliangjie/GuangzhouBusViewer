@@ -418,23 +418,27 @@ def place_one(mk):
     18号线冼村段右移后多数站紧环即可放(用户: 稍微重叠可接受)。
     胜出候选的 (字号档, src来源) 记入 label_src(=layout-report 站名审计数据)。"""
     nm = mk['name']
-    # 语义锚钉位通道(P2): data-loc="型|方向|环档" 命中=免搜直算(几何=标记外沿点+方向×环梯),
-    # 合法性复检同自动路径; 放不下回退自动分型(layout-report留痕), 不静默丢语义。
+    # 语义锚钉位通道(P2/P3, 2026-10-28用户法"原来的锚点是哪里就按原来锚点来算, 不应认为是错误"):
+    # data-loc="型|方向|环档[|字号]" 命中=直接落位(记录即终稿, 不做st_clear复检——
+    # 搜索序前置位无权否决验收锚; 记录位互为合法(验收态全门禁绿), 未记录站经
+    # placed_boxes避让记录位。全站无记录的新布局走自动分型。
     _loc = _loc_by_st.get(nm)
-    if _loc and len(_loc.split('|')) == 3:
-        _dp, _dr = _NAME_TO_DIR[_loc.split('|')[1]], SG['LABEL_RING'][int(_loc.split('|')[2])]
-        for fs, hh in ST_TIERS[:1]:
-            w = st_wfs(nm, fs)
-            _ax, _ay = marker_anchor(mk, _dp[0], _dp[1])
-            _r2 = place_box(w, hh, _ax + _dp[0] * _dr, _ay + _dp[1] * _dr, _dp[0], _dp[1])
-            _cx, _cy = _r2[0] + w / 2, _r2[1] + hh / 2
-            rect = (_cx - w / 2, _cy - hh / 2, w, hh)
-            if st_clear(rect, mk):
+    if _loc:
+        _lp = _loc.split('|')
+        if len(_lp) >= 3 and _lp[1] in _NAME_TO_DIR:
+            _dp, _dr = _NAME_TO_DIR[_lp[1]], SG['LABEL_RING'][int(_lp[2])]
+            _tiers = ((float(_lp[3]), float(_lp[3]) + 1.0),) if len(_lp) == 4 else ST_TIERS[:1]
+            for fs, hh in _tiers:
+                w = st_wfs(nm, fs)
+                _ax, _ay = marker_anchor(mk, _dp[0], _dp[1])
+                _r2 = place_box(w, hh, _ax + _dp[0] * _dr, _ay + _dp[1] * _dr, _dp[0], _dp[1])
+                _cx, _cy = _r2[0] + w / 2, _r2[1] + hh / 2
                 labels.append((nm, _cx, _cy - hh / 2 + 0.8 * fs, fs, False))
-                placed_boxes.append((nm,) + rect)
-                label_src[nm] = dict(fs=fs, src='data-loc钉位(%s)' % _loc)
+                placed_boxes.append((nm, _cx - w / 2, _cy - hh / 2, w, hh))
+                label_src[nm] = dict(fs=fs, src='data-loc钉位(%s)' % _loc,
+                                     loc=_loc, nudge=_nudge_by_st.get(nm))
                 return True
-        print('  站名 %s data-loc钉位放不下, 回退自动分型' % nm)
+        print('  站名 %s data-loc 语义不完整(%s), 回退自动分型' % (nm, _loc))
     for fs, hh in ST_TIERS[:2]:
         w = st_wfs(nm, fs)
         for cx, cy, _src in _cands_for(mk, nm, w, hh, fs):
@@ -508,6 +512,7 @@ for _ln in ORDER:
 #   data-loc="型|方向|环档"          → 钉位免搜(方向∈8向N/NE/E/SE/S/SW/W/NW, 环档=LABEL_RING下标)
 #   data-nudge="dx,dy,事由"          → 自动位之上累计偏移
 _loc_by_st, _nudge_by_st = {}, {}
+_loc_src = ''
 _loc_path = os.path.join(LINES_DIR, 'network-全网.codes.svg')
 if os.path.exists(_loc_path):
     _loc_src = open(_loc_path, encoding='utf-8').read()
@@ -524,16 +529,23 @@ if os.path.exists(_loc_path):
 _DIRS_BY_NAME = {(1, 0): 'E', (-1, 0): 'W', (0, -1): 'N', (0, 1): 'S',
                  (1, -1): 'NE', (-1, -1): 'NW', (1, 1): 'SE', (-1, 1): 'SW'}
 _NAME_TO_DIR = {v: k for k, v in _DIRS_BY_NAME.items()}
+# 环线徽标站点锚(B2, 2026-10-28用户令"应记录锚定的站点信息"): data-anchor="station:站名|dx,dy"
+_loop_anchor = None
+_bam = re.search(r'<g data-badge="header" data-term="环线"[^>]*data-anchor="station:([^"|]+)\|dx=([-\d.]+),dy=([-\d.]+)"', _loc_src) if _loc_src else None
+if _bam:
+    _loop_anchor = (_bam.group(1), float(_bam.group(2)), float(_bam.group(3)))
 for _nm2, _spec in _loc_by_st.items():
     _parts = _spec.split('|')
-    if _parts[0] not in ('T1', 'T2', 'T3', 'T4', 'T5') or (len(_parts) == 3 and _parts[1] not in _NAME_TO_DIR):
+    if _parts[0] not in ('T1', 'T2', 'T3', 'T4', 'T5') or (len(_parts) >= 3 and _parts[1] not in _NAME_TO_DIR):
         print('!! G5 data-loc 语义非法: %s="%s" (站名=%s), 拒绝静默忽略' % ('data-loc', _spec, _nm2))
         sys.exit(1)
-    if len(_parts) == 3:
+    if len(_parts) >= 3:
         try:
             int(_parts[2])
+            if len(_parts) == 4:
+                float(_parts[3])
         except ValueError:
-            print('!! G5 data-loc 环档非整数: %s (站名=%s)' % (_spec, _nm2))
+            print('!! G5 data-loc 环档/字号非法: %s (站名=%s)' % (_spec, _nm2))
             sys.exit(1)
 # 类型覆写: data-loc 带 T2-T5 的站不走终点延长线候选(值源=SVG属性, TERM_DIR_EXEMPT表已迁并删除)
 for _nm2, _spec in _loc_by_st.items():
@@ -677,37 +689,46 @@ def _place_ok(rect, own_ln, skip_idx=-1):
     文字盒=placed_boxes(已锚定为labels_inner终版)。
     角点检查: 像素门禁在四边外扩3px扫描, 斜走廊贴近rect角点时rect边距6.5合格但
     角点+3px扫描点距斜线可<3.5(APM林和西判例)——4个外扩角点须距所有走廊>=3.6。"""
+    global _place_fail
+    _place_fail = ''
     _corners = [(rect[0] - 3.0, rect[1] - 3.0),
                 (rect[0] + rect[2] + 3.0, rect[1] - 3.0),
                 (rect[0] - 3.0, rect[1] + rect[3] + 3.0),
                 (rect[0] + rect[2] + 3.0, rect[1] + rect[3] + 3.0)]
     for nm2, ax, ay, bx, by, _c in corridors:
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < SG['BADGE_CORRIDOR']:
+            _place_fail = '走廊%s' % nm2
             return False
         for cpt in _corners:
             if seg_point_dist(cpt, (ax, ay), (bx, by)) < SG['BADGE_CORNER']:
+                _place_fail = '角点-走廊%s' % nm2
                 return False
     for r9 in _chip_obstacles:
         if _rgap(rect, r9) < SG['BADGE_CHIP']:
+            _place_fail = '编号牌/圈环'
             return False
     for _nm2, _x2, _y2, _w2, _h2 in placed_boxes:
         if _rgap(rect, (_x2, _y2, _w2, _h2)) < SG['BADGE_CHIP']:
+            _place_fail = '标签%s' % _nm2
             return False
     for _j2, (_nm2, _bx2, _by2, _bw2, _bh2) in enumerate(badges):
         if _j2 == skip_idx:
             continue
         if _rgap(rect, (_bx2, _by2, _bw2, _bh2)) < SG['BADGE_BADGE']:
+            _place_fail = '他徽标%s' % _nm2
             return False
     for mk in markers:
         if mk['kind'] == 'capsule':
             edges = poly_edges(mk['hull']) if len(mk['hull']) > 2 else [tuple(mk['hull'])]
             if any(rect_seg_dist(rect, a, b) < CAP_W / 2 + SG['BADGE_MARKER'] for a, b in edges):
+                _place_fail = '胶囊%s' % mk['name']
                 return False
         else:
             ox, oy = mk['center']
             qx = min(max(ox, rect[0]), rect[0] + rect[2])
             qy = min(max(oy, rect[1]), rect[1] + rect[3])
             if dist((ox, oy), (qx, qy)) < mk['r'] + SG['BADGE_MARKER']:
+                _place_fail = '站圆%s' % mk['name']
                 return False
     return True
 
@@ -811,8 +832,19 @@ for name in ORDER:
             covered.append(_ce)
         else:
             badge_home.append(None)
-    # 环线(无真终点, 如11号线): 无文字规则对象, 沿用验收锚位; 无锚贴本体网格全域搜
+    # 环线(无真终点, 如11号线): 站点锚命中=直接落位(用户令"记录锚定站点信息就不会有大偏差");
+    # 无锚贴本体网格全域搜
     if not ends:
+        if _loop_anchor:
+            _an_mk = next((mk2 for mk2 in markers if mk2['name'] == _loop_anchor[0]), None)
+            if _an_mk:
+                badges.append((name, _an_mk['center'][0] + _loop_anchor[1],
+                               _an_mk['center'][1] + _loop_anchor[2], bw, bh))
+                badge_home.append(None)
+                badge_src.append('anchor')
+                badge_method.append('环线站点锚(%s)' % _loop_anchor[0])
+                continue
+            print('  !! 环线站点锚站名不存在: %s, 回退网格' % _loop_anchor[0])
         if badge_anchors.get(name):
             continue
         _xs2 = [v for c in segs for v in (c[0], c[2])]
@@ -825,8 +857,8 @@ for name in ORDER:
                 od = _own_d2(rect)
                 if od < 10.0 or od > 60.0:
                     continue
-                if badge_rect_why(rect, badges) is not None:   # 全查含走廊: 环线徽标不得压线
-                    continue
+                if not _place_ok(rect, name):   # 与终检同一把尺(角点/编号牌项粗查缺, 标签盒变化即翻车
+                    continue                                    # N7判例; 环线键已固定='环线', 无翻转风险)
                 if best is None or od < best[0]:
                     best = (od, rect)
         if best:
@@ -924,9 +956,11 @@ _recheck_hits = []      # 复检撞清单(N7 硬失败用; 2026-10-28 P1: 旧版
 # 复检口径=与落位同一套_place_ok(跳过自身); 偏离本体>110px仅告警——文字轴规则下徽标跟
 # 终版文字走, 个别被nudge推远的终点文字(如冼村)带着徽标离走廊稍远属规则内行为。
 for _i, (_nm, _bx, _by, _bw, _bh) in enumerate(badges):
+    if badge_src[_i] == 'anchor':
+        continue   # 站点锚/验收锚=终稿(用户验收+V8像素承担合法性), 不做内部落位规则复检
     if not _place_ok((_bx, _by, _bw, _bh), _nm, skip_idx=_i):
-        print('  !! 徽标 %s 复检撞' % _nm)
-        _recheck_hits.append(_nm)
+        print('  !! 徽标 %s 复检撞(%s)' % (_nm, _place_fail))
+        _recheck_hits.append('%s:%s' % (_nm, _place_fail))
 
 # 站距钳制(2026-10-24 用户: 10和11要算的是到站点的距离——徽标属于终点站, 视觉的远=离站远;
 # 旧锚位中心距站44~82px, 大盒时代盒缘够到站体, 缩到13.5pt后同中心小盒脱站):
@@ -1061,6 +1095,13 @@ for mk in markers:
 PAD = 26
 minx, miny = min(xs) - PAD, min(ys) - PAD
 maxx, maxy = max(xs) + PAD, max(ys) + PAD
+# 画布审计(P3): 极值归属元素——viewBox意外漂移时一眼定位顶边者
+_who_x0 = [e for e in xs if e == min(xs)][:1]
+_who_x1 = [e for e in xs if e == max(xs)][:1]
+_who_y1 = [e for e in ys if e == max(ys)][:1]
+print('  画布: minx=%.2f(x=%.2f) maxx=%.2f(x=%.2f) maxy=%.2f(y=%.2f)'
+      % (minx, _who_x0[0] if _who_x0 else -1, maxx, _who_x1[0] if _who_x1 else -1,
+         maxy, _who_y1[0] if _who_y1 else -1))
 
 # 图例带: 标题 + 19色chip, 底部追加
 LEG_H = 0
@@ -1151,8 +1192,12 @@ for mk in markers:
 out.append('</g>')
 out.append('<g id="线路徽标">')
 for _bi2, (nm, bx, by, bw, bh) in enumerate(badges):
-    # data-term=终点站名(下游gen-codes锚定键=(线名,终点站), 消除文档序依赖)
+    # data-term=终点站名(下游gen-codes锚定键=(线名,终点站), 消除文档序依赖);
+    # 环线(badge_home=None)=无终点, 旧键=最近站名=位置函数→位置一变锚键即翻转丢锚
+    # (中山八↔琶洲判例), 改稳定身份'环线'(P3前置修复, 2026-10-28)
     _term = badge_stn[_bi2][0] if _bi2 < len(badge_stn) else None
+    if _bi2 < len(badge_home) and badge_home[_bi2] is None:
+        _term = '环线'
     _tattr = ' data-term="%s"' % _term if _term else ''
     out.append('<g data-badge="header"%s transform="translate(%s %s) scale(%s)">%s</g>'
                % (_tattr, fmt(bx), fmt(by), fmt4(BADGE_H / badge_size[nm][1]), badge_inner[nm]))
@@ -1163,16 +1208,20 @@ for nm, cx, cy, fs, stacked in labels:
     _pol = label_policy(nm)
     halo = bool(_pol and _pol['halo'])           # 白描边光环: 定制策略可开(东带贴线2026-10-28); 通用位站不压线不加
     pin = ' data-pin-base="1"' if _pol and _pol['pin'] else ''   # 定制钉位戳: sync-base据此保留底图位, 不吃codes牌避让坐标
+    _la = label_src.get(nm, {})
+    _anch = (' data-loc="%s"' % _la['loc']) if _la.get('loc') else ''   # 语义锚全量落属性(P3, 2026-10-28用户令: 间隔和偏移正常记录, 不搞特殊)
+    if _la.get('nudge'):
+        _anch += ' data-nudge="%s"' % _la['nudge']
     hstyle = ' style="paint-order:stroke;stroke:#FFFFFF;stroke-width:2.2;stroke-linejoin:round"' if halo else ''
     if stacked:                                 # CJK竖排: 每字一tspan同x顺dy
         inner = ''.join('<tspan x="%s"%s>%s</tspan>' %
                         (fmt(cx), (' dy="%s"' % fmt(fs)) if k else '', ch)
                         for k, ch in enumerate(nm))
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s>%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, inner))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, _anch, inner))
     else:
-        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s>%s</text>'
-                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, nm))
+        out.append('<text x="%s" y="%s" font-size="%s" text-anchor="middle"%s%s%s>%s</text>'
+                   % (fmt(cx), fmt(cy), fmt(fs), hstyle, pin, _anch, nm))
 out.append('</g>')
 out.append('<g id="图例">')
 leg_top = maxy + 10

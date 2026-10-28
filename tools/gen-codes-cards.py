@@ -287,6 +287,14 @@ def parse_card(line):
     return {'pins': pins, 'segs': segs, 'color': color}
 
 
+def line_stations(line):
+    """线路站点节点(现成分组数据源=单线卡站圆组, 2026-10-28 P3环线锚定规则固化):
+    -> [站名按线路序]。
+    换乘站属于多条线——同名站可出现在多条线的返回里; 消费方(如环线徽标站点锚推断)
+    严禁改用全网图几何爬取或最近全站猜测。"""
+    return [nm for nm, cx, cy in parse_card(line)['pins']]
+
+
 # ---------- 牌几何 ----------
 FONT = 5.5        # 牌字号(全网, 2026-10-23 五轮再缩)
 FONT_CARD = 6.0   # 单线卡字号
@@ -1672,6 +1680,24 @@ def gen_network(codes, report):
             _dx, _dy = _px + _pw / 2 - _cx2, _py + _ph / 2 - _cy2
             if abs(_dx) > 0.05 or abs(_dy) > 0.05:
                 chips[_i2] = (_nm2, _ln2, _cx2 + _dx, _cy2 + _dy, _w2)
+    # 环线徽标站点锚自记录(P3固化, 2026-10-28用户令"找到所有的11号线节点选个最近的锚定"):
+    # 元素最终位置在本线站点节点(gen.line_stations现成分组数据×全网钉质心坐标)中取最近,
+    # 写入data-anchor供冷启动/重布局按站+偏移复刻; 已有锚(整元素自锚继承)不覆写。
+    _i11 = t.find('data-term="环线"')
+    if _i11 != -1:
+        _j11 = t.find('>', _i11)
+        _seg11 = t[_i11:_j11]
+        if 'data-anchor' not in _seg11:
+            _tr11 = re.search(r'translate\(([-\d.]+) ([-\d.]+)\)', _seg11)
+            if _tr11:
+                _b11 = (float(_tr11.group(1)), float(_tr11.group(2)))
+                _cand11 = [(nm2, pin_center[nm2]) for nm2 in line_stations('11号线') if nm2 in pin_center]
+                if _cand11:
+                    _st11, _sc11 = min(_cand11, key=lambda kv: dist_pts(_b11, kv[1]))
+                    t = t[:_j11] + ' data-anchor="station:%s|dx=%.2f,dy=%.2f"' % (
+                        _st11, _b11[0] - _sc11[0], _b11[1] - _sc11[1]) + t[_j11:]
+                    print('  环线徽标站点锚写入: %s' % _st11)
+
     # 外圈发射: 黑pass(粗) -> 白pass(细, 掏出0.7黑边+白衬) -> 牌(最上); 描边沿胶囊圆角边缘融合
     black_parts, white_parts = [], []
     for nm, pad in ring_pads.items():
