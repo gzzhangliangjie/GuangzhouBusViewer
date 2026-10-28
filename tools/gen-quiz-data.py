@@ -38,11 +38,7 @@ def check(cond, msg):
 
 
 def line_disp(ln):
-    if ln == '广佛线':
-        return 'GF'
-    if ln == 'APM线':
-        return 'APM'
-    return ln[:-2]
+    return gcc.line_disp(ln)   # 显示名=共享派生规则+定制表(custom_params.LINE_DISPLAY)
 
 
 def dist(a, b):

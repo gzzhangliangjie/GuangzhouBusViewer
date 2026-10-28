@@ -113,11 +113,13 @@ const MetroBoard = (() => {
     /* ---------- 拼图元素识别 ---------- */
 
     function badgeLineOf(g) {
+      // 涂装面->线路身份: 数字加'号线'; 显示名加'线'反查(APM->APM线, 与gen.badge_text_to_line同规); 全名直认(广佛线)
+      const known = new Set(QD().lines.map(l => l.name));
       for (const t of g.querySelectorAll('text')) {
         const s = t.textContent.trim();
         if (/^\d+$/.test(s)) return s + '号线';
-        if (s === 'APM') return 'APM线';
-        if (s === '广佛线') return '广佛线';
+        if (known.has(s + '线')) return s + '线';
+        if (known.has(s)) return s;
       }
       return null;
     }

@@ -7,8 +7,9 @@
 - 通用规则=引擎只读这里查表 + 通用默认兜底, 禁止在通用门禁里内嵌站名/线名分支;
 - 特殊优先 = 命中定制参数的站按参数执行, 未命中走通用默认; 同步层(sync-base)只认
   data-pin-base 戳(零站名)——定制方打戳, 同步方认戳。
-- 不进本文件: 几何真源(站位/走廊)= rebuild10 CFG; 线名身份归一(APM/GF↔线名)= gen
-  共享接口(§1.7); 校准阈值只写判例注释, 不写成站名分支(§4)。
+- 不进本文件: 几何真源(站位/走廊)= rebuild10 CFG; 线名归一函数(line_disp/
+  badge_text_to_line 等)= gen 共享接口(§1.7, 本文件 LINE_DISPLAY 只是其数据源);
+  校准阈值只写判例注释, 不写成站名分支(§4)。
 """
 
 # —— 标签策略(按站组): build-network.label_policy 消费 ——
@@ -22,6 +23,14 @@ LABEL_POLICY = {
         halo=True,
         pin=True,
     ),
+}
+
+# —— 线路显示名(唯一不可派生映射): 广佛线显示=GF(用户指定) ——
+# 其余线显示名一律去尾派生(X号线去'号线', X线去'线', 如 APM线->APM), 不入表;
+# 数据源(CSV/编号总表)2026-10-28 起一律写全名, 简写只允许出现在显示面(牌面/徽标涂装)。
+# 消费者: gen.line_disp / csv_line_to_card / badge_text_to_line(归一函数=gen共享接口)、gen-quiz-data。
+LINE_DISPLAY = {
+    '广佛线': 'GF',
 }
 
 # —— 编号牌字号覆写(按线号): gen-codes-cards 消费 ——

@@ -37,29 +37,48 @@ ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号
          '9号线', '10号线', '11号线', '12号线', '13号线', '14号线', '18号线',
          '21号线', '22号线', '广佛线', 'APM线']
 
+# 定制参数中心(唯一集中地=custom_params.py, 特殊优先): 线路显示名表 + 编号牌字号覆写
+import importlib.util as _ilu
+_spec_cp = _ilu.spec_from_file_location(
+    'custom_params', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_params.py'))
+CP = _ilu.module_from_spec(_spec_cp)
+_spec_cp.loader.exec_module(CP)
+LINE_DISPLAY = CP.LINE_DISPLAY
+CHIP_FONT_OVERRIDE = CP.CHIP_FONT_OVERRIDE
+DISP2LINE = {v: k for k, v in LINE_DISPLAY.items()}   # 显示名->全名(GF->广佛线)
+_ORDER_SET = set(ORDER)
+
+
+def line_disp(ln):
+    """线名->显示线号(共享接口): 定制表(广佛线=GF) + 去尾规则(X号线去'号线'/X线去'线', 如 APM线->APM)."""
+    if ln in LINE_DISPLAY:
+        return LINE_DISPLAY[ln]
+    if ln.endswith('号线'):
+        return ln[:-2]
+    if ln.endswith('线'):
+        return ln[:-1]
+    return ln
+
 
 def csv_line_to_card(ln):
-    """CSV线路名 -> (卡线名, 显示线号); 图上无走廊的线返回 (None, None)."""
-    if ln == '广佛线':
-        return ('广佛线', 'GF')
-    if ln == 'APM':
-        return ('APM线', 'APM')
-    if ln in [x for x in ORDER if x.endswith('号线')]:
-        return (ln, ln[:-2])
+    """CSV线路名 -> (卡线名, 显示线号); 图上无走廊的线返回 (None, None).
+    数据源口径(2026-10-28): CSV/总表一律写全名, 显示名由 line_disp 派生, 不再收简写."""
+    if ln in ORDER:
+        return (ln, line_disp(ln))
+    if ln in LINE_DISPLAY:
+        return (ln, LINE_DISPLAY[ln])
     return (None, None)
 
 
 # ---------- 编号数据 ----------
 def badge_text_to_line(txt):
     """徽标文字 -> 线名(底层统一逻辑, 2026-10-25: 此前散落多处且漏数字归一化):
-    裸数字+'号线' / APM / GF / 广佛线 原样; 其他原样返回。"""
+    裸数字+'号线'; 显示名反查全名(去尾逆查'APM'/'GF'); 全名或其余形式原样返回。"""
     if txt.isdigit():
         return txt + '号线'
-    if txt == 'APM':
-        return 'APM线'
-    if txt == 'GF':
-        return '广佛线'
-    return txt
+    if txt + '线' in _ORDER_SET:
+        return txt + '线'
+    return DISP2LINE.get(txt, txt)
 
 
 def badge_elements(svg_text):
@@ -270,14 +289,7 @@ def parse_card(line):
 # ---------- 牌几何 ----------
 FONT = 5.5        # 牌字号(全网, 2026-10-23 五轮再缩)
 FONT_CARD = 6.0   # 单线卡字号
-# 定制参数(唯一集中地=custom_params.py, 特殊优先): 编号牌字号覆写表 线号->(全网牌, 单线卡)
-import importlib.util as _ilu_cp
-_spec_cp = _ilu_cp.spec_from_file_location(
-    'custom_params', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'custom_params.py'))
-CP = _ilu_cp.module_from_spec(_spec_cp)
-_spec_cp.loader.exec_module(CP)
-CHIP_FONT_OVERRIDE = CP.CHIP_FONT_OVERRIDE
-APM_FONT, APM_FONT_CARD = CHIP_FONT_OVERRIDE['APM']   # 兼容别名(verify-codes-cards V4 引用)
+# (编号牌字号覆写表 CHIP_FONT_OVERRIDE 已随定制参数中心在文件顶部装载)
 H = 9.0           # 牌高
 H_CARD = 10.0
 PADX = 1.8        # 左右内边距
@@ -292,7 +304,7 @@ INK = '#1a1a1a'
 from PIL import ImageFont
 try:
     _FM = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/msyhbd.ttc', int(fs * 10))
-           for fs in (FONT, FONT_CARD, APM_FONT, APM_FONT_CARD)}
+           for fs in (FONT, FONT_CARD) + tuple(v for pair in CHIP_FONT_OVERRIDE.values() for v in pair)}
     _FM_ARIAL = {round(fs, 1): ImageFont.truetype('C:/Windows/Fonts/arial.ttf', int(fs * 10))
                  for fs in (5.5, 6.0)}
 except Exception:
@@ -1329,15 +1341,15 @@ def gen_network(codes, report):
             tx, ty, sc = float(mm.group(1)), float(mm.group(2)), float(mm.group(3))
             _ts5 = re.findall(r'>([^<>]+)</text>', mm.group(5))
             num_val = _ts5[0].strip() if _ts5 else '?'
-            # 徽标文字=卡上线路名: 数字/APM/'广佛线'(15号字, 不以"号线"结尾, 25号字正则抓不到)
-            num = num_val if (num_val.isdigit() or num_val in ('APM', '广佛线')) else '?'
+            # 徽标文字=卡上线路显示面(数字/去尾显示名'APM'/定制表全名'广佛线'), 接受集由规则派生
+            num = num_val if (num_val.isdigit() or num_val + '线' in _ORDER_SET or num_val in LINE_DISPLAY) else '?'
             key = num
             out.append({'tx': tx, 'ty': ty, 'ox': tx, 'oy': ty, 'sc': sc, 'key': key, 'inner': mm.group(5), 'span': (mm.start(), mm.end())})
         return out
 
     _svg_src = open(os.path.join(LINES_DIR, 'network-全网.svg'), encoding='utf-8').read()
     badges = _badge_parse(_svg_src)
-    KEY2LN = {'GF': '广佛线', 'APM': 'APM线'}
+    KEY2LN = {line_disp(ln): ln for ln in ORDER if not ln.endswith('号线')}   # {'GF':'广佛线','APM':'APM线'} 派生
     # 各线徽标实际尺寸(卡header rect, 广佛73/APM 102.2 与其余80不同, 碰撞盒必须用实尺寸;
     # 2026-10-24 起全网徽标高=2×序号胶囊18pt, scale由底图transform携带)
     _bsz = {}
@@ -1808,7 +1820,8 @@ def cross_check_master(report):
         report['csv_vs_master'] = ['master json 缺失']
         return
     m = json.load(open(master_path, encoding='utf-8'))
-    LN = {'广佛': '广佛线', 'GF': '广佛线', 'APM': 'APM线', 'F2': None}
+    LN = {'广佛': '广佛线', 'GF': '广佛线', '广佛线': '广佛线',
+          'APM': 'APM线', 'APM线': 'APM线', 'F2': None}   # 总表已规范化全名(2026-10-28); 旧简写键留容错
     master = {}
     for s in m['stations']:
         nm = norm_name(s['name'])

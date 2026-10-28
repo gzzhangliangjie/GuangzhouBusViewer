@@ -366,15 +366,15 @@
 22号线,06,22号线|06,南漖,Nanjiao,2206
 22号线,07,22号线|07,西塱,Xilang,2207
 22号线,08,22号线|08,芳村,Fangcun,2208
-APM,01,APM|01,广州塔,Canton Tower,APM01
-APM,02,APM|02,海心沙站,,APM02
-APM,03,APM|03,大剧院站,,APM03
-APM,04,APM|04,花城大道站,,APM04
-APM,05,APM|05,妇儿中心站,,APM05
-APM,06,APM|06,黄埔大道站,,APM06
-APM,07,APM|07,天河南站,,APM07
-APM,08,APM|08,体育中心南站,,APM08
-APM,09,APM|09,林和西,Linhexi,APM09
+APM线,01,APM线|01,广州塔,Canton Tower,APM01
+APM线,02,APM线|02,海心沙站,,APM02
+APM线,03,APM线|03,大剧院站,,APM03
+APM线,04,APM线|04,花城大道站,,APM04
+APM线,05,APM线|05,妇儿中心站,,APM05
+APM线,06,APM线|06,黄埔大道站,,APM06
+APM线,07,APM线|07,天河南站,,APM07
+APM线,08,APM线|08,体育中心南站,,APM08
+APM线,09,APM线|09,林和西,Linhexi,APM09
 广佛线,01,广佛线|01,新城东,Xincheng Dong,GF01
 广佛线,02,广佛线|02,东平,Dongping,GF02
 广佛线,03,广佛线|03,世纪莲,Shijilian,GF03
