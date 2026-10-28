@@ -103,7 +103,8 @@ def badge_elements(svg_text):
                     'h': (float(rm.group(2)) if rm else 43.0) * float(trm.group(3)),
                     'tr_attr': trm.group(0),
                     'tr_only': 'translate(%s %s)' % (trm.group(1), trm.group(2)),
-                    'inner': inner})
+                    'inner': inner,
+                    'elem': mm.group(0)})
     return out
 
 
@@ -1627,7 +1628,7 @@ def gen_network(codes, report):
             if _k in _anchor:
                 print('!! 上一版徽标键重复%s: 结构异常, 拒绝静默错位' % (_k,))
                 sys.exit(1)
-            _anchor[_k] = _e['tr_only']
+            _anchor[_k] = _e
         _miss = []
         _hit = [0]
 
@@ -1636,17 +1637,22 @@ def gen_network(codes, report):
             _tm = re.search(r'data-term="([^"]+)"', attrs)
             _ts = re.findall(r'>([^<>]+)</text>', inner)
             _k = (badge_text_to_line(_ts[0].strip() if _ts else '?'), _tm.group(1) if _tm else None)
-            _tr = _anchor.get(_k)
-            if _tr is None:
+            _pe = _anchor.get(_k)
+            if _pe is None:
                 _miss.append(_k)
                 return mm.group(0)
             _hit[0] += 1
-            return mm.group(1) + '"' + _tr + mm.group(4) + '>' + mm.group(5) + '</g>'
+            # 整元素继承(写入契约§1/§3, 2026-10-28 P2): transform+全部属性+inner整体取上一版——
+            # data-anchor 等 data-* 属性随锚携带, 手调不因重跑丢失; 卡片未变时与旧字节等价。
+            return _pe['elem']
 
         t = re.sub(r'(<g data-badge="header"[^>]* transform=)"translate\(([-\d.]+) ([-\d.]+)\)([^>]*)>(.*?)</g>',
                    _pin_badge, t, flags=re.S)
         if _miss:
             print('  徽标锚: 命中%d, 无锚走算法位: %s' % (_hit[0], '、'.join(str(k) for k in _miss)))
+        else:
+            print('  徽标锚: 命中%d/41, 零丢失' % _hit[0])
+        report['badge_anchor'] = dict(hit=_hit[0], miss=[list(k) for k in _miss])
         # 写前校验: XML损坏拒绝落盘
         try:
             _ET.fromstring(t)

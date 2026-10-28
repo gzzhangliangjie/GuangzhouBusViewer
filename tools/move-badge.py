@@ -118,6 +118,18 @@ sc_m = re.search(r'scale\(([\d.]+)\)', hit.group(1))
 new_el = re.sub(r'transform="[^"]*"',
                 'transform="translate(%.2f %.2f) scale(%s)"' % (nx, ny, sc_m.group(1)),
                 hit.group(0), count=1)
+# data-anchor 累计(写入契约: 属性owner=move-badge; nudge形=相对自动位的累计偏移, 随codes自锚携带)
+_an = re.search(r'data-anchor="([^"]*)"', hit.group(1))
+_odx, _ody, _why = 0.0, 0.0, ''
+if _an and _an.group(1).startswith('nudge:'):
+    _parts = _an.group(1)[6:].split(',')
+    _odx, _ody = float(_parts[0]), float(_parts[1])
+    _why = _parts[2] if len(_parts) > 2 else ''
+_why = (_why + '+' if _why else '') + '%s%gpt' % (DIR, step)
+new_el = re.sub(r'\s*data-anchor="[^"]*"', '', new_el, count=1)
+new_el = re.sub(r'(<g\s[^>]*?)>',
+                r'\1 data-anchor="nudge:%.2f,%.2f,%s">' % (_odx + DX * step, _ody + DY * step, _why),
+                new_el, count=1)
 t = t.replace(hit.group(0), new_el, 1)
 import subprocess
 subprocess.run(['python', 'tools/svg-snapshot.py', 'save',

@@ -56,6 +56,16 @@ assert moved, '阶梯内(<=20pt)无合法平移位: %s %s' % (NM, DIR)
 nx, ny, step = moved
 new_attrs = re.sub(r'\bx="[-\d.]+"', 'x="%.2f"' % nx, e['attrs'])
 new_attrs = re.sub(r'\by="[-\d.]+"', 'y="%.2f"' % ny, new_attrs)
+# data-nudge 累计(写入契约: 属性owner=move-label; 语义=相对自动位的累计偏移, build按自动位+nudge重放)
+_mn = re.search(r'data-nudge="([^"]*)"', e['attrs'])
+_odx, _ody, _why = 0.0, 0.0, ''
+if _mn:
+    _parts = _mn.group(1).split(',')
+    _odx, _ody = float(_parts[0]), float(_parts[1])
+    _why = _parts[2] if len(_parts) > 2 else ''
+_why = (_why + '+' if _why else '') + '%s%gpt' % (DIR, step)
+new_attrs = re.sub(r'\s*data-nudge="[^"]*"', '', new_attrs)
+new_attrs += ' data-nudge="%.2f,%.2f,%s"' % (_odx + DX * step, _ody + DY * step, _why)
 new_el = '<text %s>%s</text>' % (new_attrs, NM)
 t = t.replace(e['el'], new_el)
 import subprocess

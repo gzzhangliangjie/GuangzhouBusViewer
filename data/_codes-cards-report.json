@@ -1087,6 +1087,10 @@
  ],
  "ring_overlaps": [],
  "badge_moves": [],
+ "badge_anchor": {
+  "hit": 41,
+  "miss": []
+ },
  "net_chips": 400,
  "net_multi_stations": 72
 }

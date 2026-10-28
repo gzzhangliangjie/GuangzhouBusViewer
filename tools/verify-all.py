@@ -53,6 +53,53 @@ for _f1, _want1 in _G1_EXPECT.items():
     else:
         print('  %s OK (%d组)' % (_f1, len(_got1)))
 
+# 0.55) G7 钉戳站擅动断言(2026-10-28 用户判例"APM东带全部错位, 特殊规则优先"):
+#     data-pin-base 站=已验收定制终稿, 其坐标相对HEAD漂移=FAIL——特殊规则优先的机器化,
+#     引擎变更/通用优化一律不得重排钉戳站; 确需挪动=用户明令后 --allow-pin-drift 放行一次。
+if '--allow-pin-drift' not in sys.argv:
+    print('== 0.55) G7 钉戳站擅动 ==')
+    import subprocess as _sp7
+    _pin_re = _re1.compile(r'<text x="([-\d.]+)" y="([-\d.]+)"([^>]*)data-pin-base="1"[^>]*>([^<]+)</text>')
+    try:
+        _head7 = _sp7.run(['git', 'show', 'HEAD:' + BASE], capture_output=True, text=True,
+                          encoding='utf-8').stdout
+        _now7 = open(BASE, encoding='utf-8').read()
+        _h7 = {m.group(4): (m.group(1), m.group(2)) for m in _pin_re.finditer(_head7)}
+        _n7 = {m.group(4): (m.group(1), m.group(2)) for m in _pin_re.finditer(_now7)}
+        _drift7 = sorted(nm for nm in set(_h7) | set(_n7)
+                         if nm not in _h7 or nm not in _n7 or _h7[nm] != _n7[nm])
+        if _drift7:
+            fails.append('G7 钉戳站擅动(已验收终稿, 特殊规则优先): %s' % '、'.join(_drift7))
+            print('  FAIL: %s' % '、'.join(_drift7))
+        else:
+            print('  OK (%d枚钉戳站坐标与已验收态一致)' % len(_n7))
+    except Exception as _e7:
+        print('  SKIP (%s)' % _e7)
+
+# 0.6) G4 写入契约断言(P2): 徽标锚继承零丢失 + data-loc/nudge 站名属性 codes→base 同步
+print('== 0.6) G4 属性继承/同步 ==')
+import json as _j4
+try:
+    _r4 = _j4.load(open('data/_codes-cards-report.json', encoding='utf-8'))
+except (OSError, ValueError):
+    _r4 = {}
+_ba4 = _r4.get('badge_anchor') or {}
+if _ba4.get('miss'):
+    fails.append('G4 徽标锚丢失(算法位写入, 自锚将延续错误位): %s' % _ba4['miss'])
+    print('  徽标锚 FAIL: 命中%s 丢%s' % (_ba4.get('hit'), _ba4['miss']))
+else:
+    print('  徽标锚 OK (命中%s)' % _ba4.get('hit', '?'))
+_a4 = {}
+for _f4 in (CODES, BASE):
+    _t4 = open(_f4, encoding='utf-8').read()
+    _m4 = _re1.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _t4, _re1.S)
+    _a4[_f4] = sorted(_re1.findall(r'<text[^>]*data-(?:loc|nudge)="[^"]*"[^>]*>([^<]+)</text>', _m4.group(1))) if _m4 else []
+if _a4[BASE] != _a4[CODES]:
+    fails.append('G4 data-loc/nudge 站名属性 codes→base 同步缺失: codes=%s base=%s' % (_a4[CODES], _a4[BASE]))
+    print('  属性同步 FAIL')
+else:
+    print('  属性同步 OK (%d站带语义锚)' % len(_a4[CODES]))
+
 # 1) 全链重跑 + 幂等
 if '--quick' not in sys.argv:
     print('== 1) 重跑 build-network / gen-codes-cards / sync ==')

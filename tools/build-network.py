@@ -298,6 +298,8 @@ def st_clear(rect, own_mk):
     for nm2, ax, ay, bx, by, _c in corridors:
         if rect_seg_dist(rect, (ax, ay), (bx, by)) < _cor_need:
             return False
+    # 胶囊避让(T5范围版)已于2026-10-28否决回退: 钉戳站(APM东带)已验收位=终稿, 搜索位重排
+    # 即用户判"全部错位"; 非钉戳站又被codes自锚+sync掩盖——该功能在自锚定架构下无合法受益者。
     for other in markers:
         if other is own_mk:
             continue
@@ -416,6 +418,23 @@ def place_one(mk):
     18号线冼村段右移后多数站紧环即可放(用户: 稍微重叠可接受)。
     胜出候选的 (字号档, src来源) 记入 label_src(=layout-report 站名审计数据)。"""
     nm = mk['name']
+    # 语义锚钉位通道(P2): data-loc="型|方向|环档" 命中=免搜直算(几何=标记外沿点+方向×环梯),
+    # 合法性复检同自动路径; 放不下回退自动分型(layout-report留痕), 不静默丢语义。
+    _loc = _loc_by_st.get(nm)
+    if _loc and len(_loc.split('|')) == 3:
+        _dp, _dr = _NAME_TO_DIR[_loc.split('|')[1]], SG['LABEL_RING'][int(_loc.split('|')[2])]
+        for fs, hh in ST_TIERS[:1]:
+            w = st_wfs(nm, fs)
+            _ax, _ay = marker_anchor(mk, _dp[0], _dp[1])
+            _r2 = place_box(w, hh, _ax + _dp[0] * _dr, _ay + _dp[1] * _dr, _dp[0], _dp[1])
+            _cx, _cy = _r2[0] + w / 2, _r2[1] + hh / 2
+            rect = (_cx - w / 2, _cy - hh / 2, w, hh)
+            if st_clear(rect, mk):
+                labels.append((nm, _cx, _cy - hh / 2 + 0.8 * fs, fs, False))
+                placed_boxes.append((nm,) + rect)
+                label_src[nm] = dict(fs=fs, src='data-loc钉位(%s)' % _loc)
+                return True
+        print('  站名 %s data-loc钉位放不下, 回退自动分型' % nm)
     for fs, hh in ST_TIERS[:2]:
         w = st_wfs(nm, fs)
         for cx, cy, _src in _cands_for(mk, nm, w, hh, fs):
@@ -483,12 +502,65 @@ for _ln in ORDER:
 
 # 终点文字候选豁免: 多线共享圆且终点线走向与并圆线走向冲突的站, 延长线文字=斜挂旁线不对齐,
 # 跳过term_dir让紧环放轴向位(2026-10-22用户: 文字没有跟圆点对齐/广州塔文字归位)
-NO_TERM_DIR = CP.TERM_DIR_EXEMPT   # 终点文字不走延长线候选(值源=custom_params; 林和西/广州塔=APM斜×3号线竖判例)
-for _nm in NO_TERM_DIR:
-    term_dir.pop(_nm, None)
+# 语义锚通道(P2 写入契约, 属性owner=move-label): 上一版codes SVG站名组的 data-loc/data-nudge
+# 属性随站名组自锚永久携带; 缺属性=自动分型(渐进采用)。格式:
+#   data-loc="型"                    → 类型覆写(T2-T5=不走终点延长线候选; 原TERM_DIR_EXEMPT迁并)
+#   data-loc="型|方向|环档"          → 钉位免搜(方向∈8向N/NE/E/SE/S/SW/W/NW, 环档=LABEL_RING下标)
+#   data-nudge="dx,dy,事由"          → 自动位之上累计偏移
+_loc_by_st, _nudge_by_st = {}, {}
+_loc_path = os.path.join(LINES_DIR, 'network-全网.codes.svg')
+if os.path.exists(_loc_path):
+    _loc_src = open(_loc_path, encoding='utf-8').read()
+    _lg = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', _loc_src, re.S)
+    if _lg:
+        for _mm in re.finditer(r'<text([^>]*)>([^<]+)</text>', _lg.group(1)):
+            _nm2 = _mm.group(2).strip()
+            _dl = re.search(r'data-loc="([^"]*)"', _mm.group(1))
+            _dn = re.search(r'data-nudge="([^"]*)"', _mm.group(1))
+            if _dl:
+                _loc_by_st[_nm2] = _dl.group(1)
+            if _dn:
+                _nudge_by_st[_nm2] = _dn.group(1)
+_DIRS_BY_NAME = {(1, 0): 'E', (-1, 0): 'W', (0, -1): 'N', (0, 1): 'S',
+                 (1, -1): 'NE', (-1, -1): 'NW', (1, 1): 'SE', (-1, 1): 'SW'}
+_NAME_TO_DIR = {v: k for k, v in _DIRS_BY_NAME.items()}
+for _nm2, _spec in _loc_by_st.items():
+    _parts = _spec.split('|')
+    if _parts[0] not in ('T1', 'T2', 'T3', 'T4', 'T5') or (len(_parts) == 3 and _parts[1] not in _NAME_TO_DIR):
+        print('!! G5 data-loc 语义非法: %s="%s" (站名=%s), 拒绝静默忽略' % ('data-loc', _spec, _nm2))
+        sys.exit(1)
+    if len(_parts) == 3:
+        try:
+            int(_parts[2])
+        except ValueError:
+            print('!! G5 data-loc 环档非整数: %s (站名=%s)' % (_spec, _nm2))
+            sys.exit(1)
+# 类型覆写: data-loc 带 T2-T5 的站不走终点延长线候选(值源=SVG属性, TERM_DIR_EXEMPT表已迁并删除)
+for _nm2, _spec in _loc_by_st.items():
+    if _spec.split('|')[0] != 'T1':
+        term_dir.pop(_nm2, None)
 _mks = sorted(markers, key=lambda m: (len(m['lines']) <= 1, opt_n(m), m['name']))
 for mk in _mks:
     place_one(mk)
+# 语义锚偏移通道(P2): data-nudge="dx,dy[,事由]" 在自动位/钉位之上累计平移(placed_boxes同步,
+# 徽标落位等下游全部吃到); G5 语义门禁=非法即硬失败。
+for _nm2, _nspec in _nudge_by_st.items():
+    _nparts = _nspec.split(',')
+    try:
+        _ndx, _ndy = float(_nparts[0]), float(_nparts[1])
+    except (ValueError, IndexError):
+        print('!! G5 data-nudge 语义非法: "%s" (站名=%s), 需 dx,dy[,事由]' % (_nspec, _nm2))
+        sys.exit(1)
+    for _li, _lb in enumerate(labels):
+        if _lb[0] == _nm2:
+            labels[_li] = (_lb[0], _lb[1] + _ndx, _lb[2] + _ndy, _lb[3], _lb[4])
+            for _bi, _pb in enumerate(placed_boxes):
+                if _pb[0] == _nm2:
+                    placed_boxes[_bi] = (_pb[0], _pb[1] + _ndx, _pb[2] + _ndy, _pb[3], _pb[4])
+                    break
+            break
+    else:
+        print('  站名 %s data-nudge 未应用(站名未放出): %s' % (_nm2, _nspec))
 print('  站名: %d/%d (未放: %s)' % (len(labels), len(markers), ','.join(failed) or '无'))
 _LABELS_ADOPTED = False   # codes锚表labels_inner终版是否生效(layout-report 口径)
 
