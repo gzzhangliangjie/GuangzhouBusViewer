@@ -5,11 +5,16 @@
 
 const AMapLine = (() => {
   const KEY_STORE = 'gzbus.amap.key.v1';       // {key}
+  const DEFAULT_KEY = '04f065a4e72d55a1f150454d361122c4'; // 内置 key：地名搜索/公交补源开箱即用
   const CITY = '广州';
   const CITY_CODE = '020';                      // 过滤同号的外市线
 
   function getCreds() {
-    try { return JSON.parse(localStorage.getItem(KEY_STORE)) || null; } catch { return null; }
+    try {
+      const c = JSON.parse(localStorage.getItem(KEY_STORE));
+      if (c) return c;                          // 已存储（含显式清空 = 用户主动关闭）
+    } catch { /* 存储损坏视为未配置 */ }
+    return { key: DEFAULT_KEY };                // 从未配置：内置 key 兜底
   }
   function setCreds(key) {
     localStorage.setItem(KEY_STORE, JSON.stringify({ key: (key || '').trim() }));

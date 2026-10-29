@@ -14,6 +14,7 @@
     <span class="brand">广州交通图鉴</span>
     <div class="seg">
       <button data-mode="bus" class="active">公交路线</button>
+      <button data-mode="route">路线规划</button>
       <button data-mode="metro">地铁拼图</button>
       <button data-mode="roads">道路查看</button>
       <button data-mode="lines">线路图</button>
@@ -74,6 +75,42 @@
     <div class="roads-main">
       <div id="roads-map"></div>
       <div class="map-caption">底图 © 高德地图 · 道路数据 © OpenStreetMap 贡献者</div>
+    </div>
+  </div>
+
+  <!-- ==================== 路线规划 ==================== -->
+  <div id="route-view" class="mode-view route-layout" hidden>
+    <aside class="route-side">
+      <div class="route-io-row">
+        <div class="route-io">
+          <span class="io-dot io-from"></span>
+          <div class="io-field">
+            <input id="route-from" type="text" placeholder="起点：站名或地名" autocomplete="off" />
+            <button class="io-clear" id="route-from-clear" title="清除起点" hidden>✕</button>
+            <div class="route-sug" id="route-from-sug" hidden></div>
+          </div>
+        </div>
+        <button id="route-swap" title="交换起终点">⇅</button>
+        <div class="route-io">
+          <span class="io-dot io-to"></span>
+          <div class="io-field">
+            <input id="route-to" type="text" placeholder="终点：站名或地名" autocomplete="off" />
+            <button class="io-clear" id="route-to-clear" title="清除终点" hidden>✕</button>
+            <div class="route-sug" id="route-to-sug" hidden></div>
+          </div>
+        </div>
+      </div>
+      <div class="route-actions">
+        <button id="route-go" disabled>查询路线</button>
+        <button id="route-pick-from" title="在地图上点选起点（吸附最近站）">📍起点</button>
+        <button id="route-pick-to" title="在地图上点选终点（吸附最近站）">📍终点</button>
+      </div>
+      <div id="route-status" class="route-status">输入起点与终点（公交/地铁站名即时联想，地名地标走高德兜底）</div>
+      <div id="route-plan" class="route-plan"></div>
+    </aside>
+    <div class="route-main">
+      <div id="route-map"></div>
+      <div class="map-caption">底图 © 高德地图 · 线网数据 © OpenStreetMap 贡献者 · 纯本地估算路线，不含实时班次</div>
     </div>
   </div>
 
@@ -222,5 +259,8 @@
   <script src="js/metro-map.js"></script>
   <script src="js/metro-board.js?v=20261027a"></script>
   <script src="js/metro-quiz.js?v=20261027a"></script>
+  <script src="js/route-planner.js?v=20261029d"></script>
+  <script src="js/roadnet.js?v=20261029d"></script>
+  <script src="js/route-view.js?v=20261029d"></script>
 </body>
 </html>

@@ -31,12 +31,24 @@
       .observe(document.querySelector('#roads-map'));
   }
 
+  let lastSource = 'osm';   // 最近一次检索来源（状态栏标注）：snapshot | osm
   /** 按关键词查道路段，返回 [{ name, cls, km, ways: [[[lat,lng],...] ] }] */
   async function searchRoads(kw, onRound) {
     const key = cacheKey(kw);
     const cached = loadCache(key);
-    if (cached && Array.isArray(cached) && cached.length) return cached;
+    if (cached && Array.isArray(cached) && cached.length) { lastSource = 'osm'; return cached; }
 
+    // 路网快照本地检索（2026-10-29：随包 data/road-network-snapshot.json，秒出/离线可用；
+    // 与路线规划步行段共享同一份数据。快照无此路名再走 Overpass 在线兜底）
+    if (window.RoadNet) {
+      const netOk = await RoadNet.ready();
+      if (netOk) {
+        const local = RoadNet.searchRoads(kw);
+        if (local.length) { lastSource = 'snapshot'; return local; }
+      }
+    }
+
+    lastSource = 'osm';
     const q = `[out:json][timeout:90];way(${GZ_BBOX})["highway"]["name"~"${kw.replace(/"/g, '')}",i];out geom tags;`;
     const json = await Overpass.runQuery(q, { onRound });
     const byName = new Map();
@@ -187,7 +199,7 @@
     }
     if (roads.length) {
       roads.sort((a, b) => b.km - a.km);
-      status(`「${kw}」匹配 ${roads.length} 条道路`);
+      status(`「${kw}」匹配 ${roads.length} 条道路${lastSource === 'snapshot' ? '（本地路网快照）' : '（OSM 在线）'}`);
       renderList(roads, 0);
       drawRoads(roads, 0);
       return;
