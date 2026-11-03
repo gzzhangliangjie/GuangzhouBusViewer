@@ -376,6 +376,32 @@ body {
 
 /* ---------- 路线规划 ---------- */
 .route-layout { display: flex; width: 100%; }
+.route-modes { display: flex; flex-wrap: wrap; gap: 4px; padding: 10px 12px 0; }
+.mode-chip {
+  border: 1px solid #2f3742; border-radius: 999px; cursor: pointer;
+  background: #1a2027; color: #8b949e; font-size: 12px; padding: 4px 10px;
+}
+.mode-chip:hover { border-color: #4a9eff; color: #c9d1d9; }
+.mode-chip.active { background: #23425e; border-color: #4a9eff; color: #fff; font-weight: 600; }
+.io-wp { background: #d29922; }
+.io-pick {
+  position: absolute; right: 24px;
+  border: none; background: none; cursor: pointer; font-size: 12px; padding: 2px;
+  filter: grayscale(0.4); opacity: 0.85;
+}
+.io-pick:hover { filter: none; opacity: 1; }
+.io-rm {
+  flex: none; width: 24px; height: 24px; padding: 0; margin-left: 4px;
+  background: #1a2027; border: 1px solid #2f3742; border-radius: 6px;
+  color: #8b949e; cursor: pointer; font-size: 13px; line-height: 1;
+}
+.io-rm:hover { border-color: #f85149; color: #f85149; }
+#route-addwp {
+  align-self: flex-start; margin: 4px 0 0 22px; padding: 3px 10px;
+  background: none; border: 1px dashed #2f3742; border-radius: 999px;
+  color: #6e7681; cursor: pointer; font-size: 11.5px;
+}
+#route-addwp:hover { border-color: #4a9eff; color: #c9d1d9; }
 .route-side {
   width: 340px; min-width: 300px; display: flex; flex-direction: column;
   border-right: 1px solid #232a33; background: #12171c;
@@ -474,6 +500,13 @@ body {
 .plan-summary b { font-size: 15px; color: #fff; }
 .plan-summary span { font-size: 11.5px; color: #8b949e; }
 .plan-legs { display: flex; flex-direction: column; gap: 5px; }
+.leg.wpmark {
+  cursor: default; background: none; border: none;
+  justify-content: center; font-size: 11.5px; color: #d29922;
+  padding: 3px 0 1px;
+}
+.leg.wpmark:hover { border: none; background: none; }
+.leg.drive { border-color: #23425e; }
 .leg {
   display: flex; align-items: center; gap: 8px;
   padding: 7px 8px; border-radius: 8px; cursor: pointer;

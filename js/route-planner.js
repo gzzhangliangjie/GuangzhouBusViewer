@@ -215,7 +215,8 @@ const RoutePlanner = (() => {
   // goalEdges = 候选站→虚拟终点的合成末端步行边（调用方已把虚拟终点 push 进 nodes）
   // penalties: Map<ride边对象, 罚时min>，多方案 Top-K 用（只罚乘车边，逼出不同走法）
   // xferMul: 换乘罚倍率（1=纯最快；>1 搜索向少换乘倾斜，summary 仍按真实时刻计算）
-  function astar(startEdges, goalEdges, goalPt, penalties, xferMul = 1) {
+  // kindFilter: 'bus'|'metro'|null——纯公交/纯地铁模式的车型过滤（乘车边按变体类别、换乘边按两端节点类别）
+  function astar(startEdges, goalEdges, goalPt, penalties, xferMul = 1, kindFilter = null) {
     const xferExtra = e => (e.xf ? (xferMul - 1) * P.TRANSFER_PENALTY_MIN : 0);
     const n = nodes.length;
     const T = n - 1;                   // 虚拟终点
@@ -271,6 +272,12 @@ const RoutePlanner = (() => {
       }
       for (const e of adj[nd]) {
         if (done[e.to]) continue;
+        if (kindFilter) {
+          // 纯公交/纯地铁：乘车边按变体类别过滤；换乘边要求两端均为该类（bus↔metro 换乘边禁行）
+          if (e.kind === 'ride' && variants[e.v].kind !== kindFilter) continue;
+          if (e.kind === 'walk' && e.xf &&
+              (nodes[nd].kind !== kindFilter || nodes[e.to].kind !== kindFilter)) continue;
+        }
         const ng = g + e.min + xferExtra(e) + (penalties ? (penalties.get(e) || 0) : 0);
         if (ng < dist[e.to]) {
           dist[e.to] = ng; prev[e.to] = nd; prevEdge[e.to] = e;
@@ -342,8 +349,12 @@ const RoutePlanner = (() => {
 
   /* ---------- 对外：规划 ---------- */
   // fromFix/toFix: {name, lat, lng, wgs:true|false, poi:true|false}
-  // planK：Top-K 备选方案（惩罚已走乘车边逼出不同走法），按总耗时排序
-  function planK(fromFix, toFix, k = 3) {
+  // planTransitTopK：两点公共交通 Top-K（惩罚已走乘车边逼出不同走法），按总耗时排序
+  // mode: 'transit'(步行+公交+地铁) | 'bus'(纯公交) | 'metro'(纯地铁)
+  // pref: 'time' | 'xfer'——仅作用于 k=1 选拔（途经点链逐段）；k≥2 恒为"最快k-1+保底最少换乘"
+  function planTransitTopK(fromFix, toFix, k = 3, mode = 'transit', pref = 'time') {
+    const kindFilter = mode === 'bus' ? 'bus' : mode === 'metro' ? 'metro' : null;
+    const kindLabel = mode === 'bus' ? '公交站' : mode === 'metro' ? '地铁站' : '站点';
     if (!grid) throw new Error('网络未构建');
     const toWgs = f => {
       if (f.wgs !== false) return f;
@@ -355,7 +366,8 @@ const RoutePlanner = (() => {
 
     // 按类型分名额取候选（2026-10-29 用户问"为什么不是1号线+5号线"判例：
     // 只取最近 N 站时，老城密集公交站会占满名额，地铁站永远进不了候选，
-    // 低换乘的地铁方案连参赛资格都没有）——公交/地铁各留坑位
+    // 低换乘的地铁方案连参赛资格都没有）——公交/地铁各留坑位；
+    // 纯公交/纯地铁模式下名额全给该车型
     const pick = (fix, w) => {
       const r = fix.poi ? P.WALK_RADIUS_POI_M : P.WALK_RADIUS_STATION_M;
       const all = queryNear(w.lat, w.lng, r).sort((a, b) => a[1] - b[1]);
@@ -364,15 +376,17 @@ const RoutePlanner = (() => {
       for (const [i, d] of all) {
         if (cands.length >= P.ENDPOINTS_MAX) break;
         const k = nodes[i].kind;
-        if ((perKind[k] || 0) >= P.ENDPOINTS_PER_KIND) continue;
+        if (kindFilter && k !== kindFilter) continue;
+        const quota = kindFilter ? P.ENDPOINTS_MAX : P.ENDPOINTS_PER_KIND;
+        if ((perKind[k] || 0) >= quota) continue;
         perKind[k] = (perKind[k] || 0) + 1;
         cands.push([i, d]);
       }
       return { r, cands };
     };
     const fp = pick(fromFix, fromW), tp = pick(toFix, toW);
-    if (!fp.cands.length) return { error: `起点「${fromFix.name}」周边 ${Math.round(fp.r)}m 内没有站点，无法接入路网` };
-    if (!tp.cands.length) return { error: `终点「${toFix.name}」周边 ${Math.round(tp.r)}m 内没有站点，无法接入路网` };
+    if (!fp.cands.length) return { error: `起点「${fromFix.name}」周边 ${Math.round(fp.r)}m 内没有${kindLabel}，无法接入路网` };
+    if (!tp.cands.length) return { error: `终点「${toFix.name}」周边 ${Math.round(tp.r)}m 内没有${kindLabel}，无法接入路网` };
 
     // 首末步行边：优先走路网快照真实路径（Dijkstra），缺失时退化为直线×绕行系数。
     // 真实路径的折线随边携带（walkM 与 pts），行程绘制走真路而非直线
@@ -409,13 +423,17 @@ const RoutePlanner = (() => {
 
       const plans = [];
       const seen = new Set();
-      const penalties = new Map();
       // 多目标入池（2026-10-29 用户令：换乘数与耗时都是重要排序因素，都要看）：
       // 倍率 1=纯最快、3=轻度少换乘、20=近乎最少换乘（长步行+1换也能翻盘）。
-      // 两/三池合并去重后按时间排序，并保证"换乘最少"的方案始终在池内
+      // 两/三池合并去重后按时间排序，并保证"换乘最少"的方案始终在池内。
+      // ⚠️罚空间每 profile 独立（2026-11-03 判例）：曾共用一张 penalties Map，
+      // mul=1 先摸过的乘车边带着罚时进入 mul=20 搜索，把真正的 0 换乘最优压下去
+      // （中山大学→广州塔：经中大站 36min/步行2.36km 被 45+ 的搜索代价压住，
+      //   浮上来的是经鹭江 39min/步行2.73km 的更差 0 换乘变体）
       for (const xferMul of P.XFER_PROFILES) {
+        const penalties = new Map();
         for (let iter = 0; iter < 3; iter++) {
-          const r = astar(startEdges, goalEdges, toW, penalties, xferMul);
+          const r = astar(startEdges, goalEdges, toW, penalties, xferMul, kindFilter);
           if (!r || !r.edges.length) break;
 
           // 首末虚拟步行边补 from/to 节点（压缩函数依赖；直接写回 adj 边对象，幂等）
@@ -445,16 +463,20 @@ const RoutePlanner = (() => {
               penalties.set(e.tw, (penalties.get(e.tw) || 0) + delta);
             }
           }
-          if (!dup) { seen.add(sig); plans.push({ legs, summary }); }
+          if (!dup) { seen.add(sig); plans.push({ legs, summary, mode }); }
         }
       }
       plans.sort((a, b) => a.summary.totalMin - b.summary.totalMin);
       {
-        // 选拔：最快 k-1 个 + 保证换乘最少的方案必在池内（哪怕它不是最快的）
+        // 选拔（2026-11-03 用户令"优先时间那几段都优先时间，优先换乘那几段都优先换乘"）：
+        // k=1 跟随调用方口径——xfer=换乘最少优先（池按耗时序，reduce 取首个最少换乘=同数最快；
+        // 步行换少换乘是显式代价，判例：点名 50min/1换 胜 41min/3换）；time=纯最快。
+        // k≥2 = 最快 k-1 + 保底最少换乘必在池内（UI 多方案列表，用户自己挑）。
         const minXfer = plans.reduce((m, p) =>
           p.summary.transfers < m.summary.transfers ? p : m, plans[0]);
+        if (k === 1) return { plans: [pref === 'xfer' && minXfer ? minXfer : plans[0]] };
         const kept = plans.slice(0, k);
-        if (minXfer && !kept.includes(minXfer)) kept[kept.length - 1] = minXfer;
+        if (k > 1 && minXfer && !kept.includes(minXfer)) kept[kept.length - 1] = minXfer;
         kept.sort((a, b) => a.summary.totalMin - b.summary.totalMin);
         return { plans: kept };
       }
@@ -463,9 +485,144 @@ const RoutePlanner = (() => {
     }
   }
 
+  /* ---------- 出行模式分发与途经点链 ---------- */
+
+  const sumLegs = legs => {
+    let walkM = 0, rideM = 0, totalMin = 0, rides = 0;
+    for (const leg of legs) {
+      if (leg.type === 'wp') continue;   // 途经点标记无几何
+      totalMin += leg.min;
+      if (leg.type === 'walk') walkM += leg.m;
+      else { rideM += pathM(leg.pts); rides++; }
+    }
+    return {
+      totalMin: Math.round(totalMin), transfers: Math.max(0, rides - 1),
+      walkM: Math.round(walkM), rideKm: Math.round(rideM / 100) / 10
+    };
+  };
+  const wgsOf = f => f.wgs === false
+    ? (([a, b]) => ({ lat: a, lng: b }))(gcjToWgs(f.lat, f.lng))
+    : { lat: f.lat, lng: f.lng };
+  const fixPt = f => ({ name: f.name, lat: f.lat, lng: f.lng });
+
+  /** 纯步行链：全程步行网（每段有界 Dijkstra），途经点顺序连缀 */
+  function planWalkChain(fixes) {
+    if (!window.RoadNet || !RoadNet.stats())
+      return { error: '步行模式需要路网快照（data/routing-graph.json），当前未装载' };
+    const legs = [];
+    const segments = [];
+    for (let i = 0; i < fixes.length - 1; i++) {
+      const a = wgsOf(fixes[i]), b = wgsOf(fixes[i + 1]);
+      const straight = distM(a, b);
+      const r = RoadNet.walkPath(a, b, straight * 1.8 + 3000);
+      if (!r) return { error: `「${fixes[i].name}」→「${fixes[i + 1].name}」之间未找到可步行路径（可能隔江或距离过远）` };
+      legs.push({
+        type: 'walk', keep: true, min: r.m * minPerM(P.WALK_KMH), m: r.m, pts: r.pts,
+        from: { name: fixes[i].name, lat: a.lat, lng: a.lng },
+        to: { name: fixes[i + 1].name, lat: b.lat, lng: b.lng }
+      });
+      segments.push({ label: `${fixes[i].name} → ${fixes[i + 1].name}`, totalMin: Math.round(r.m * minPerM(P.WALK_KMH)) });
+      if (i < fixes.length - 2) legs.push({ type: 'wp', name: fixes[i + 1].name });
+    }
+    return { plans: [{ legs, summary: sumLegs(legs), mode: 'walk', segments }] };
+  }
+
+  /** 驾车链：路网有向图（oneway+类别速度）。两点时出 最快/最短 双方案，多途经点为顺序连缀 */
+  function planDriveChain(fixes) {
+    if (!window.RoadNet || !RoadNet.stats())
+      return { error: '驾车模式需要路网快照（data/routing-graph.json），当前未装载' };
+    const mkDrive = (a, b, r, tag) => ({
+      type: 'drive', keep: true, min: r.min, m: r.m, pts: r.pts, tag,
+      from: { name: a.name, lat: wgsOf(a).lat, lng: wgsOf(a).lng },
+      to: { name: b.name, lat: wgsOf(b).lat, lng: wgsOf(b).lng }
+    });
+    if (fixes.length === 2) {
+      const a = wgsOf(fixes[0]), b = wgsOf(fixes[1]);
+      const straight = distM(a, b);
+      const cap = straight * 2.5 + 3000;
+      const rFast = RoadNet.drivePath(a, b, cap, { cost: 'time' });
+      if (!rFast) return { error: `「${fixes[0].name}」→「${fixes[1].name}」之间未找到可驾车路径` };
+      const plans = [{
+        legs: [mkDrive(fixes[0], fixes[1], rFast, '最快')],
+        summary: { totalMin: rFast.min, transfers: 0, walkM: 0, rideKm: Math.round(rFast.m / 100) / 10 },
+        mode: 'drive', tag: '最快'
+      }];
+      const rShort = RoadNet.drivePath(a, b, cap, { cost: 'dist' });
+      if (rShort && Math.abs(rShort.m - rFast.m) > rFast.m * 0.02) {
+        plans.push({
+          legs: [mkDrive(fixes[0], fixes[1], rShort, '最短')],
+          summary: { totalMin: rShort.min, transfers: 0, walkM: 0, rideKm: Math.round(rShort.m / 100) / 10 },
+          mode: 'drive', tag: '最短'
+        });
+      }
+      plans.sort((x, y) => x.summary.totalMin - y.summary.totalMin);
+      return { plans };
+    }
+    // 多途经点：顺序逐段最快
+    const legs = [];
+    const segments = [];
+    let totalMin = 0, totalM = 0;
+    for (let i = 0; i < fixes.length - 1; i++) {
+      const a = wgsOf(fixes[i]), b = wgsOf(fixes[i + 1]);
+      const r = RoadNet.drivePath(a, b, distM(a, b) * 2.5 + 3000, { cost: 'time' });
+      if (!r) return { error: `「${fixes[i].name}」→「${fixes[i + 1].name}」之间未找到可驾车路径` };
+      legs.push(mkDrive(fixes[i], fixes[i + 1], r, ''));
+      segments.push({ label: `${fixes[i].name} → ${fixes[i + 1].name}`, totalMin: r.min });
+      totalMin += r.min; totalM += r.m;
+      if (i < fixes.length - 2) legs.push({ type: 'wp', name: fixes[i + 1].name });
+    }
+    return { plans: [{
+      legs,
+      summary: { totalMin: Math.round(totalMin), transfers: 0, walkM: 0, rideKm: Math.round(totalM / 100) / 10 },
+      mode: 'drive', segments
+    }] };
+  }
+
+  /** 公共交通链：纯公交/纯地铁为 transit 图的车型过滤；途经点逐段连缀（每段按同一口径独立选拔） */
+  function planTransitChain(fixes, k, mode, pref) {
+    if (fixes.length === 2) return planTransitTopK(fixes[0], fixes[1], k, mode, pref);
+    const legs = [];
+    const segments = [];
+    let totalMin = 0, walkM = 0, rideKm = 0, transfers = 0;
+    for (let i = 0; i < fixes.length - 1; i++) {
+      const r = planTransitTopK(fixes[i], fixes[i + 1], 1, mode, pref);
+      if (r.error) return { error: r.error };
+      const p = r.plans[0];
+      if (!p) continue;   // 两点过近
+      if (legs.length) legs.push({ type: 'wp', name: fixes[i].name });
+      for (const leg of p.legs) legs.push(leg);
+      segments.push({ label: `${fixes[i].name} → ${fixes[i + 1].name}`, totalMin: p.summary.totalMin });
+      totalMin += p.summary.totalMin;
+      walkM += p.summary.walkM;
+      rideKm += p.summary.rideKm;
+      transfers += p.summary.transfers + (i > 0 ? 1 : 0);
+    }
+    return { plans: [{
+      legs,
+      summary: { totalMin: Math.round(totalMin), transfers, walkM: Math.round(walkM), rideKm: Math.round(rideKm * 10) / 10 },
+      mode, segments
+    }] };
+  }
+
+  /**
+   * 对外总入口。fixes = 有序途经点数组 [{name,lat,lng,wgs,poi}, ...]（≥2 个，含起终点）。
+   * mode: 'transit'(公共交通, 默认) | 'drive'(驾车) | 'walk'(纯步行) | 'bus'(纯公交) | 'metro'(纯地铁)
+   * pref: 'time'(每段最快, 默认) | 'xfer'(每段最少换乘, 同数取最快)——途经点链逐段
+   *       按同一口径独立选拔（2026-11-03 用户令"优先时间那几段都优先时间，优先换乘
+   *       那几段都优先换乘，本质就是当成几段单独计算"）；两点查询走 Top-K 池不受影响。
+   */
+  function planK(fixes, k = 3, mode = 'transit', pref = 'time') {
+    if (!Array.isArray(fixes) || fixes.length < 2) return { error: '起终点缺失' };
+    if (fixes.some(f => !f || !Number.isFinite(f.lat) || !Number.isFinite(f.lng)))
+      return { error: '存在未解析的起终点' };
+    if (mode === 'walk') return planWalkChain(fixes);
+    if (mode === 'drive') return planDriveChain(fixes);
+    return planTransitChain(fixes, k, mode, pref === 'xfer' ? 'xfer' : 'time');
+  }
+
   /** 单方案便捷口（历史调用方语义：{legs, summary} 或 {error}） */
   function plan(fromFix, toFix) {
-    const r = planK(fromFix, toFix, 1);
+    const r = planTransitTopK(fromFix, toFix, 1, 'transit');
     if (r.error) return { error: r.error };
     if (!r.plans.length) return { legs: [], summary: { totalMin: 0, transfers: 0, walkM: 0, rideKm: 0 } };
     return r.plans[0];

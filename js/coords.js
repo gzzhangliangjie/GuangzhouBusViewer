@@ -40,3 +40,9 @@ const GCJ = (() => {
 
   return { wgs84ToGcj02 };
 })();
+
+// 挂到 window：roads/route-view/route-planner 的纠偏守卫写的是 `window.GCJ ? ...`，
+// 顶部 const 声明不会创建 window 属性——不挂载则守卫恒假、WGS→GCJ 从不执行，
+// 全部 WGS 数据在 AMap(GCJ) 瓦片上整体西偏约 550m（2026-11-03 中大站"定位点在珠江"判例；
+// 公交线查看器因 map-layer.js 用裸 GCJ 引用而一直正常，恰好掩盖了此问题）
+window.GCJ = GCJ;

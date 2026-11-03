@@ -6,6 +6,13 @@
 const RoadNet = (() => {
   // 步行排除类别（机动车专用）；其余 highway 一律可步行
   const WALK_EXCLUDE = new Set([0, 1, 2, 3, 22, 23, 24]);
+  // 驾车排除类别（步行/非机动车/专用道）；track 乡道可慢速行车
+  const DRIVE_EXCLUDE = new Set([15, 16, 17, 18, 19, 21, 22, 23, 24]);
+  // 类别默认车速 km/h（无边数据 maxspeed 时兜底）
+  const DRIVE_SPEED = { 0: 90, 1: 60, 2: 80, 3: 50, 4: 50, 5: 35, 6: 40, 7: 30,
+    8: 30, 9: 25, 10: 25, 11: 25, 12: 20, 13: 20, 14: 15, 20: 30 };
+  const DRIVE_DEFAULT_KMH = 30;
+  const DRIVE_TRAFFIC = 0.75;   // 常规路况系数：自由流车速×0.75（不含实时拥堵，2026-10-29 校准）
   const CODE2CLS = {
     0: 'motorway', 1: 'motorway_link', 2: 'trunk', 3: 'trunk_link', 4: 'primary',
     5: 'primary_link', 6: 'secondary', 7: 'secondary_link', 8: 'tertiary', 9: 'tertiary_link',
@@ -18,6 +25,7 @@ const RoadNet = (() => {
   let loadPromise = null;
   let walkGrid = null;       // 路口网格索引（计数排序 CSR）
   let nameEdgeIdx = null;    // nameId -> [edgeId...]（惰性建）
+  let jDrive = null;         // 路口是否有可驾车边（站前 footway 节点吸附过滤，2026-10-29 驾车 null 判例）
   // Dijkstra 复用缓冲（代际戳免重填）；prevSlot=父邻接槽位（形状方向），prevNode=父路口（回溯链）
   let distBuf = null, prevSlotBuf = null, prevNodeBuf = null, stampBuf = null, gen = 0;
 
@@ -55,6 +63,13 @@ const RoadNet = (() => {
         prevSlotBuf = new Int32Array(g.J);
         prevNodeBuf = new Int32Array(g.J);
         stampBuf = new Int32Array(g.J);
+        // 路口是否有可驾车入边（一遍槽位扫，槽位 owner 即该路口）
+        jDrive = new Uint8Array(g.J);
+        for (let j = 0; j < g.J; j++) {
+          for (let s = g.eOff[j]; s < g.eOff[j + 1]; s++) {
+            if (!DRIVE_EXCLUDE.has(g.eCls[g.adjE[s]])) { jDrive[j] = 1; break; }
+          }
+        }
         return true;
       } catch { return false; }
     })();
@@ -83,7 +98,7 @@ const RoadNet = (() => {
     walkGrid = { start, idx, GW, CELL };
   }
 
-  function nearestJunction(lat, lng, maxM) {
+  function nearestJunction(lat, lng, maxM, needDrive) {
     const CELL = walkGrid.CELL, GW = walkGrid.GW;
     const cx = Math.floor((lat - 22) / CELL), cy = Math.floor((lng - 112) / CELL);
     let best = -1, bestD = Infinity;
@@ -95,6 +110,7 @@ const RoadNet = (() => {
         if (key >= walkGrid.start.length - 1) continue;
         for (let p = walkGrid.start[key]; p < walkGrid.start[key + 1]; p++) {
           const j = walkGrid.idx[p];
+          if (needDrive && !jDrive[j]) continue;
           const dy = (jLat(j) - lat) * 110540, dx = (jLng(j) - lng) * cosLat * 111320;
           const d = Math.hypot(dx, dy);
           if (d < bestD) { bestD = d; best = j; }
@@ -206,6 +222,103 @@ const RoadNet = (() => {
     return { m: Math.round(distBuf[found] + nb.m), pts };
   }
 
+  const driveSpeed = e => {
+    const ms = g.eMs[e];
+    return ms > 0 ? ms : (DRIVE_SPEED[g.eCls[e]] || DRIVE_DEFAULT_KMH);
+  };
+
+  /**
+   * 驾车路径：有向图（oneway 生效）+ 类别速度计价。
+   * opts.cost: 'time'(默认，最快) | 'dist'(最短)；返回 { m, min, pts }，不可达 null。
+   */
+  function drivePath(from, to, maxM = 8000, opts = {}) {
+    if (!g) return null;
+    const costDist = opts.cost === 'dist';
+    const na = nearestJunction(from.lat, from.lng, 1200, true);
+    const nb = nearestJunction(to.lat, to.lng, 1200, true);
+    if (!na || !nb) return null;
+    const capM = Math.min(maxM + na.m + nb.m, 80000);
+    const capD = costDist ? capM : capM * 0.06 / (20 * DRIVE_TRAFFIC);   // 时间 pruning 按 ≥20km/h 换算
+    gen++;
+    const stamp = gen;
+    distBuf[na.j] = 0;
+    stampBuf[na.j] = stamp;
+    prevSlotBuf[na.j] = -1;
+    prevNodeBuf[na.j] = -1;
+    const heap = [[0, na.j]];
+    const push = (d, nd) => {
+      heap.push([d, nd]);
+      let i = heap.length - 1;
+      while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; const t = heap[p]; heap[p] = heap[i]; heap[i] = t; i = p; }
+    };
+    const pop = () => {
+      const top = heap[0]; const last = heap.pop();
+      if (heap.length) {
+        heap[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = 2 * i + 1, r = l + 1; let m = i;
+          if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
+          if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
+          if (m === i) break;
+          const t = heap[m]; heap[m] = heap[i]; heap[i] = t; i = m;
+        }
+      }
+      return top;
+    };
+    let found = -1;
+    while (heap.length) {
+      const [d, j] = pop();
+      if (stampBuf[j] !== stamp || distBuf[j] !== d) continue;
+      if (j === nb.j) { found = j; break; }
+      if (d > capD) break;
+      for (let s = g.eOff[j]; s < g.eOff[j + 1]; s++) {
+        const e = g.adjE[s];
+        if (DRIVE_EXCLUDE.has(g.eCls[e])) continue;
+        const ow = g.eOw[e], rev = g.adjRev[s];
+        if (ow === 1 && rev === 1) continue;    // 单行道逆行
+        if (ow === -1 && rev === 0) continue;   // 反向单行道
+        const nbr = g.adjNbr[s];
+        const w = costDist ? g.eM[e] : g.eM[e] * 0.06 / (driveSpeed(e) * DRIVE_TRAFFIC);
+        const nd = d + w;
+        if (nd > capD) continue;
+        if (stampBuf[nbr] !== stamp || nd < distBuf[nbr]) {
+          distBuf[nbr] = nd; stampBuf[nbr] = stamp;
+          prevSlotBuf[nbr] = s; prevNodeBuf[nbr] = j;
+          push(nd, nbr);
+        }
+      }
+    }
+    if (found < 0) return null;
+    const slots = [];
+    let cur = found;
+    while (cur !== na.j) {
+      const s = prevSlotBuf[cur];
+      if (!Number.isInteger(s) || s < 0) break;
+      slots.push(s);
+      if (slots.length > 400000) break;
+      cur = prevNodeBuf[cur];
+    }
+    slots.reverse();
+    const pts = [[from.lat, from.lng]];
+    let m = na.m, min = na.m * 0.06 / (20 * DRIVE_TRAFFIC);   // 接入段按 20km/h（小区/停车场道）
+    for (const s of slots) {
+      const e = g.adjE[s];
+      const sh = shapeOf(e);
+      if (g.adjRev[s]) sh.reverse();
+      for (let i = 0; i < sh.length; i++) {
+        const p = sh[i], lastP = pts[pts.length - 1];
+        if (Math.abs(p[0] - lastP[0]) < 1e-9 && Math.abs(p[1] - lastP[1]) < 1e-9) continue;
+        pts.push(p);
+      }
+      m += g.eM[e];
+      min += g.eM[e] * 0.06 / (driveSpeed(e) * DRIVE_TRAFFIC);
+    }
+    m += nb.m; min += nb.m * 0.06 / (20 * DRIVE_TRAFFIC);
+    pts.push([to.lat, to.lng]);
+    return { m: Math.round(m), min: Math.max(1, Math.round(min)), pts };
+  }
+
   /** 道路查看：按关键词本地检索（与 roads.js 的 Overpass 结果同构：{name, cls, km, ways}） */
   function searchRoads(kw) {
     if (!g) return [];
@@ -240,7 +353,7 @@ const RoadNet = (() => {
 
   function stats() { return g ? { nodeN: g.J, wayN: g.E, at: 0 } : null; }
 
-  return { ready, walkPath, searchRoads, stats };
+  return { ready, walkPath, drivePath, searchRoads, stats };
 })();
 
 window.RoadNet = RoadNet;

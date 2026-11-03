@@ -56,6 +56,95 @@ app.whenReady().then(async () => {
   check('地铁直达规划', !eng.planErr && eng.transfers === 0 && eng.rideKind === 'metro' && eng.ptsN >= 2,
     `${eng.totalMin}min / ${eng.rideKm}km / ${eng.ptsN}点`);
 
+  /* ①b 出行模式与途经点（驾车/步行/纯公交/纯地铁/公共交通链） */
+  const modes = await exec(`(async () => {
+    await RoutePlanner.ready();
+    const F = n => { const c = RoutePlanner.resolveInstance(n, null); return { name: n, lat: c.lat, lng: c.lng, wgs: true }; };
+    const gd = F('岗顶'), fc = F('芳村'), xy = F('体育西路'), zx = F('体育中心');
+    const kinds = pl => [...new Set(pl.legs.filter(l => l.type === 'ride').map(l => l.lineKind))].join(',') || 'none';
+    const drive = RoutePlanner.planK([gd, fc], 2, 'drive');
+    const walk = RoutePlanner.planK([xy, zx], 1, 'walk');
+    const bus = RoutePlanner.planK([gd, fc], 1, 'bus');
+    const metro = RoutePlanner.planK([gd, fc], 1, 'metro');
+    const chain = RoutePlanner.planK([gd, xy, fc], 1, 'transit');
+    return JSON.stringify({
+      driveN: drive.plans ? drive.plans.length : 0,
+      driveTags: drive.plans ? drive.plans.map(p => p.tag).join(',') : drive.error || '',
+      driveMin: drive.plans ? drive.plans[0].summary.totalMin : 0,
+      driveType: drive.plans ? drive.plans[0].legs[0].type : '',
+      walkM: walk.plans ? walk.plans[0].summary.walkM : 0,
+      walkType: walk.plans ? walk.plans[0].legs[0].type : walk.error || '',
+      busKinds: bus.plans ? kinds(bus.plans[0]) : bus.error || '',
+      metroKinds: metro.plans ? kinds(metro.plans[0]) : metro.error || '',
+      chainWp: chain.plans ? chain.plans[0].legs.filter(l => l.type === 'wp').map(l => l.name).join(',') : chain.error || '',
+      chainRides: chain.plans ? chain.plans[0].legs.filter(l => l.type === 'ride').length : 0
+    });
+  })()`, 300000);
+  const md = JSON.parse(modes);
+  check('驾车模式', md.driveN >= 1 && /最快/.test(md.driveTags) && md.driveType === 'drive' &&
+    md.driveMin >= 8 && md.driveMin <= 90, `${md.driveN} 个 [${md.driveTags}] ${md.driveMin}min`);
+  check('纯步行模式', md.walkType === 'walk' && md.walkM >= 500 && md.walkM <= 4000, `${md.walkM}m`);
+  check('纯公交模式', md.busKinds === 'bus', md.busKinds);
+  check('纯地铁模式', md.metroKinds === 'metro', md.metroKinds);
+  check('公共交通途经点链', md.chainWp === '体育西路' && md.chainRides >= 2, `wp=${md.chainWp} rides=${md.chainRides}`);
+
+  /* ①c 回归：逐段选拔口径 + GCJ 纠偏 + 途经点地铁链（2026-11-03 用户判例）
+     判例一：链每段按同一口径独立选拔（用户令"优先时间那几段都优先时间，优先换乘
+     那几段都优先换乘"）——time=每段最快，xfer=每段最少换乘（同数取最快）；
+     配套修复：三 xferMul profile 罚空间必须独立，否则真 0 换乘最优被压在池外；
+     判例二：js/coords.js 未挂 window.GCJ → project/gcjToWgs 恒不转换，WGS 数据在
+     AMap(GCJ) 瓦片上整体偏约 550m，中大站定位点落珠江。 */
+  const wpc = await exec(`(async () => {
+    await RoutePlanner.ready();
+    const F = n => { const c = RoutePlanner.resolveInstance(n, null); return { name: n, lat: c.lat, lng: c.lng, wgs: true }; };
+    const jr = { name: '聚仁坊', lat: 23.12135, lng: 113.27428, wgs: false, poi: true };   // AMap POI 实测值（GCJ）
+    const seg = [F('中山大学'), F('广州塔')];
+    const chT = RoutePlanner.planK([jr, ...seg], 1, 'metro', 'time');
+    const chX = RoutePlanner.planK([jr, ...seg], 1, 'metro', 'xfer');
+    const k1t = RoutePlanner.planK(seg, 1, 'metro', 'time');
+    const k1x = RoutePlanner.planK(seg, 1, 'metro', 'xfer');
+    const k3 = RoutePlanner.planK(seg, 3, 'metro');
+    const g = RoutePlanner.gcjToWgs(23.092124, 113.292863);   // 中大站 AMap GCJ 实测
+    // k=3 池基准：最快方案 / 最少换乘数 + 该数下最快方案的耗时（池按耗时序）
+    const minT = Math.min(...k3.plans.map(p => p.summary.transfers));
+    const fastestMinT = k3.plans.find(p => p.summary.transfers === minT);
+    const dig = r => {
+      const legs = r.plans ? r.plans[0].legs : [];
+      const walks = legs.filter(l => l.type === 'walk').map(l => Math.round(l.m));
+      return {
+        err: r.error || '',
+        min: r.plans ? r.plans[0].summary.totalMin : -1,
+        xfer: r.plans ? r.plans[0].summary.transfers : -1,
+        rides: legs.filter(l => l.type === 'ride' && l.lineKind === 'metro').length,
+        wps: legs.filter(l => l.type === 'wp').map(l => l.name).join(','),
+        maxWalk: walks.length ? Math.max(...walks) : 9999,
+        walkTotal: r.plans ? r.plans[0].summary.walkM : -1
+      };
+    };
+    return JSON.stringify({
+      gcjMounted: !!window.GCJ,
+      gcjMoved: Math.abs(g[0] - 23.092124) > 0.001 && Math.abs(g[1] - 113.292863) > 0.001,
+      chT: dig(chT), chX: dig(chX), k1t: dig(k1t), k1x: dig(k1x),
+      poolFastest: k3.plans ? k3.plans[0].summary.totalMin : -1,
+      poolFastestXfer: k3.plans ? k3.plans[0].summary.transfers : -1,
+      poolMinT: k3.plans ? minT : -1,
+      poolFastestMinT: fastestMinT ? fastestMinT.summary.totalMin : -1
+    });
+  })()`, 300000);
+  const wp = JSON.parse(wpc);
+  check('GCJ 挂载+纠偏生效', wp.gcjMounted && wp.gcjMoved,
+    wp.gcjMounted ? 'wgs84ToGcj02→gcjToWgs 有净位移' : 'window.GCJ 未挂载');
+  check('链段口径=时间优先→每段最快', !wp.k1t.err && wp.k1t.min === wp.poolFastest && wp.k1t.xfer === wp.poolFastestXfer,
+    `k=1 time ${wp.k1t.min}min/${wp.k1t.xfer}换 vs 池最快 ${wp.poolFastest}min/${wp.poolFastestXfer}换`);
+  check('链段口径=换乘优先→每段最少换乘', !wp.k1x.err && wp.k1x.xfer === wp.poolMinT && wp.k1x.min === wp.poolFastestMinT,
+    `k=1 xfer ${wp.k1x.min}min/${wp.k1x.xfer}换 vs 池最少换乘基准 ${wp.poolFastestMinT}min/${wp.poolMinT}换`);
+  check('途经点链(换乘优先)全程乘车', !wp.chX.err && wp.chX.rides >= 2 && wp.chX.wps === '中山大学' &&
+    wp.chX.maxWalk <= 2000 && wp.chX.xfer <= 2,
+    `${wp.chX.min}min/${wp.chX.xfer}换 乘${wp.chX.rides} wp=${wp.chX.wps} 最长步行${wp.chX.maxWalk}m 总步行${wp.chX.walkTotal}m`);
+  check('途经点链(时间优先)全程乘车', !wp.chT.err && wp.chT.rides >= 2 && wp.chT.wps === '中山大学' &&
+    wp.chT.maxWalk <= 1200 && wp.chT.xfer <= 3,
+    `${wp.chT.min}min/${wp.chT.xfer}换 乘${wp.chT.rides} wp=${wp.chT.wps} 最长步行${wp.chT.maxWalk}m 总步行${wp.chT.walkTotal}m`);
+
   /* ② 模式切换 + 地图创建 */
   await exec(`document.querySelector('#mode-nav [data-mode="route"]').click()`);
   await sleep(400);
