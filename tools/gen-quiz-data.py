@@ -187,8 +187,20 @@ def main():
           'V4 每线牌数==钉位数 (%s)' % {ln: (per_line.get(ln), pin_count[ln])
                                        for ln in gcc.ORDER if per_line.get(ln) != pin_count[ln]})
 
+    # viewBox 必须从底图实时读取（禁硬编码）：棋盘按它算底图平移/尺寸，
+    # 与 SVG 实际 viewBox 不一致 => 底图与站点热区整体错位且偏移随缩放放大
+    # （2026-11-04 用户报"圆点和提示圈没有重合"判例：本处硬编码旧值 668 29.7 2138 1937.25
+    #  对上 11b9efc 画布重算的 659 33.7 2149.75 1934.7，zoom+3 实测偏移 ~12px）
+    vbm = re.search(r'<svg[^>]*\bviewBox="([-\d.\s]+)"', tb)
+    check(vbm is not None, 'V5 底图 viewBox 可读')
+    vb = [float(v) for v in vbm.group(1).split()] if vbm else [0, 0, 1, 1]
+    check(len(vb) == 4, 'V5 viewBox 四元 (实得 %s)' % vb)
+    vcm = re.search(r'<svg[^>]*\bviewBox="([-\d.\s]+)"', tc)
+    check(vcm is not None and [float(v) for v in vcm.group(1).split()] == vb,
+          'V5 codes viewBox 与底图一致')
+
     data = {
-        'viewBox': [668, 29.7, 2138, 1937.25],
+        'viewBox': [round(v, 2) for v in vb],
         'gen': __import__('datetime').date.today().strftime('%Y%m%d'),
         'lines': lines_out,
         'stations': stations,

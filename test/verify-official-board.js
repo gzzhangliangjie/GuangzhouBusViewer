@@ -511,6 +511,21 @@ app.whenReady().then(async () => {
     step15.n === 2 && step15.allGf && step15.gfHidden && step15.otherDim,
     JSON.stringify(step15));
 
+  // ---------- ⑭ 数据 viewBox == SVG 实际 viewBox（棋盘按 quiz 数据 viewBox 算底图平移/尺寸，
+  // 不一致则底图与站点热区整体错位且偏移随缩放放大——2026-11-04 "圆点和提示圈没重合"判例）
+  const step16 = await win.webContents.executeJavaScript(`(async () => {
+    const vb = window.QUIZ_NETWORK_DATA.viewBox;
+    const res = await fetch('assets/lines/network-全网.svg');
+    const txt = await res.text();
+    const m = txt.match(/<svg[^>]*\\bviewBox="([-\\d.\\s]+)"/);
+    const svgVb = m ? m[1].trim().split(/\\s+/).map(Number) : null;
+    const eq = !!svgVb && svgVb.length === 4 && vb.length === 4 &&
+      svgVb.every((v, i) => Math.abs(v - vb[i]) < 0.01);
+    return { quizVb: vb, svgVb, eq };
+  })()`);
+  check('⑭卡片数据 viewBox==SVG 实时 viewBox(底图定位不错位)',
+    step16.eq, JSON.stringify(step16));
+
   await win.webContents.executeJavaScript(
     `console.log('_quiz-verify done')`);
   console.log('\\nconsole errors:', errors.length ? errors : 'none');
