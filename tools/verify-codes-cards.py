@@ -8,6 +8,7 @@
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -23,6 +24,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LINES_DIR = os.path.join(ROOT, 'assets', 'lines')
 EDGE = r'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 SCALE = 2.0
+
+
+def _kill_edge_profile(prof):
+    """只杀命令行含本 profile 路径的 msedge(用户自己的 Edge 不带该临时路径, 不受影响)。
+    taskkill /T 会漏掉 Edge 脱离进程树的 crashpad/utility 子进程, 用 psutil 按 cmdline 枚举。"""
+    try:
+        import psutil
+    except ImportError:
+        return
+    key = os.path.normcase(os.path.abspath(prof)).lower()
+    for _p in psutil.process_iter(['name', 'cmdline']):
+        try:
+            if (_p.info.get('name') or '').lower() != 'msedge.exe':
+                continue
+            if key in ' '.join(_p.info.get('cmdline') or []).lower():
+                _p.kill()
+        except Exception:
+            pass
 
 ORDER = ['1号线', '2号线', '3号线', '4号线', '5号线', '6号线', '7号线', '8号线',
          '9号线', '10号线', '11号线', '12号线', '13号线', '14号线', '18号线',
@@ -70,16 +89,39 @@ def render(svg_path, vb, crop=None, scale=None):
         f.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
                 'html,body{margin:0;padding:0;background:#fff;overflow:hidden}</style>'
                 '</head><body>%s</body></html>' % svg)
-    png = os.path.join(tempfile.gettempdir(), '_codespix.png')
-    if os.path.exists(png):
-        os.remove(png)   # 防截图竞态读到上一张卡旧图
     for attempt in range(2):
-        subprocess.run([EDGE, '--headless', '--disable-gpu', '--force-device-scale-factor=1',
-                        '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
-                        'file:///%s' % html.replace('\\', '/')], capture_output=True, timeout=120)
+        # ⚠️2026-11-17 判例: 本机 Edge headless 写完成图后不自行退出, subprocess.run 等进程
+        # 结束而假死; 且固定截图文件名会被上一个残留实例锁住。对策:
+        # ①每次渲染独立 png 路径 + 独立 profile ②轮询文件字节稳定 ③按 profile 精确杀残留。
+        prof = tempfile.mkdtemp(prefix='_edgehl-')
+        _fd, png = tempfile.mkstemp(suffix='.png')
+        os.close(_fd)
+        os.remove(png)
+        proc = subprocess.Popen([EDGE, '--headless', '--disable-gpu', '--force-device-scale-factor=1',
+                                 '--user-data-dir=%s' % prof,
+                                 '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
+                                 'file:///%s' % html.replace('\\', '/')],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        _t0 = time.time()
+        while time.time() - _t0 < 120:
+            if os.path.exists(png):
+                _s1 = os.path.getsize(png)
+                time.sleep(0.4)
+                if os.path.exists(png) and os.path.getsize(png) == _s1 and _s1 > 1000:
+                    break
+            time.sleep(0.2)
+        _kill_edge_profile(prof)
+        shutil.rmtree(prof, ignore_errors=True)
         if os.path.exists(png):
             try:
-                return np.array(Image.open(png).convert('RGB')).astype(int)
+                _im = np.array(Image.open(png).convert('RGB')).astype(int)
+                os.remove(png)
+                return _im
+            except Exception:
+                pass
+        if os.path.exists(png):
+            try:
+                os.remove(png)
             except Exception:
                 pass
         time.sleep(1.0)

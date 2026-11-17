@@ -1657,7 +1657,31 @@ def gen_network(codes, report):
         if _plm:
             lm4 = re.search(r'<g id="站名标注"[^>]*>(.*?)</g>', t, re.S)
             if lm4:
-                t = t[:lm4.start(1)] + _plm.group(1) + t[lm4.end(1):]
+                # 站名组自锚定(2026-11-17 新增站合并版): 已有站整块(中文名+其后英文行)继承
+                # 上一版原元素, 上一版没有的新站保留本次算法位并提示。
+                # 此前整组直接覆盖=新增站标签在 codes 里直接丢失(西洲/棠涌判例)。
+                def _blocks(inner):
+                    out = []
+                    for _m in re.finditer(r'<text ([^>]*)>([^<]+)</text>', inner):
+                        _zh = any(ord(ch) > 127 for ch in _m.group(2))
+                        if _zh or not out:
+                            out.append([_m.group(2), [], [_m.group(0)]])
+                        else:
+                            out[-1][1].append(_m.group(2))
+                            out[-1][2].append(_m.group(0))
+                    return out
+                _prev_blk = {b[0]: b for b in _blocks(_plm.group(1))}
+                _emit, _fresh = [], []
+                for _b in _blocks(lm4.group(1)):
+                    _pb = _prev_blk.get(_b[0])
+                    if _pb is not None and _pb[1] == _b[1]:
+                        _emit.extend(_pb[2])
+                    else:
+                        _fresh.append(_b[0])
+                        _emit.extend(_b[2])
+                t = t[:lm4.start(1)] + ''.join(_emit) + t[lm4.end(1):]
+                if _fresh:
+                    print('  站名锚: 新增无锚走算法位: %s' % '、'.join(_fresh))
         # 锚应用((线名,终点)键配对, 2026-10-26兑现注释承诺——此前实现是文档序+数量硬报错):
         # 上一版codes SVG的徽标transform按(线名,终点)键套新t; 新增终点无锚→保留算法位并提示,
         # 已有终点锚自动跟站名走, 增删均不错位。重复键=结构异常, 硬报错转人工。
@@ -1699,20 +1723,38 @@ def gen_network(codes, report):
         except _ET.ParseError as _pe:
             print('!! gen_network 产出XML损坏, 拒绝落盘:', _pe)
             sys.exit(1)
-        # chips自锚定: 上一版编号牌组中fill="#FFFFFF"的牌rect按文档序取位移增量
-        # (坑口-5与手改自动携带); 数量变化=结构变化, 硬报错。
-        # (2026-10-29: rx 与 fill 之间允许 data-nm 等属性, 属性序安全)
-        _pchip = re.findall(
-            r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+"[^>]*?fill="#FFFFFF" stroke="#[0-9A-Fa-f]{6}"',
-            _prev)
-        if len(_pchip) != len(chips):
-            print('!! 牌数%d != 上一版%d: 结构变化, 拒绝静默错位' % (len(chips), len(_pchip)))
-            sys.exit(1)
+        # chips自锚定(2026-11-17 身份键版): 上一版编号牌按 (站名, 线号) 键配对取位移增量
+        # (坑口-5与手改自动携带)。此前按文档序配对, 增删站=结构变化只能硬报错(序号全错位);
+        # 牌自带 data-nm 与线号字=天然身份键, 改为身份配对后新增站无锚走算法位并提示, 已有牌零丢失。
+        _pblk = re.search(r'<g id="编号牌"[^>]*>(.*?)</g>', _prev, re.S)
+        _pmap = {}
+        if _pblk:
+            _blk = _pblk.group(1)
+            _rects = list(re.finditer(
+                r'<rect x="([-\d.]+)" y="([-\d.]+)" width="([\d.]+)" height="([\d.]+)" rx="[\d.]+"[^>]*?fill="#FFFFFF" stroke="#[0-9A-Fa-f]{6}"[^>]*>',
+                _blk))
+            for _ri, _rr in enumerate(_rects):
+                _end = _rects[_ri + 1].start() if _ri + 1 < len(_rects) else len(_blk)
+                _t1 = re.search(r'>([^<>]+)</text>', _blk[_rr.end():_end])
+                _nm_m = re.search(r'data-nm="([^"]+)"', _rr.group(0))
+                _k2 = (_nm_m.group(1) if _nm_m else '', _t1.group(1).strip() if _t1 else '')
+                if _k2 in _pmap:
+                    print('!! 上一版编号牌键重复%s: 结构异常, 拒绝静默错位' % (_k2,))
+                    sys.exit(1)
+                _pmap[_k2] = tuple(float(_rr.group(_k)) for _k in (1, 2, 3, 4))
+        _phit, _pmiss = 0, []
         for _i2, (_nm2, _ln2, _cx2, _cy2, _w2) in enumerate(chips):
-            _px, _py, _pw, _ph = (float(v) for v in _pchip[_i2])
+            _pv = _pmap.get((_nm2, line_disp(_ln2)))
+            if _pv is None:
+                _pmiss.append('%s|%s' % (_nm2, line_disp(_ln2)))
+                continue
+            _phit += 1
+            _px, _py, _pw, _ph = _pv
             _dx, _dy = _px + _pw / 2 - _cx2, _py + _ph / 2 - _cy2
             if abs(_dx) > 0.05 or abs(_dy) > 0.05:
                 chips[_i2] = (_nm2, _ln2, _cx2 + _dx, _cy2 + _dy, _w2)
+        print('  编号牌锚: 命中%d/%d%s' % (_phit, len(chips),
+              ('，新增无锚走算法位: %s' % '、'.join(_pmiss)) if _pmiss else '，零丢失'))
     # 环线徽标站点锚自记录(P3固化, 2026-10-28用户令"找到所有的11号线节点选个最近的锚定"):
     # 元素最终位置在本线站点节点(gen.line_stations现成分组数据×全网钉质心坐标)中取最近,
     # 写入data-anchor供冷启动/重布局按站+偏移复刻; 已有锚(整元素自锚继承)不覆写。

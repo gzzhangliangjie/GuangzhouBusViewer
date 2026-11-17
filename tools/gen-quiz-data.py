@@ -2,9 +2,9 @@
 """地铁拼图数据生成器: 官网图产品 -> data/quiz-network-data.js (官方线网图棋盘用)。
 
 只读产品文件, 不改任何 SVG。全部解析走 gen-codes-cards 共享接口(§1.7), 校验不过即退出:
-- V1 站名双射: 基础图 318 个中文站名文字 <-> 站圆302+换乘胶囊16 (data-nm), 无重名;
+- V1 站名双射: 基础图 320 个中文站名文字 <-> 站圆304+换乘胶囊16 (data-nm), 无重名;
 - V2 线色双射: 19 条线徽标内色 <-> 走廊组 19 个颜色集合全等, 每线徽标同色;
-- V3 编号牌配对: codes 图 400 枚牌按"牌面解码"配到 (站,线)——隔线色+线号字+序号字
+- V3 编号牌配对: codes 图 402 枚牌按"牌面解码"配到 (站,线)——隔线色+线号字+序号字
   是绘制端按 (站,线) 画入的权威身份, 解码后经 CSV 唯一反查; 钉位仅用于别名消歧与
   漂移报告(就近指派在多牌站钉位/落位错位时整站互换, 2026-10-26 实测 63 枚/32 站);
   多牌站的牌必须全部落在该站圈环(data-ring)内;
@@ -61,7 +61,7 @@ def main():
         cy = sum(p[1] for p in pts) / len(pts)
         anchors.setdefault(nm, (cx, cy))
     tnames = [t['nm'] for t in texts]
-    check(len(tnames) == 318 and len(set(tnames)) == 318, 'V1 中文站名 318 无重名 (实得 %d/%d)' % (len(tnames), len(set(tnames))))
+    check(len(tnames) == 320 and len(set(tnames)) == 320, 'V1 中文站名 320 无重名 (实得 %d/%d)' % (len(tnames), len(set(tnames))))
     check(set(tnames) == set(anchors), 'V1 站名<->站圆/胶囊 双射 (差集 %s)' % (set(tnames) ^ set(anchors)))
 
     # ---------- V2 线色 ----------
@@ -89,7 +89,7 @@ def main():
     # 钉位现在只用于: ①别名消歧(归一站名的 codes 双条目取卡片原名) ②漂移报告。
     details = gcc.chip_details(tc)
     chips = [(d['x'], d['y'], d['w'], d['h']) for d in details]
-    check(len(details) == 400 and all(
+    check(len(details) == 402 and all(
         d['inner'].startswith('<line') and d['inner'].endswith('</text>')
         and d['inner'].count('<text') == 2 for d in details),
         'V3 逐牌内标记 line+双text 结构 (实得 %d)' % len(details))
@@ -132,7 +132,7 @@ def main():
         pin = pins.get(chip_key[ci])
         if pin:
             drift.append((dist((d['x'] + d['w'] / 2, d['y'] + d['h'] / 2), pin), chip_key[ci]))
-    check(len(chip_key) == 400 and all(chip_key), 'V3 牌 400 全配对 (实得 %d)' % sum(1 for k in chip_key if k))
+    check(len(chip_key) == 402 and all(chip_key), 'V3 牌 402 全配对 (实得 %d)' % sum(1 for k in chip_key if k))
     check(set(chip_key) == set(pins), 'V3 (站,线)全覆盖 (差集 %s)' % (set(chip_key) ^ set(pins)))
     if drift:
         drift.sort(reverse=True)
@@ -209,7 +209,7 @@ def main():
     body = json.dumps(data, ensure_ascii=False, separators=(', ', ': '))
     js = ('// 由 tools/gen-quiz-data.py 生成（真源: assets/lines/network-全网*.svg + '
           'data/station-codes-official.csv），勿手改。\n'
-          '// 校验: 318站名双射 / 19线色全等 / 400编号牌全局唯一配对+圈环包含 / 每线牌数=钉位数。\n'
+          '// 校验: 320站名双射 / 19线色全等 / 402编号牌全局唯一配对+圈环包含 / 每线牌数=钉位数。\n'
           'window.QUIZ_NETWORK_DATA = ' + body + ';\n')
     with open(OUT, 'w', encoding='utf-8', newline='\n') as f:
         f.write(js)

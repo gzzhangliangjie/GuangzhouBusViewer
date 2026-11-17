@@ -12,7 +12,7 @@ NORTH = os.path.join(ROOT, 'data/_card-bases/line-12号线北段.svg')          
 CARD = os.path.join(ROOT, 'assets/lines/line-12号线.svg')                  # 最终双段卡(覆写南段产物)
 OUT = os.path.join(ROOT, 'data/line12-both.json')
 
-NORTH_CHAIN = ['浔峰岗', '浔峰岗北', '聚龙', '广州白云站', '新市墟', '白云文化广场', '广州体育馆']
+NORTH_CHAIN = ['浔峰岗', '浔峰岗北', '西洲', '聚龙', '广州白云站', '棠涌', '新市墟', '白云文化广场', '广州体育馆']
 SOUTH_CHAIN = ['二沙岛', '赤岗塔', '赤岗', '赤沙北', '赤沙', '北山', '官洲', '大学城北', '大学城南']
 
 

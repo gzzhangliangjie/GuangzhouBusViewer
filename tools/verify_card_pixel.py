@@ -28,6 +28,24 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORT = 8765
 EDGE = r'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe'
 SCALE = 2.0
+
+
+def _kill_edge_profile(prof):
+    """只杀命令行含本 profile 路径的 msedge(用户自己的 Edge 不带该临时路径, 不受影响)。
+    taskkill /T 会漏掉 Edge 脱离进程树的 crashpad/utility 子进程, 用 psutil 按 cmdline 枚举。"""
+    try:
+        import psutil
+    except ImportError:
+        return
+    key = os.path.normcase(os.path.abspath(prof)).lower()
+    for _p in psutil.process_iter(['name', 'cmdline']):
+        try:
+            if (_p.info.get('name') or '').lower() != 'msedge.exe':
+                continue
+            if key in ' '.join(_p.info.get('cmdline') or []).lower():
+                _p.kill()
+        except Exception:
+            pass
 MIN_TEXT_PX = 40          # 每站文字行最低墨量(2x渲染, 两字小站~165, 阈值按字数缩放后仍取保守值)
 GAP_MIN_PX = 2.0          # 文字行带到走廊/徽标的像素净距下限(2x图)
 
@@ -60,12 +78,35 @@ def render(card_path):
         f.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
                 'html,body{margin:0;padding:0;background:#fff;overflow:hidden}</style>'
                 '</head><body>%s</body></html>' % svg)
-    png = os.path.join(tempfile.gettempdir(), '_cardpix.png')
-    subprocess.run([EDGE, '--headless', '--disable-gpu', '--disable-lcd-text',
-                    '--force-color-profile=srgb', '--force-device-scale-factor=1',
-                    '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
-                    'file:///%s' % html.replace('\\', '/')], capture_output=True, timeout=60)
+    # ⚠️2026-11-17 判例: 本机 Edge headless 写完成图后不自行退出, subprocess.run 假死;
+    # 且固定截图名会被上一个残留实例锁住。对策: 每次独立 png+profile, 轮询稳定, 按 profile 精确杀。
+    prof = tempfile.mkdtemp(prefix='_edgehl-')
+    _fd, png = tempfile.mkstemp(suffix='.png')
+    os.close(_fd)
+    os.remove(png)
+    proc = subprocess.Popen([EDGE, '--headless', '--disable-gpu', '--disable-lcd-text',
+                             '--force-color-profile=srgb', '--force-device-scale-factor=1',
+                             '--user-data-dir=%s' % prof,
+                             '--window-size=%d,%d' % (W, H), '--screenshot=%s' % png,
+                             'file:///%s' % html.replace('\\', '/')],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _t0 = time.time()
+    while time.time() - _t0 < 120:
+        if os.path.exists(png):
+            _s1 = os.path.getsize(png)
+            time.sleep(0.4)
+            if os.path.exists(png) and os.path.getsize(png) == _s1 and _s1 > 1000:
+                break
+        time.sleep(0.2)
+    _kill_edge_profile(prof)
+    shutil.rmtree(prof, ignore_errors=True)
+    if not os.path.exists(png):
+        raise RuntimeError('render timeout: ' + svg_path)
     im = np.array(Image.open(png).convert('RGB')).astype(int)
+    try:
+        os.remove(png)
+    except Exception:
+        pass
     shutil.rmtree(tmpdir, ignore_errors=True)
     return im, c
 

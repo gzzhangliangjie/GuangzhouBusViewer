@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """工具自测(2026-10-25): gen共享接口单元 + 产物不变量金丝 + 快照沙箱回环。秒级无渲染。
 precommit-gate 在 T3(纯脚本)与 T2生成器链档自动调用; 也可手动 python tools/selftest.py。
-⚠️产物数字金丝(41徽标/318文字/400牌/16胶囊/302圆/scale0.314)是定稿冻结值,
+⚠️产物数字金丝(41徽标/320文字/402牌/16胶囊/304圆/scale0.314)是定稿冻结值,
 随定稿变更需有意识更新本文件(与基线accept同理, 不许静默漂移)。
 """
 import io, os, sys, re, json, tempfile, shutil, importlib.util
@@ -94,12 +94,12 @@ miss = [k for k in set(b['key'] for b in badges)
 check('徽标线卡文件齐全', not miss, miss)
 
 zh = [t for t in gen.text_elements(codes) if not t['en']]
-check('站名文字=318', len(zh) == 318, len(zh))
+check('站名文字=320', len(zh) == 320, len(zh))
 ch2, rn2, _ = gen.chip_elements(codes)
-check('编号牌=400', len(ch2) == 400, len(ch2))
+check('编号牌=402', len(ch2) == 402, len(ch2))
 mk2 = gen.marker_elements(base)
 check('换乘胶囊=16', len(mk2['capsules']) == 16, len(mk2['capsules']))
-check('标记圆=302', len(mk2['circles']) == 302, len(mk2['circles']))
+check('标记圆=304', len(mk2['circles']) == 304, len(mk2['circles']))
 
 bb = gen.badge_elements(base)
 check('底图徽标transform与codes全等(同步金丝)',

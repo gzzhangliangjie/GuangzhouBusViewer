@@ -53,12 +53,12 @@ app.whenReady().then(async () => {
     };
   })()`);
   check('①答案图 codes 载入', step1.loaded && step1.hasChips, JSON.stringify(step1));
-  check('①答案图 400 牌/318 文/41 徽标全可见',
-    step1.chipRects === 400 && step1.texts === 318 && step1.badges === 41 && step1.hidden === 0,
+  check('①答案图 402 牌/320 文/41 徽标全可见',
+    step1.chipRects === 402 && step1.texts === 320 && step1.badges === 41 && step1.hidden === 0,
     `牌${step1.chipRects} 文${step1.texts} 徽${step1.badges} 藏${step1.hidden}`);
   await shot('answer');
 
-  // ---------- ② 站名模式（全网）：318 藏名 + 热区 + 正误判分 ----------
+  // ---------- ② 站名模式（全网）：320 藏名 + 热区 + 正误判分 ----------
   const step2 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
     await new Promise(r => setTimeout(r, 300));
@@ -70,8 +70,8 @@ app.whenReady().then(async () => {
       dock: document.querySelectorAll('#chip-pool .mchip').length,
       score: g.score, prog: document.getElementById('mq-prog').textContent };
   })()`);
-  check('②站名模式 318 名隐藏/热区318/池318',
-    step2.kind === 'official' && step2.hidden === 318 && step2.hotspots === 318 && step2.dock === 318,
+  check('②站名模式 320 名隐藏/热区320/池320',
+    step2.kind === 'official' && step2.hidden === 320 && step2.hotspots === 320 && step2.dock === 320,
     JSON.stringify(step2));
 
   const step3 = await win.webContents.executeJavaScript(`(async () => {
@@ -97,10 +97,10 @@ app.whenReady().then(async () => {
     return { afterOk, afterBad, afterHint: { score: g.score, hints: g.hints,
       dock: document.querySelectorAll('#chip-pool .mchip').length } };
   })()`);
-  check('②放对 +100', step3.afterOk.score === 100 && step3.afterOk.prog === '1/318' && step3.afterOk.hot === 317,
+  check('②放对 +100', step3.afterOk.score === 100 && step3.afterOk.prog === '1/320' && step3.afterOk.hot === 319,
     JSON.stringify(step3.afterOk));
   check('②放错 −10（牌不消耗, 保留选中）', step3.afterBad.score === 90 && step3.afterBad.wrongs === 1 && step3.afterBad.stillSel === true, JSON.stringify(step3.afterBad));
-  check('②提示 −50 自动放置', step3.afterHint.score === 40 && step3.afterHint.hints === 1 && step3.afterHint.dock === 316,
+  check('②提示 −50 自动放置', step3.afterHint.score === 40 && step3.afterHint.hints === 1 && step3.afterHint.dock === 318,
     JSON.stringify(step3.afterHint));
 
   // ---------- ③ 放置复原 = 原位元素（可见性翻转，坐标可解析） ----------
@@ -253,7 +253,7 @@ app.whenReady().then(async () => {
     step8.multi.kind === 'geo' && step8.multi.dock === step8.multi.expect,
     JSON.stringify(step8.multi));
 
-  // ---------- ⑦ 站点显示形式=数字胶囊：站名模式跑在 codes 板（400 牌可见作站标记） ----------
+  // ---------- ⑦ 站点显示形式=数字胶囊：站名模式跑在 codes 板（402 牌可见作站标记） ----------
   const step9 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
     await new Promise(r => setTimeout(r, 300));
@@ -276,9 +276,9 @@ app.whenReady().then(async () => {
       dock: document.querySelectorAll('#chip-pool .mchip').length,
       score: g.score, formBtn: document.getElementById('mq-form').textContent };
   })()`);
-  check('⑦胶囊形式 codes 板 400 牌可见+站名隐藏+可判分',
-    step9.hasChips && !step9.hasCircles && step9.chipsVisible === 400 &&
-    step9.hidden === 317 && step9.dock === 317 && step9.score === 100 &&
+  check('⑦胶囊形式 codes 板 402 牌可见+站名隐藏+可判分',
+    step9.hasChips && !step9.hasCircles && step9.chipsVisible === 402 &&
+    step9.hidden === 319 && step9.dock === 319 && step9.score === 100 &&
     step9.formBtn.indexOf('数字胶囊') >= 0,
     JSON.stringify(step9));
   await shot('form-capsule-names');
@@ -296,7 +296,7 @@ app.whenReady().then(async () => {
       formBtn: document.getElementById('mq-form').textContent };
   })()`);
   check('⑧局内切换圆圈 进度保留 站名层复原', step11.hasCircles && !step11.hasChips &&
-    step11.placedVisible && step11.score === 100 && step11.dock === 317 &&
+    step11.placedVisible && step11.score === 100 && step11.dock === 319 &&
     step11.formBtn.indexOf('站点圆圈') >= 0, JSON.stringify(step11));
 
   // ---------- ⑨ 圆圈形式基础板 + 放弃揭示（revealAll 只复原本局谜面，
@@ -322,7 +322,7 @@ app.whenReady().then(async () => {
       gongyuanVisible: !!gongyuan && gongyuan.style.visibility !== 'hidden' };
   })()`);
   check('⑨圆圈形式基础板 站名模式开局', step10.basic.hasCircles && !step10.basic.hasChips &&
-    step10.basic.dock === 318 && step10.basic.hidden === 318, JSON.stringify(step10.basic));
+    step10.basic.dock === 320 && step10.basic.hidden === 320, JSON.stringify(step10.basic));
   check('⑨放弃揭示 只复原站名 零胶囊注入(圆点胶囊不叠画)',
     step10.revealed && step10.rsTitle.indexOf('已揭示答案') >= 0 &&
     step10.injected === 0 && step10.hiddenAfter === 0 && step10.gongyuanVisible,
@@ -353,11 +353,11 @@ app.whenReady().then(async () => {
   check('⑨b揭示结束后再来一局 默认全网挑战(药丸复位)',
     step10b.scope0.indexOf('广佛线') >= 0 &&
     step10b.scopeRe.indexOf('全网挑战') >= 0 && step10b.pillsSel === '' &&
-    step10b.dockRe === 318,
+    step10b.dockRe === 320,
     JSON.stringify(step10b));
 
   // ---------- ⑩ 单线×胶囊（2026-10-26 用户令：单线展示时本线数字亮、他线数字灰）：
-  //   站名模式+胶囊+1号线（选择线路仅站名模式提供，2026-10-27 用户令）：400 牌全作背景，
+  //   站名模式+胶囊+1号线（选择线路仅站名模式提供，2026-10-27 用户令）：402 牌全作背景，
   //   换乘站亮牌必须=本线（牌面配对哨兵：体育西路 1|14 亮 / 3|11 灰）----------
   const step12 = await win.webContents.executeJavaScript(`(async () => {
     document.getElementById('mq-back').click();
@@ -387,7 +387,7 @@ app.whenReady().then(async () => {
   })()`);
   check('⑩站名模式保留选择线路 药丸行已移除', step12.scopeVisible && !step12.pillsRow,
     '范围可见' + step12.scopeVisible + ' 药丸残留' + step12.pillsRow);
-  check('⑩1号线胶囊 400牌全留 他线全淡化',
+  check('⑩1号线胶囊 402牌全留 他线全淡化',
     step12.allKept && step12.othersDim,
     `留${step12.allKept} 淡${step12.othersDim}`);
   check('⑩体育西路 本线1|14亮 他线3|11灰(牌面配对哨兵)',
@@ -421,9 +421,9 @@ app.whenReady().then(async () => {
     const [hitNm, hitDist] = nearestNm(map.getCenter());
     const blinkPaths = document.querySelectorAll('#metro-canvas path.mb-blink').length;
     const blinkSlots = document.querySelectorAll('#metro-canvas .mb-slot.mb-blink').length;
-    // 连点共 318 次 = 洗牌袋恰好一轮：全部去重后应为 318（纯随机必有约 40 次撞车）
+    // 连点共 320 次 = 洗牌袋恰好一轮：全部去重后应为 320（纯随机必有约 40 次撞车）
     const seen = new Set([hitNm]);
-    for (let i = 0; i < 317; i++) {
+    for (let i = 0; i < 319; i++) {
       btn.click();
       seen.add(nearestNm(map.getCenter())[0]);
     }
@@ -431,12 +431,12 @@ app.whenReady().then(async () => {
       hitNm, hitDist: hitDist.toFixed(3), blinkTotal: blinkPaths + blinkSlots,
       distinct: seen.size };
   })()`);
-  check('⑪定位按钮局内可见', step13.hiddenAtStart === false && step13.unfilled === 318,
+  check('⑪定位按钮局内可见', step13.hiddenAtStart === false && step13.unfilled === 320,
     JSON.stringify({ hidden: step13.hiddenAtStart, unfilled: step13.unfilled }));
   check('⑪点击聚焦居中到未填站+闪烁', step13.hitDist < 0.5 && step13.blinkTotal === 1,
     '命中' + step13.hitNm + ' 偏差' + step13.hitDist + ' 闪烁' + step13.blinkTotal);
-  check('⑪连点318次零重复(洗牌袋一轮)', step13.distinct === 318,
-    '去重' + step13.distinct + '/318');
+  check('⑪连点320次零重复(洗牌袋一轮)', step13.distinct === 320,
+    '去重' + step13.distinct + '/320');
 
   // ---------- ⑫ 徽标槽定位（全网线号）：居中+闪烁；一线一填整线全清，填完后提示无未填 ----------
   const step14 = await win.webContents.executeJavaScript(`(async () => {

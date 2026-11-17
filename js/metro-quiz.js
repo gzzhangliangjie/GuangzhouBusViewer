@@ -129,7 +129,10 @@ const MetroQuiz = (() => {
       });
       return b;
     };
-    els.scopePicker.appendChild(mk(null, '全网挑战', '', '官方线网图 19 条线 / 318 座车站'));
+    // 站数从拼图数据实时取(禁止写死: 补站后文案与棋盘必须一致)
+    const _qd = QD();
+    const _nSt = _qd && _qd.stations ? _qd.stations.length : 0;
+    els.scopePicker.appendChild(mk(null, '全网挑战', '', '官方线网图 19 条线 / ' + _nSt + ' 座车站'));
     for (const l of MetroData.allLines()) {
       els.scopePicker.appendChild(mk(l.ref, MetroData.refLabel(l.ref), l.color, l.zh));
     }
